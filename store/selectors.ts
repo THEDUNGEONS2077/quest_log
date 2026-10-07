@@ -31,7 +31,11 @@ export interface Counts {
 interface SelectorInput {
   tasks: TasksState;
   ui: UiState;
+  /** Just-checked top-level tasks still shown on ACTIVE (see AppStore.lingering). */
+  lingering?: readonly string[];
 }
+
+const NO_LINGERING: readonly string[] = [];
 
 /** Remembers the last result for one set of keys (enough here: one list per screen). */
 function memoLast<K extends unknown[], R>(compute: (...keys: K) => R): (...keys: K) => R {
@@ -51,7 +55,9 @@ function memoLast<K extends unknown[], R>(compute: (...keys: K) => R): (...keys:
 export function makeSelectors() {
   // Keyed on structureVersion; `tasks` is passed along but deliberately not a key.
   let activeTasks: TasksState;
-  const active = memoLast((_version: number, zoomRootId: string | null) => flattenActive(activeTasks, { zoomRootId }));
+  const active = memoLast((_version: number, zoomRootId: string | null, lingering: readonly string[]) =>
+    flattenActive(activeTasks, { zoomRootId, keep: lingering.length ? new Set(lingering) : undefined }),
+  );
 
   let completedTasks: TasksState;
   const completed = memoLast((_version: number, expanded: readonly string[]) =>
@@ -66,7 +72,7 @@ export function makeSelectors() {
     /** Rows for the ACTIVE tab (respects zoom). */
     activeRows(s: SelectorInput): Row[] {
       activeTasks = s.tasks;
-      return active(s.tasks.structureVersion, s.ui.zoomRootId);
+      return active(s.tasks.structureVersion, s.ui.zoomRootId, s.lingering ?? NO_LINGERING);
     },
     /** Rows for the COMPLETED tab. */
     completedRows(s: SelectorInput): Row[] {

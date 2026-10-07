@@ -17,17 +17,26 @@
  * expo-font config plugin (app.config.ts).
  */
 import { Stack } from 'expo-router';
+import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { setHapticsEnabled } from '@/services/haptics';
 import { appBundle } from '@/store';
 import { StoreProvider } from '@/store/react';
 import { colors } from '@/theme';
 
 export default function RootLayout() {
+  // Keep the haptics service in step with the "Haptics" setting.
+  useEffect(() => {
+    const { store } = appBundle;
+    setHapticsEnabled(store.getState().settings.haptics);
+    return store.subscribe((s) => s.settings.haptics, setHapticsEnabled);
+  }, []);
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <StoreProvider value={appBundle}>

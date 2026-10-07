@@ -99,4 +99,11 @@ describe('TaskRow', () => {
     expect(tasks.children.root).toEqual(['a', 'b', 'c', 'new1', 'g']);
     expect(tk(tasks, 'new2')!.parentId).toBe('new1');
   });
+
+  it('tapping the checkbox checks the task', async () => {
+    const { store } = await setup();
+    const boxes = screen.getAllByRole('checkbox');
+    await fireEvent.press(boxes[0]!); // row "a"
+    expect(tk(store.getState().tasks, 'a')!.done).toBe(true);
+  });
 });

@@ -1,6 +1,6 @@
 {
   "name": "quest_log",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@shopify/flash-list": "2.0.2",
@@ -10,6 +10,7 @@
     "expo-crypto": "~57.0.3",
     "expo-dev-client": "~57.0.19",
     "expo-font": "~57.0.4",
+    "expo-haptics": "~57.0.3",
     "expo-linking": "~57.0.12",
     "expo-router": "~57.0.25",
     "expo-splash-screen": "~57.0.9",
@@ -42,13 +43,14 @@
   "scripts": {
     "start": "APP_VARIANT=dev expo start --dev-client",
     "android:dev": "APP_VARIANT=dev expo run:android --device",
-    "android:release": "APP_VARIANT=release expo prebuild --clean --platform android && cd android && ./gradlew assembleRelease",
+    "android:release": "APP_VARIANT=release expo prebuild --clean --platform android && cd android && ./gradlew assembleRelease; s=$?; ./gradlew --stop >/dev/null; exit $s",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "jest",
+    "test": "jest --maxWorkers=50% --testPathIgnorePatterns /node_modules/ /android/ /ios/ /__tests__/fixtures/ perf.test && npm run test:perf",
     "check": "npm run typecheck && npm run lint && npm test",
     "fonts:subset": "./scripts/subset-fonts.sh",
-    "icons:placeholder": "./scripts/make-placeholder-icon.sh"
+    "icons:placeholder": "./scripts/make-placeholder-icon.sh",
+    "test:perf": "jest __tests__/perf.test.ts"
   },
   "private": true,
   "allowScripts": {

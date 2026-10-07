@@ -27,14 +27,14 @@ This is a running list of everything that behaves differently on iOS or still ne
 - [ ] `EditToolbar` ends editing on `keyboardDidHide`. On iOS that event also fires for keyboard type switches and the floating keyboard on iPad; confirm editing doesn't end unexpectedly.
 - [ ] `EditToolbar` buttons use `focusable={false}` (Android-only) to keep the editor focused. Confirm tapping them doesn't blur the input on iOS.
 - [ ] `InlineEditor` uses `submitBehavior="blurAndSubmit"` with `multiline`. Confirm iOS shows "Done" and doesn't insert newlines.
-- [ ] The edge-swipe back gesture must not conflict with row swipes. Add a left-edge exclusion zone.
+- [ ] The edge-swipe back gesture must not conflict with row swipes (`SwipeableRow`: activeOffsetX ±16, failOffsetY ±12). Add a left-edge exclusion zone.
 - [ ] Long-press must not trigger the text-selection magnifier on non-editing rows.
 
 ## Fonts, glyphs, haptics
 - [ ] Check glyph rendering in JetBrains Mono. Phase 1 found these glyphs missing from the font: ⏰ ↻ ⌕ ⚙ ↶ ⇤ ⤢ ☐ ⧉ ⎘ ↳ (see `theme/glyphs.ts`).
   - [ ] `repeat` (↻) still renders through the system fallback font. Check how it looks in iOS's fallback font.
 - [ ] `theme/platform.ts`: `includeFontPadding` is Android-only. Check vertical text alignment on iOS.
-- [ ] Map haptics to the iOS feedback generators.
+- [ ] Map haptics to the iOS feedback generators. `services/haptics.ts` uses expo-haptics impact, selection and notification, which map directly, but feel them on a device.
 
 ## Layout
 - [ ] Safe areas: the home indicator and the Dynamic Island.

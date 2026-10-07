@@ -48,14 +48,14 @@ Status markers:
 | Path | Purpose | Does **not** contain |
 |---|---|---|
 | `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
-| `components/list/` | `TaskList` (FlashList), `TaskRow` (incl. group header variant), `NestingGuides` *(built)*; strikethrough, drag layer *(planned, Phase 5–9)* | Store mutations beyond calling actions |
+| `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides` *(built)*; drag layer *(planned, Phase 9)* | Store mutations beyond calling actions |
 | `components/edit/` | `InlineEditor`, `QuickAddBar`, `EditToolbar` (OUT/IN/+SUB/UNDO/DONE) *(built)*; notes field, chips, the rest of the accessory bar *(planned, Phase 6)* | Parsing and key rules (those are `lib/`) |
-| `components/overlays/` | Context menu, sheets, toast, boot sequence *(planned)* | |
-| `components/common/` | `Header`, `useMinute` (shared minute clock) *(built)*; tabs, filter chips, breadcrumb, block cursor *(planned)* | |
+| `components/overlays/` | `ActionSheet` (bottom menu), `Toast` (with UNDO) *(built)*; context menu, date/repeat sheets, boot sequence *(planned)* | |
+| `components/common/` | `Header`, `Tabs`, `useMinute` (shared minute clock) *(built)*; filter chips, breadcrumb, block cursor *(planned)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `outliner`, `paste`, `dates`, `purge`; planned: `parser`, `recurrence`, `dnd`, `search`)* | Anything impure |
-| `services/` | Native side effects: notifications, external ops queue, widget, haptics, backup *(planned)* | UI |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete`, `outliner`, `paste`, `dates`, `purge`; planned: `parser`, `recurrence`, `dnd`, `search`)* | Anything impure |
+| `services/` | Native side effects. *(built: `haptics`, which follows the Settings toggle; planned: notifications, external ops queue, widget, backup)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
@@ -207,6 +207,14 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 - `useAppStore(selector)` subscribes narrowly. Rows select their own task (`findTask(s.tasks, id)`) and a boolean (`s.editingId === id`).
 - `useActions()` is for **actions only** inside event handlers. For current values inside a handler, use `useStoreBundle().store.getState()`.
 - Render functions must be pure: no `Date.now()`. Time-relative UI subscribes to `useMinute()`, a single timer aligned to each minute boundary.
+
+## 6c. Completion flow *(built: `lib/complete.ts`, `store.toggleDone`)*
+
+1. **Check** completes the task's live subtree. Parents whose live children are all done auto-complete, chaining upward. It's one op, so one undo step.
+2. If a **top-level** task became done, its ID goes into `store.lingering`. `flattenActive({ keep })` keeps it on ACTIVE while the strike draws (200 ms) and holds (500 ms) and the row fades. Then `releaseLingering` lets it move to COMPLETED.
+3. A toast `COMPLETED · UNDO` appears. UNDO undoes the most recent step, which is always the one the toast describes.
+4. **Uncheck** clears the task and every done ancestor. **Restore** (COMPLETED) also clears the subtree.
+5. Haptics: light for check/uncheck, success when a group or top-level task completes, medium for delete, and a tick when a swipe crosses its threshold.
 
 ## 7. Side effects
 

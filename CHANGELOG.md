@@ -2,6 +2,20 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.4.0 (build 5)
+
+Checking things off.
+
+- **Tap the checkbox** (or **swipe right**) to complete a task. A line draws through the title, and you feel a light tap.
+- **Groups complete themselves**: checking a group completes everything inside it, and checking the last open subtask completes its group.
+- Completed top-level tasks move to the new **COMPLETED QUESTS** tab, newest first. The tab's counter pulses when something arrives.
+- On the COMPLETED tab:
+  - **Swipe right** or tap `[x]` to **restore** a task to its original place.
+  - **Long-press** a task to restore it, run it again (a fresh copy, handy for checklists), or delete it.
+  - **CLEAR…** moves old completed tasks to Trash.
+- **Swipe left** on any task to delete it.
+- Every completion, restore and delete shows a message with **UNDO** for 5 seconds.
+
 ## 0.3.1 (build 4)
 
 Changes from your feedback on 0.3.0:

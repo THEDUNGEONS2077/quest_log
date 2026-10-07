@@ -75,9 +75,11 @@ export function StorePanel() {
           label="LOAD SEED (7,500)"
           onPress={() => confirmReplace('Load 7,500 test tasks?', () => timed(() => s.replaceAll(generateSeed({ now: Date.now() }))))}
         />
-        <Button label="CLEAR ALL" onPress={() => confirmReplace('Delete all tasks?', () => timed(() => s.replaceAll(createEmptyState())))} />
+        <Button
+          label="CLEAR ALL"
+          onPress={() => confirmReplace('Delete all tasks?', () => timed(() => s.replaceAll(createEmptyState())))}
+        />
       </View>
-
     </View>
   );
 }

@@ -250,3 +250,70 @@ describe('editing actions', () => {
     expect(store.getState().editingId).toBeNull();
   });
 });
+
+describe('completion actions', () => {
+  it('checking a top-level task moves it to COMPLETED after lingering, with an UNDO toast', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    expect(s.toggleDone(a)).toBe('moved-to-completed');
+    const sel = makeSelectors();
+    // Still visible on ACTIVE while the strike plays…
+    expect(sel.activeRows(store.getState()).map((r) => r.id)).toEqual([a]);
+    expect(store.getState().toast).toMatchObject({ message: 'COMPLETED', undo: true });
+    // …then gone from ACTIVE and shown on COMPLETED.
+    s.releaseLingering(a);
+    expect(sel.activeRows(store.getState())).toEqual([]);
+    expect(sel.completedRows(store.getState()).map((r) => r.id)).toEqual([a]);
+  });
+
+  it('reports auto-completion of a parent, and undo restores everything', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const p = s.addTask(null, 'p');
+    const kid = s.addTask(p, 'kid');
+    const other = s.addTask(p, 'other');
+    expect(s.toggleDone(kid)).toBe('checked');
+    expect(s.toggleDone(other)).toBe('moved-to-completed'); // last open child completes p
+    expect(tk(store.getState().tasks, p)!.done).toBe(true);
+    s.undo();
+    expect(tk(store.getState().tasks, p)!.done).toBe(false);
+    expect(tk(store.getState().tasks, other)!.done).toBe(false);
+  });
+
+  it('unchecking returns "unchecked"', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const p = s.addTask(null, 'p');
+    const kid = s.addTask(p, 'kid');
+    s.addTask(p, 'open');
+    s.toggleDone(kid);
+    expect(s.toggleDone(kid)).toBe('unchecked');
+  });
+
+  it('restore, run again, clear and delete each show a toast', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    s.toggleDone(a);
+    s.runAgain(a);
+    expect(store.getState().toast!.message).toBe('ADDED TO ACTIVE');
+    s.restoreTask(a);
+    expect(tk(store.getState().tasks, a)!.done).toBe(false);
+    s.toggleDone(a);
+    s.clearCompleted(null);
+    expect(store.getState().toast!.message).toBe('CLEARED 1');
+    s.deleteTask(store.getState().tasks.children.root![1]!);
+    expect(store.getState().toast!.message).toBe('DELETED');
+  });
+
+  it('dismissToast ignores a toast that has already been replaced', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.showToast('one');
+    const first = store.getState().toast!.key;
+    s.showToast('two');
+    s.dismissToast(first);
+    expect(store.getState().toast!.message).toBe('two');
+  });
+});

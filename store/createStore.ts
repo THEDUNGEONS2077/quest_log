@@ -20,6 +20,7 @@ import { AppState } from 'react-native';
 import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 
+import * as complete from '@/lib/complete';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
@@ -53,6 +54,21 @@ export interface StoreDeps {
   newId: () => ID;
 }
 
+/** A short message at the bottom of the screen, optionally with UNDO (PLAN §9.13). */
+export interface Toast {
+  /** Unique per toast, so a new toast restarts the timer even with the same text. */
+  key: number;
+  message: string;
+  /** Show an UNDO button that undoes the most recent step. */
+  undo: boolean;
+}
+
+/** What a checkbox tap did, so the UI can pick the haptic (PLAN §9.18). */
+export type ToggleOutcome = 'checked' | 'unchecked' | 'parent-completed' | 'moved-to-completed';
+
+/** How long a just-checked top-level task stays on ACTIVE: strike (200 ms) + hold (500 ms). */
+export const LINGER_MS = 700;
+
 /** Options for dispatch. */
 export interface DispatchOptions {
   /** Merge with the previous history entry if it has the same key (typing). */
@@ -75,6 +91,13 @@ export interface AppStore {
    */
   editSession: number;
   settings: Settings;
+  /**
+   * Just-checked top-level tasks still shown on ACTIVE while their
+   * strikethrough plays and holds (PLAN §6.6). Not persisted.
+   */
+  lingering: ID[];
+  /** The toast on screen, if any. Not persisted. */
+  toast: Toast | null;
   /** How the tasks were loaded at startup (for diagnostics and recovery messages). */
   loadStatus: LoadResult['status'];
 
@@ -126,6 +149,25 @@ export interface AppStore {
   /** Caret long-press: collapse or expand a task and all its siblings at once. */
   setSiblingsCollapsed(id: ID, collapsed: boolean): void;
 
+  // --- Completion (rules in lib/complete.ts) ---
+  /** Checkbox tap or swipe right: checks or unchecks, with cascade and auto-complete. */
+  toggleDone(id: ID): ToggleOutcome;
+  /** The lingering animation for a completed top-level task is over: let it leave ACTIVE. */
+  releaseLingering(id: ID): void;
+  /** COMPLETED → swipe right / Restore: unchecks the task and its subtree; it returns to its place. */
+  restoreTask(id: ID): void;
+  /** COMPLETED → Run again: a fresh unchecked copy at the end of ACTIVE. */
+  runAgain(id: ID): void;
+  /** COMPLETED → Clear…: moves completed tasks (older than N days, or all) to Trash. */
+  clearCompleted(olderThanDays: number | null): void;
+  /** Swipe left: moves a task to Trash, with an undo toast. */
+  deleteTask(id: ID): void;
+
+  // --- Toasts ---
+  showToast(message: string, undo?: boolean): void;
+  /** Hides the toast, only if it's still the one with this key. */
+  dismissToast(key: number): void;
+
   // --- UI actions ---
   setTab(tab: Tab): void;
   setZoom(id: ID | null): void;
@@ -168,6 +210,8 @@ export function createAppStore(deps: StoreDeps) {
       editingCaret: null,
       editSession: 0,
       settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
+      lingering: [],
+      toast: null,
       loadStatus: loaded.status,
 
       dispatch(op, options = {}) {
@@ -293,6 +337,63 @@ export function createAppStore(deps: StoreDeps) {
         // Only siblings that have children can collapse.
         const changes = siblings.filter((s) => (tasks.children[s]?.length ?? 0) > 0).map((s) => ({ id: s, fields: { collapsed } }));
         if (changes.length) get().dispatch({ type: 'update', changes });
+      },
+
+      toggleDone(id) {
+        const tasks = get().tasks;
+        const task = getTask(tasks, id);
+        if (task.done) {
+          get().dispatch(complete.uncheck(tasks, id, now()));
+          return 'unchecked';
+        }
+        const r = complete.check(tasks, id, now());
+        get().dispatch(r.op);
+        if (r.completedTopLevel) {
+          // Keep it visible while the strike plays; TaskRow releases it after LINGER_MS.
+          set({ lingering: [...get().lingering, r.completedTopLevel] });
+          get().showToast(r.completedTopLevel === id ? 'COMPLETED' : 'COMPLETED · GROUP DONE', true);
+          return 'moved-to-completed';
+        }
+        return r.autoCompleted.length ? 'parent-completed' : 'checked';
+      },
+
+      releaseLingering(id) {
+        if (get().lingering.includes(id)) set({ lingering: get().lingering.filter((x) => x !== id) });
+      },
+
+      restoreTask(id) {
+        get().dispatch(complete.uncheck(get().tasks, id, now(), { subtree: true }));
+        get().showToast('RESTORED', true);
+      },
+
+      runAgain(id) {
+        const { op } = complete.runAgain(get().tasks, id, now(), newId);
+        get().dispatch(op);
+        get().showToast('ADDED TO ACTIVE', true);
+      },
+
+      clearCompleted(olderThanDays) {
+        const r = complete.clearCompleted(get().tasks, now(), olderThanDays);
+        if (!r) {
+          get().showToast('NOTHING TO CLEAR', false);
+          return;
+        }
+        get().dispatch(r.op);
+        get().showToast(`CLEARED ${r.count}`, true);
+      },
+
+      deleteTask(id) {
+        if (get().editingId === id) get().setEditing(null);
+        get().dispatch(ops.softDelete(get().tasks, id, now()));
+        get().showToast('DELETED', true);
+      },
+
+      showToast(message, undo = false) {
+        set({ toast: { key: (get().toast?.key ?? 0) + 1, message, undo } });
+      },
+
+      dismissToast(key) {
+        if (get().toast?.key === key) set({ toast: null });
       },
 
       replaceAll(next) {

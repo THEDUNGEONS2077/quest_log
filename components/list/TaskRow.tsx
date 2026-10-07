@@ -10,11 +10,15 @@
  * A top-level task with children renders as a **group header**: uppercase
  * `group` type in textBright, with a divider line above it.
  *
- * Phase 4 scope: the checkbox is shown but inert; completion (with its
- * animations and cascade rules) arrives in Phase 5.
+ * Completion (Phase 5): the checkbox and swipe-right check the task (with
+ * cascade and auto-complete rules in lib/complete.ts); swipe-left deletes.
+ * A checked top-level task stays for its strike + 500 ms hold, fades out
+ * and moves to COMPLETED (PLAN §6.6). Every gesture has a screen-reader
+ * action as an alternative (PLAN §13).
  */
-import { memo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useEffect } from 'react';
+import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { useMinute } from '@/components/common/useMinute';
 import { InlineEditor } from '@/components/edit/InlineEditor';
@@ -22,10 +26,20 @@ import { formatDue, isOverdue } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
 import { findTask } from '@/lib/taskMap';
 import type { Task } from '@/lib/types';
+import { haptics } from '@/services/haptics';
+import { LINGER_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
 
 import { NestingGuides } from './NestingGuides';
+import { StrikeText } from './StrikeText';
+import { SwipeableRow } from './SwipeableRow';
+
+/** The haptic for each checkbox outcome (PLAN §9.18). */
+export function hapticFor(outcome: ToggleOutcome): void {
+  if (outcome === 'moved-to-completed' || outcome === 'parent-completed') haptics.success();
+  else haptics.check();
+}
 
 /** Priority marks, dim to bright (PLAN §9.12). */
 const PRIORITY_COLOR = [colors.textDim, colors.textDim, colors.text, colors.accent] as const;
@@ -34,73 +48,110 @@ export const TaskRow = memo(
   function TaskRow({ row }: { row: Row }) {
     const task = useAppStore((s) => findTask(s.tasks, row.id));
     const editing = useAppStore((s) => s.editingId === row.id);
+    const lingering = useAppStore((s) => s.lingering.includes(row.id));
+    const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
+
+    // A just-completed top-level task: hold while the strike plays, fade, then leave ACTIVE.
+    const opacity = useSharedValue(1);
+    useEffect(() => {
+      if (!lingering) {
+        opacity.value = 1;
+        return;
+      }
+      opacity.value = withDelay(timing.completeHold, withTiming(0, { duration: duration.base, easing }));
+      const t = setTimeout(() => actions.releaseLingering(row.id), LINGER_MS);
+      return () => clearTimeout(t);
+    }, [lingering, opacity, actions, row.id]);
+    const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
     if (!task) return null; // removed between flatten and render
+
+    const toggle = () => hapticFor(actions.toggleDone(task.id));
+    const remove = () => {
+      haptics.delete();
+      actions.deleteTask(task.id);
+    };
+    const onAccessibilityAction = (e: AccessibilityActionEvent) => {
+      if (e.nativeEvent.actionName === 'complete') toggle();
+      else if (e.nativeEvent.actionName === 'delete') remove();
+      else if (e.nativeEvent.actionName === 'edit') actions.setEditing(task.id);
+    };
 
     const isGroup = row.depth === 0 && row.hasChildren;
     const visualDepth = Math.min(row.depth, size.maxVisualDepth);
-    const titleStyle = isGroup ? [type.group, { color: colors.textBright }] : [type.body, { color: task.done ? colors.textDim : colors.text }];
+    const titleStyle = isGroup ? type.group : type.body;
 
     return (
-      <View
-        style={[
-          styles.row,
-          { paddingLeft: space.lg + visualDepth * size.indent },
-          isGroup && styles.group,
-          editing && styles.editing,
-        ]}
-      >
-        <NestingGuides levels={visualDepth} />
-
-        {/* Caret: tap collapses/expands; long-press does it for all siblings. */}
-        <Pressable
-          style={styles.caret}
-          hitSlop={HIT_SLOP}
-          disabled={!row.hasChildren}
-          onPress={() => actions.toggleCollapsed(task.id)}
-          onLongPress={() => actions.setSiblingsCollapsed(task.id, !task.collapsed)}
-          accessibilityRole="button"
-          accessibilityLabel={task.collapsed ? 'Expand' : 'Collapse'}
-          accessibilityElementsHidden={!row.hasChildren}
+      <Animated.View style={fadeStyle}>
+        <SwipeableRow
+          enabled={swipeOn && !editing}
+          right={{ label: `${glyphs.checkboxOn.glyph} ${task.done ? 'UNDO' : 'DONE'}`, onCommit: toggle }}
+          left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
         >
-          {row.hasChildren && (
-            <Text style={[type.body, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              {task.collapsed ? glyphs.collapsed.glyph : glyphs.expanded.glyph}
-            </Text>
-          )}
-        </Pressable>
+          <View
+            style={[styles.row, { paddingLeft: space.lg + visualDepth * size.indent }, isGroup && styles.group, editing && styles.editing]}
+            accessible={!editing}
+            accessibilityLabel={rowLabel(task, row)}
+            accessibilityActions={ROW_ACTIONS}
+            onAccessibilityAction={onAccessibilityAction}
+          >
+            <NestingGuides levels={visualDepth} />
 
-        {/* Checkbox: a full 44 pt target. Inert until Phase 5 (completion + animation + cascade). */}
-        <Pressable
-          style={styles.checkbox}
-          hitSlop={HIT_SLOP}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: task.done }}
-          accessibilityLabel={task.title}
-        >
-          <Text style={[type.body, styles.text, { color: task.done ? colors.textDim : colors.text }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
-          </Text>
-        </Pressable>
-
-        {/* Title: the editor when editing, otherwise a tappable Text. */}
-        <View style={styles.title}>
-          {editing ? (
-            <InlineEditor id={task.id} title={task.title} variant={isGroup ? 'group' : 'body'} />
-          ) : (
-            <Text
-              style={[titleStyle, styles.text, task.done && styles.struck]}
-              onPress={() => actions.setEditing(task.id)}
-              maxFontSizeMultiplier={maxFontSizeMultiplier}
-              suppressHighlighting
+            {/* Caret: tap collapses/expands; long-press does it for all siblings. */}
+            <Pressable
+              style={styles.caret}
+              hitSlop={HIT_SLOP}
+              disabled={!row.hasChildren}
+              onPress={() => actions.toggleCollapsed(task.id)}
+              onLongPress={() => actions.setSiblingsCollapsed(task.id, !task.collapsed)}
+              accessibilityRole="button"
+              accessibilityLabel={task.collapsed ? 'Expand' : 'Collapse'}
+              accessibilityElementsHidden={!row.hasChildren}
             >
-              {task.title}
-            </Text>
-          )}
-        </View>
+              {row.hasChildren && (
+                <Text style={[type.body, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  {task.collapsed ? glyphs.collapsed.glyph : glyphs.expanded.glyph}
+                </Text>
+              )}
+            </Pressable>
 
-        <RowMeta task={task} row={row} />
-      </View>
+            {/* Checkbox: a full 44 pt target. */}
+            <Pressable
+              style={styles.checkbox}
+              hitSlop={HIT_SLOP}
+              onPress={toggle}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: task.done }}
+              accessibilityLabel={task.title}
+            >
+              <Text
+                style={[type.body, styles.text, { color: task.done ? colors.textDim : colors.text }]}
+                maxFontSizeMultiplier={maxFontSizeMultiplier}
+              >
+                {task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
+              </Text>
+            </Pressable>
+
+            {/* Title: the editor when editing, otherwise a tappable Text. */}
+            <View style={styles.title}>
+              {editing ? (
+                <InlineEditor id={task.id} title={task.title} variant={isGroup ? 'group' : 'body'} />
+              ) : (
+                <StrikeText
+                  text={task.title}
+                  struck={task.done}
+                  color={isGroup ? colors.textBright : colors.text}
+                  style={titleStyle}
+                  onPress={() => actions.setEditing(task.id)}
+                />
+              )}
+            </View>
+
+            <RowMeta task={task} row={row} />
+          </View>
+        </SwipeableRow>
+      </Animated.View>
     );
   },
   // Rows are re-created on every flatten; compare by value so unchanged rows skip rendering.
@@ -111,6 +162,23 @@ export const TaskRow = memo(
     a.row.progress.done === b.row.progress.done &&
     a.row.progress.total === b.row.progress.total,
 );
+
+/** Screen-reader alternatives to the row's gestures (PLAN §13). */
+const ROW_ACTIONS = [
+  { name: 'complete', label: 'Complete or uncomplete' },
+  { name: 'edit', label: 'Edit' },
+  { name: 'delete', label: 'Delete' },
+];
+
+/** What a screen reader announces for a row, e.g. "Ship v2 build, high priority, not done, 2 of 5 subtasks done". */
+function rowLabel(task: Task, row: Row): string {
+  const parts = [task.title || 'Untitled task'];
+  if (task.priority > 0) parts.push(['', 'low', 'medium', 'high'][task.priority] + ' priority');
+  parts.push(task.done ? 'done' : 'not done');
+  if (row.hasChildren) parts.push(`${row.progress.done} of ${row.progress.total} subtasks done`);
+  if (task.collapsed && row.hasChildren) parts.push('collapsed');
+  return parts.join(', ');
+}
 
 /** Right-side indicators: depth badge, priority, ≡ ◔ ↻, due chip, progress count. */
 function RowMeta({ task, row }: { task: Task; row: Row }) {
@@ -144,7 +212,10 @@ function DueChip({ task, dueAt }: { task: Task; dueAt: number }) {
   const overdue = isOverdue(dueAt, task.done, now);
   const label = `${task.notify ? `${glyphs.notify.glyph} ` : ''}${task.repeat ? `${glyphs.repeat.glyph} ` : ''}${formatDue(dueAt, now)}`;
   return (
-    <Text style={[type.meta, styles.text, { color: overdue ? colors.accent : colors.textDim }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+    <Text
+      style={[type.meta, styles.text, { color: overdue ? colors.accent : colors.textDim }]}
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
+    >
       {overdue ? `${label} OVERDUE` : label}
     </Text>
   );
@@ -173,8 +244,6 @@ const styles = StyleSheet.create({
   checkbox: { marginRight: space.md, marginLeft: space.xs },
   title: { flex: 1, minWidth: 0 },
   text: { ...platformText },
-  // Phase 5 replaces this with the animated strikethrough line.
-  struck: { textDecorationLine: 'line-through' },
   // Offset so the smaller meta text sits on the title's first line.
   meta: { flexDirection: 'row', gap: space.sm, marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
 });

@@ -22,7 +22,9 @@ export function Header() {
   // Counts are memoized per structural change and per minute (store/selectors.ts).
   const counts = useAppStore((s) => selectors.counts(s, now));
 
-  const meta = [`${counts.active} ACTIVE`, `${counts.doneToday} DONE TODAY`, ...(counts.overdue ? [`${counts.overdue} OVERDUE`] : [])].join(' · ');
+  const meta = [`${counts.active} ACTIVE`, `${counts.doneToday} DONE TODAY`, ...(counts.overdue ? [`${counts.overdue} OVERDUE`] : [])].join(
+    ' · ',
+  );
 
   return (
     <View style={styles.header}>

@@ -29,7 +29,13 @@ interface ButtonSpec {
   onPress: () => void;
 }
 
-export function EditToolbar({ editingId }: { editingId: string }) {
+interface Props {
+  editingId: string;
+  /** Show OUT / IN / + SUB (ACTIVE tab). The COMPLETED tab is ordered by date, so it only gets UNDO / DONE. */
+  structure: boolean;
+}
+
+export function EditToolbar({ editingId, structure }: Props) {
   const actions = useActions();
   const { store } = useStoreBundle();
   const insets = useSafeAreaInsets();
@@ -43,10 +49,13 @@ export function EditToolbar({ editingId }: { editingId: string }) {
     return () => sub.remove();
   }, [actions, store]);
 
-  const buttons: ButtonSpec[] = [
+  const structureButtons: ButtonSpec[] = [
     { glyph: glyphs.outdent.glyph, label: 'OUT', a11y: 'Outdent', onPress: () => actions.outdentTask(editingId) },
     { glyph: glyphs.indent.glyph, label: 'IN', a11y: 'Indent', onPress: () => actions.indentTask(editingId) },
     { glyph: glyphs.add.glyph, label: 'SUB', a11y: 'Add subtask', onPress: () => actions.addSubtask(editingId) },
+  ];
+  const buttons: ButtonSpec[] = [
+    ...(structure ? structureButtons : []),
     { glyph: glyphs.undo.glyph, label: 'UNDO', a11y: 'Undo', onPress: () => actions.undo() },
     {
       glyph: glyphs.done.glyph,

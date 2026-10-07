@@ -25,6 +25,11 @@ export interface Row {
 export interface ActiveOptions {
   /** Zoom (focus mode): list only this task's subtree, not including the task itself. */
   zoomRootId?: ID | null;
+  /**
+   * Done top-level tasks to keep showing for now: a just-checked task stays
+   * on ACTIVE while its strikethrough plays and holds (PLAN §6.6), then leaves.
+   */
+  keep?: ReadonlySet<ID>;
 }
 
 /**
@@ -53,7 +58,7 @@ export function flattenActive(state: TasksState, options: ActiveOptions = {}): R
     const task = findTask(state, id);
     if (!task || task.deletedAt !== null) continue;
     // Done top-level tasks belong to COMPLETED (only true top level, not zoom roots' children).
-    if (rootId === null && depth === 0 && task.done) continue;
+    if (rootId === null && depth === 0 && task.done && !options.keep?.has(id)) continue;
 
     const kids = childIds(state, id);
     const progress = countProgress(state, kids);

@@ -24,11 +24,14 @@ let timer: ReturnType<typeof setTimeout> | null = null;
 /** Schedules the next tick just after the coming minute boundary. */
 function schedule() {
   const delay = minute + MINUTE - Date.now() + 50;
-  timer = setTimeout(() => {
-    minute = currentMinute();
-    listeners.forEach((l) => l());
-    schedule();
-  }, Math.max(delay, 0));
+  timer = setTimeout(
+    () => {
+      minute = currentMinute();
+      listeners.forEach((l) => l());
+      schedule();
+    },
+    Math.max(delay, 0),
+  );
 }
 
 function subscribe(listener: () => void) {
