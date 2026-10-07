@@ -18,3 +18,10 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 | Release APK (arm64) | < 25 MB | | | |
 | Installed size | < 40 MB | | | |
 | Memory, 1,000 tasks | < 150 MB | | | |
+
+## Measurements
+
+### v0.1.0 (build 1), 2026-10-07: Phase 1 pipeline check (theme screen only, no task data)
+- Release APK: **31 MB, over the 25 MB budget.** About 18 MB of it is uncompressed native libraries.
+- JS bundle: **2.9 MB, over the 2.5 MB budget.**
+- Both are flagged for Phase 2. The release manifest also has unwanted storage and SYSTEM_ALERT_WINDOW permissions from library manifests; these get removed in Phase 2 too.

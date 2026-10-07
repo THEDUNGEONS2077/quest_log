@@ -402,7 +402,7 @@ Font sizes respect the OS text-size setting via `allowFontScaling`, clamped with
 
 All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Phase 15.
 
-> **Phase 1 finding:** JetBrains Mono v2.304 lacks ⏰ ↻ ⌕ ⚙ ↶ ⇤ ⤢ ☐ ⧉ ⎘ ↳. In-font substitutes are used where a close match exists (for example ⏰ → ◔, ↶ → ↩, ☐ → □). `theme/glyphs.ts` is the source of truth, and the Phase 1 theme check screen shows each substitute beside the planned glyph.
+> **Phase 1 finding:** JetBrains Mono v2.304 lacks ⏰ ↻ ⌕ ⚙ ↶ ⇤ ⤢ ☐ ⧉ ⎘ ↳. In-font substitutes are used where a close match exists (for example ⏰ → ◔, ↶ → ↩, ☐ → □). `theme/glyphs.ts` is the source of truth, and the Phase 1 theme check screen shows each substitute beside the planned glyph. **Confirmed on device (Galaxy S25 Ultra, Android 16, 2026-10-07):** all substitutes are approved, and ↻ through the system fallback font looks fine.
 
 ---
 

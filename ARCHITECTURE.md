@@ -56,7 +56,7 @@ Status markers:
 | `lib/` | Pure logic: `tree`, `flatten`, `ops`, `parser`, `recurrence`, `dnd`, `paste`, `search`, `dates` *(planned, Phase 2+)* | Anything impure |
 | `services/` | Native side effects: notifications, external ops queue, widget, haptics, backup *(planned)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
-| `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built)* | Components |
+| `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins, the **only** way to change native config *(built: signing, INTERNET removal)* | |
 | `scripts/` | Dev tooling: font subset, icon generation, seed, release *(built: fonts, icon)* | App code |
 | `assets/` | Subset fonts, placeholder icons *(built)* | |
