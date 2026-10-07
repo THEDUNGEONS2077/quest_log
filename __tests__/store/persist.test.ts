@@ -92,7 +92,9 @@ describe('loadTasks', () => {
   });
 
   it('does not allow writes over data from a newer app version', () => {
-    const kv = createMemoryKV({ [META]: JSON.stringify({ children: { root: [] }, structureVersion: 0, schemaVersion: SCHEMA_VERSION + 1 }) });
+    const kv = createMemoryKV({
+      [META]: JSON.stringify({ children: { root: [] }, structureVersion: 0, schemaVersion: SCHEMA_VERSION + 1 }),
+    });
     const r = loadTasks(kv, NOW);
     expect(r).toMatchObject({ writable: false, status: 'future-schema' });
   });
@@ -122,7 +124,10 @@ describe('incremental saving', () => {
 
   it('round-trips through the bucketed layout', () => {
     const kv = createMemoryKV();
-    const s = build([['a', [['b', { notes: 'x' }]]], ['c', { done: true }]]);
+    const s = build([
+      ['a', [['b', { notes: 'x' }]]],
+      ['c', { done: true }],
+    ]);
     saveTasks(kv, s);
     expect(shape(loadTasks(kv, NOW).state)).toEqual(shape(s));
   });

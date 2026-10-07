@@ -66,7 +66,16 @@ describe('check', () => {
 });
 
 describe('uncheck', () => {
-  const all = build([['p', { done: true }, [['a', { done: true }], ['b', { done: true }]]]]);
+  const all = build([
+    [
+      'p',
+      { done: true },
+      [
+        ['a', { done: true }],
+        ['b', { done: true }],
+      ],
+    ],
+  ]);
 
   it('unchecking a child also unchecks its done ancestors', () => {
     const next = run(all, uncheck(all, 'a', 1));
@@ -82,7 +91,17 @@ describe('uncheck', () => {
 
 describe('runAgain', () => {
   it('copies the subtree as fresh, unchecked tasks at the end of ACTIVE', () => {
-    const s = build([['list', { done: true, notes: 'n', priority: 2 }, [['x', { done: true }], ['gone', { done: true, deletedAt: 1 }]]], ['other']]);
+    const s = build([
+      [
+        'list',
+        { done: true, notes: 'n', priority: 2 },
+        [
+          ['x', { done: true }],
+          ['gone', { done: true, deletedAt: 1 }],
+        ],
+      ],
+      ['other'],
+    ]);
     let n = 0;
     const { op, rootId } = runAgain(s, 'list', 7, () => `c${n++}`);
     const next = run(s, op);
@@ -95,11 +114,7 @@ describe('runAgain', () => {
 describe('clearCompleted', () => {
   const DAY = 86_400_000;
   const NOW = 100 * DAY;
-  const s = build([
-    ['old', { done: true, updatedAt: NOW - 40 * DAY }],
-    ['recent', { done: true, updatedAt: NOW - DAY }],
-    ['open'],
-  ]);
+  const s = build([['old', { done: true, updatedAt: NOW - 40 * DAY }], ['recent', { done: true, updatedAt: NOW - DAY }], ['open']]);
 
   it('moves only completed tasks older than the cutoff to Trash', () => {
     const r = clearCompleted(s, NOW, 30)!;

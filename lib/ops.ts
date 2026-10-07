@@ -89,9 +89,7 @@ export function apply(state: TasksState, op: Op): Applied {
   const result = applyInner(state, op);
   // structureVersion only ever increases, including on undo, so memoized
   // selectors can't confuse a restored tree with a stale cache entry.
-  return result.structural
-    ? { ...result, state: { ...result.state, structureVersion: state.structureVersion + 1 } }
-    : result;
+  return result.structural ? { ...result, state: { ...result.state, structureVersion: state.structureVersion + 1 } } : result;
 }
 
 /** Applies an op without touching structureVersion (batch bumps once at the end). */

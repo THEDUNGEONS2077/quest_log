@@ -370,7 +370,7 @@ Only one effect is allowed: a **soft focus glow**. This is a 0–6 px green-brig
 
 | Role | Size / Line height | Weight | Notes |
 |---|---|---|---|
-| `display` | 20 / 28 | Bold | `> quest_log_` header, lowercase as styled |
+| `display` | 20 / 28 | Bold | `> quest_log` header, lowercase as styled (no trailing `_`, changed 2026-10-07) |
 | `tab` | 13 / 18 | Bold | Tab labels, uppercase, +1 letter spacing |
 | `group` | 15 / 22 | Bold | Top-level groups, uppercase, `textBright` |
 | `body` | 15 / 22 | Regular | Task titles |
@@ -407,6 +407,8 @@ Font sizes respect the OS text-size setting via `allowFontScaling`, clamped with
 
 All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Phase 15.
 
+> **Change (2026-10-07):** icon glyphs render 20% larger than the text beside them (`type.glyph` 20 pt beside 17 pt body; `type.metaGlyph` 16 pt beside 13 pt meta), at the same line height. The `[ ]` checkbox is drawn with tighter letter spacing.
+
 > **Phase 1 finding:** JetBrains Mono v2.304 lacks ⏰ ↻ ⌕ ⚙ ↶ ⇤ ⤢ ☐ ⧉ ⎘ ↳. In-font substitutes are used where a close match exists (for example ⏰ → ◔, ↶ → ↩, ☐ → □). `theme/glyphs.ts` is the source of truth, and the Phase 1 theme check screen shows each substitute beside the planned glyph. **Confirmed on device (Galaxy S25 Ultra, Android 16, 2026-10-07):** all substitutes are approved, and ↻ through the system fallback font looks fine.
 
 ---
@@ -415,7 +417,7 @@ All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Ph
 
 ### 9.1 Screen layout and tabs
 
-- **Header:** `> quest_log_` with search and settings, plus a meta line: `12 ACTIVE · 4 DONE TODAY · 1 OVERDUE`.
+- **Header:** `> quest_log` with search and settings, plus a meta line: `12 ACTIVE · 4 DONE TODAY · 1 OVERDUE`.
 - **Tabs:** a segmented control under the header, `[ ACTIVE QUESTS · 12 ]  [ COMPLETED QUESTS · 34 ]`.
   - Switching is by tap only. There is no horizontal pager swipe, because it would conflict with row swipes.
   - Each tab keeps its own scroll position, search, and filter.
@@ -475,6 +477,8 @@ New tasks come from the quick-add bar (Enter there keeps the keyboard open for r
 | `//` | Everything after it becomes **notes**, and the notes field expands |
 | `#` at the start | Create as a group, ready for children |
 
+- **`#Group` in the quick-add bar** (implemented 2026-10-07): creates the group, and the next quick-adds go inside it. An `IN: GROUP ✕` chip shows the target and clears it.
+- **Repeat shorthand** (`*daily`, …) is parsed starting in Phase 8, together with recurring tasks.
 - **Parsed chips preview:** parsed tokens show as chips under the input, for example `!!! HIGH · ⏰ FRI 09:00 · ↻ WEEKLY`. Tokens are stripped from the title on commit.
 - **Escape hatch:** prefix a word with `\` to keep it literal.
 - **Parser:** `lib/parser.ts` is pure and fully unit-tested.
@@ -792,7 +796,7 @@ All animations run on the UI thread via Reanimated worklets.
 
 ```
 ┌────────────────────────────────────┐
-│ > quest_log_            ⌕    ⚙     │
+│ > quest_log             ⌕    ⚙     │
 │ 12 ACTIVE · 4 DONE TODAY · 1 OVERDUE│
 ├────────────────────────────────────┤
 │ [ ACTIVE QUESTS·12 ][ COMPLETED·34 ]│  segmented tabs
@@ -818,7 +822,7 @@ All animations run on the UI thread via Reanimated worklets.
 
 ```
 ┌────────────────────────────────────┐
-│ > quest_log_            ⌕    ⚙     │
+│ > quest_log             ⌕    ⚙     │
 ├────────────────────────────────────┤
 │ [ ACTIVE·12 ][ COMPLETED QUESTS·34 ]│
 ├────────────────────────────────────┤

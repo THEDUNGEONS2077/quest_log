@@ -10,8 +10,7 @@ import { buildConfig, getVariant } from '../app.config';
 import version from '../version.json';
 
 /** The plugin entries as plain names (strings or the first item of [name, options]). */
-const pluginNames = (variant: 'dev' | 'release') =>
-  (buildConfig(variant).plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
+const pluginNames = (variant: 'dev' | 'release') => (buildConfig(variant).plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
 
 describe('getVariant', () => {
   it('defaults to dev so `expo start` never builds release config by accident', () => {

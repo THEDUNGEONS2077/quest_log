@@ -25,6 +25,7 @@ interface Props {
   color: string;
   style: TextStyle | TextStyle[];
   onPress?: () => void;
+  onLongPress?: () => void;
 }
 
 /** One measured text line: where to draw its strike segment. */
@@ -35,7 +36,7 @@ interface Line {
   height: number;
 }
 
-export function StrikeText({ text, struck, color, style, onPress }: Props) {
+export function StrikeText({ text, struck, color, style, onPress, onLongPress }: Props) {
   // 0 = plain, 1 = fully struck. Starts at the final state: mounting isn't a change.
   const progress = useSharedValue(struck ? 1 : 0);
   const mounted = useRef(false);
@@ -63,6 +64,7 @@ export function StrikeText({ text, struck, color, style, onPress }: Props) {
         style={[style, styles.text, textStyle]}
         onTextLayout={onTextLayout}
         onPress={onPress}
+        onLongPress={onLongPress}
         suppressHighlighting
         maxFontSizeMultiplier={maxFontSizeMultiplier}
       >

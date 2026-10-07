@@ -37,12 +37,12 @@ describe('parseOutline', () => {
   it('reads nesting, bullets and checkboxes', () => {
     const text = 'Groceries\n  - milk\n  - [x] eggs\n    * free range\n\n* Call the bank\n1. first\n';
     expect(parseOutline(text)).toEqual([
-      { title: 'Groceries', depth: 0, done: false },
-      { title: 'milk', depth: 1, done: false },
-      { title: 'eggs', depth: 1, done: true },
-      { title: 'free range', depth: 2, done: false },
-      { title: 'Call the bank', depth: 0, done: false },
-      { title: 'first', depth: 0, done: false },
+      { title: 'Groceries', depth: 0, done: false, notes: '' },
+      { title: 'milk', depth: 1, done: false, notes: '' },
+      { title: 'eggs', depth: 1, done: true, notes: '' },
+      { title: 'free range', depth: 2, done: false, notes: '' },
+      { title: 'Call the bank', depth: 0, done: false, notes: '' },
+      { title: 'first', depth: 0, done: false, notes: '' },
     ]);
   });
 

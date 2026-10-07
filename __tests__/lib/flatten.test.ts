@@ -17,7 +17,10 @@ describe('flattenActive', () => {
   });
 
   it('keeps done subtasks in place but moves done top-level tasks out (PLAN §9.5)', () => {
-    const s = build([['a', [['a1', { done: true }]]], ['b', { done: true }]]);
+    const s = build([
+      ['a', [['a1', { done: true }]]],
+      ['b', { done: true }],
+    ]);
     expect(outline(flattenActive(s))).toEqual(['a', '  a1']);
   });
 
@@ -36,7 +39,16 @@ describe('flattenActive', () => {
   });
 
   it('zooms into a subtree; done children of the zoom root stay visible', () => {
-    const s = build([['work', [['x', { done: true }], ['y', [['y1']]]]], ['home']]);
+    const s = build([
+      [
+        'work',
+        [
+          ['x', { done: true }],
+          ['y', [['y1']]],
+        ],
+      ],
+      ['home'],
+    ]);
     expect(outline(flattenActive(s, { zoomRootId: 'work' }))).toEqual(['x', 'y', '  y1']);
   });
 });

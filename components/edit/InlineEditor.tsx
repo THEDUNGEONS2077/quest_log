@@ -22,15 +22,36 @@ import { useActions, useStoreBundle } from '@/store/react';
 import { colors, maxFontSizeMultiplier, platformText, type } from '@/theme';
 
 /**
- * The task whose editor currently has focus (shared by all editors).
- * Indent/outdent moves the row, so its editor can unmount and remount; the
- * new editor sets this on focus, which tells the old editor's blur handler
- * that editing hasn't really ended.
+ * The task whose editor currently has focus (shared by the title and notes
+ * editors). Indent/outdent moves the row, so its editor can unmount and
+ * remount, and switching title ↔ notes moves focus within the row. The
+ * editor that takes focus sets this, which tells the previous editor's blur
+ * handler that editing hasn't really ended.
  */
 let focusedEditorId: string | null = null;
 
 /** How long a blur waits for the same task's editor to take focus again. */
 const REFOCUS_GRACE_MS = 150;
+
+/**
+ * Focus/blur handlers shared by the row editors: blur finishes editing only
+ * if no editor for the same task takes focus within the grace period.
+ */
+export function useEditorFocus(id: string) {
+  const actions = useActions();
+  const { store } = useStoreBundle();
+  return {
+    onFocus: () => {
+      focusedEditorId = id;
+    },
+    onBlur: () => {
+      focusedEditorId = null;
+      setTimeout(() => {
+        if (focusedEditorId === null && store.getState().editingId === id) actions.finishEditing(id);
+      }, REFOCUS_GRACE_MS);
+    },
+  };
+}
 
 interface Props {
   id: string;
@@ -70,14 +91,9 @@ export function InlineEditor({ id, title, variant }: Props) {
     if (e.nativeEvent.key === 'Backspace' && title === '') actions.backspaceOnEmpty(id);
   };
 
-  const onBlur = () => {
-    focusedEditorId = null;
-    // Wait briefly: if this task's editor remounted (indent/outdent moved
-    // the row), it refocuses within the grace period and editing continues.
-    setTimeout(() => {
-      if (focusedEditorId === null && store.getState().editingId === id) actions.finishEditing(id);
-    }, REFOCUS_GRACE_MS);
-  };
+  // Blur waits briefly: if this task's editor remounts (indent/outdent moved
+  // the row) or the notes field takes focus, editing continues.
+  const focus = useEditorFocus(id);
 
   return (
     <TextInput
@@ -86,9 +102,9 @@ export function InlineEditor({ id, title, variant }: Props) {
       onChangeText={onChangeText}
       onSelectionChange={(e) => (caret.current = e.nativeEvent.selection)}
       onKeyPress={onKeyPress}
-      onFocus={() => (focusedEditorId = id)}
+      onFocus={focus.onFocus}
       onSubmitEditing={() => actions.finishEditing(id)}
-      onBlur={onBlur}
+      onBlur={focus.onBlur}
       // Multiline so long titles wrap. "blurAndSubmit": Enter/Done saves and
       // closes the keyboard, and never inserts a newline.
       multiline

@@ -33,7 +33,7 @@ type Role = Pick<TextStyle, 'fontFamily' | 'fontSize' | 'lineHeight' | 'letterSp
  * test asked for better readability (2026-10-07): body 15 → 17.
  */
 export const type = {
-  /** `> quest_log_` header. Lowercase as styled. */
+  /** `> quest_log` header. Lowercase as styled. */
   display: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 30 },
   /** Tab labels: uppercase, +1 letter spacing. */
   tab: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, letterSpacing: 1, textTransform: 'uppercase' },
@@ -45,6 +45,14 @@ export const type = {
   meta: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   /** Notes text, drawn in textDim. */
   notes: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
+  /**
+   * Icon glyphs next to body text (▸ ▾ [ ] > ← → ✓ …): 20% larger than
+   * body (17 → 20, user request 2026-10-07). The line height stays body's,
+   * so rows don't get taller and glyphs stay aligned with the title.
+   */
+  glyph: { fontFamily: fonts.regular, fontSize: 20, lineHeight: 24 },
+  /** Icon glyphs next to meta text (≡ ◔ ↻ !): 20% larger than meta (13 → 16), same line height. */
+  metaGlyph: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 18 },
 } as const satisfies Record<string, Role>;
 
 export type TypeRole = keyof typeof type;

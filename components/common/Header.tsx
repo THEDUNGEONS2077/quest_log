@@ -1,7 +1,7 @@
 /**
  * components/common/Header.tsx: the terminal header (PLAN §9.1).
  *
- *   > quest_log_
+ *   > quest_log
  *   12 ACTIVE · 4 DONE TODAY · 1 OVERDUE
  *
  * Layer: UI. Search and settings controls arrive with their features
@@ -30,7 +30,7 @@ export function Header() {
     <View style={styles.header}>
       <Pressable onLongPress={() => router.push('/dev')} delayLongPress={1500} accessibilityRole="header">
         <Text style={[type.display, styles.title]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {`${glyphs.prompt.glyph} quest_log_`}
+          {`${glyphs.prompt.glyph} quest_log`}
         </Text>
       </Pressable>
       <Text style={[type.meta, styles.meta]} maxFontSizeMultiplier={maxFontSizeMultiplier}>

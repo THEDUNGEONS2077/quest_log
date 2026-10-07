@@ -7,15 +7,20 @@
  *   - Enter adds the task at the end of the current view and keeps the
  *     keyboard open for rapid entry. Enter on empty text closes it.
  *   - Pasting several lines adds one task per line, nested by indent.
- * Inline shorthand (!!!, @fri, …) is parsed here in Phase 6.
+ *   - Shorthand (!!! @fri // notes, #Group) shows as live chips above the
+ *     field and becomes task fields on Enter (lib/parser.ts).
+ *   - After `#Group`, new tasks go inside that group; an `IN: GROUP ✕`
+ *     chip shows the target and clears it.
  */
 import { useRef, useState } from 'react';
-import { type LayoutChangeEvent, StyleSheet, Text, TextInput, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ShorthandChips, useShorthand } from '@/components/edit/ParsedChips';
 import { TITLE_MAX } from '@/lib/paste';
-import { useActions } from '@/store/react';
+import { findTask } from '@/lib/taskMap';
+import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 interface Props {
@@ -28,6 +33,9 @@ export function QuickAddBar({ onHeight }: Props) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [focused, setFocused] = useState(false);
+  const parsed = useShorthand(text);
+  // The #Group target's title, if quick-add is currently adding into a group.
+  const target = useAppStore((s) => (s.quickAddParent ? (findTask(s.tasks, s.quickAddParent)?.title ?? null) : null));
 
   const onChangeText = (next: string) => {
     // Enter never inserts a newline here, so a line break means a paste.
@@ -60,8 +68,27 @@ export function QuickAddBar({ onHeight }: Props) {
         style={[styles.bar, { paddingBottom: space.sm + insets.bottom }]}
         onLayout={(e: LayoutChangeEvent) => onHeight?.(e.nativeEvent.layout.height)}
       >
+        {/* Group target and shorthand preview, above the field. */}
+        {target !== null && (
+          <View style={styles.targetRow}>
+            <Text style={[type.meta, styles.target]} numberOfLines={1} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {`IN: ${target.toUpperCase()}`}
+            </Text>
+            <Pressable
+              onPress={actions.clearQuickAddParent}
+              hitSlop={space.md}
+              accessibilityRole="button"
+              accessibilityLabel="Stop adding into this group"
+            >
+              <Text style={[type.metaGlyph, styles.targetClear]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                {glyphs.delete.glyph}
+              </Text>
+            </Pressable>
+          </View>
+        )}
+        <ShorthandChips result={parsed} style={styles.chips} />
         <View style={[styles.field, focused && styles.fieldFocused]}>
-          <Text style={[type.body, styles.prompt]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          <Text style={[type.glyph, styles.prompt]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             {glyphs.prompt.glyph}
           </Text>
           <TextInput
@@ -105,6 +132,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   fieldFocused: { borderColor: colors.accent },
+  chips: { marginTop: 0, marginBottom: space.sm },
+  targetRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
+  target: { color: colors.accent, flexShrink: 1, ...platformText },
+  targetClear: { color: colors.text, paddingHorizontal: space.sm, ...platformText },
   prompt: { color: colors.accent, marginRight: space.sm, ...platformText },
   input: { flex: 1, color: colors.text, padding: 0, ...platformText },
 });

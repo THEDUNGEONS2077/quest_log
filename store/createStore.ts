@@ -21,13 +21,15 @@ import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 import * as complete from '@/lib/complete';
+import * as copy from '@/lib/copy';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
+import { parse, type ParseResult } from '@/lib/parser';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { findTask } from '@/lib/taskMap';
 import { childIds, getTask, liveChildIds } from '@/lib/tree';
-import type { ID, TaskFields, TasksState } from '@/lib/types';
+import type { ID, Priority, TaskFields, TasksState } from '@/lib/types';
 
 import { EMPTY_HISTORY, type History, record } from './history';
 import { KEYS, type KV } from './kv';
@@ -85,6 +87,18 @@ export interface AppStore {
   editingId: ID | null;
   /** Where the caret goes when the editor for editingId mounts (null = end). */
   editingCaret: number | null;
+  /** Which field of the row is being edited (PLAN §6.5: title, or the notes under it). */
+  editingField: 'title' | 'notes';
+  /**
+   * The title when this editing session started. Shorthand is applied on
+   * finish only if the title changed, so an escaped literal like "\@5pm"
+   * (stored as "@5pm") isn't re-parsed every time the task is edited.
+   */
+  editingStartTitle: string | null;
+  /** Rows whose notes are expanded in view mode (tap ≡). Not persisted. */
+  expandedNotes: ID[];
+  /** Quick-add target after `#Group`: new tasks go inside it until cleared. Not persisted. */
+  quickAddParent: ID | null;
   /**
    * Increments whenever editing starts on a row. Part of the typing
    * coalesce key, so each editing session is its own undo step.
@@ -172,7 +186,24 @@ export interface AppStore {
   setTab(tab: Tab): void;
   setZoom(id: ID | null): void;
   /** Starts editing a row (or stops, with null); `caret` = initial caret position (default: end). */
-  setEditing(id: ID | null, caret?: number | null): void;
+  setEditing(id: ID | null, caret?: number | null, field?: 'title' | 'notes'): void;
+  /** Shows or hides a row's notes in view mode. */
+  toggleNotes(id: ID): void;
+
+  // --- Details (Phase 6) ---
+  /** Toolbar ! PRI: none → ! → !! → !!! → none. */
+  cyclePriority(id: ID): void;
+  setPriority(id: ID, priority: Priority): void;
+  /** Clears the due date (and its notification flag). */
+  clearDue(id: ID): void;
+  /** Context menu ⊞ Duplicate: a copy right below the original. */
+  duplicateTask(id: ID): void;
+  /** Context menu ⎕ Copy as text: the task's outline text (the UI puts it on the clipboard). */
+  outlineText(id: ID): string;
+  /** Parses shorthand with the user's settings (default time) at the current time. */
+  parseShorthand(text: string): ParseResult;
+  /** Stops targeting a `#Group` with the quick-add bar. */
+  clearQuickAddParent(): void;
   toggleCompletedExpanded(id: ID): void;
 
   // --- Settings ---
@@ -195,6 +226,13 @@ export function createAppStore(deps: StoreDeps) {
   const purge = purgeExpiredTrash(tasks, now());
   if (purge) tasks = ops.apply(tasks, purge).state;
 
+  /** Task fields from parsed shorthand; a due date turns on its notification per the setting. */
+  const shorthandFields = (r: ParseResult): Partial<TaskFields> => ({
+    ...(r.priority !== undefined && { priority: r.priority }),
+    ...(r.dueAt !== undefined && { dueAt: r.dueAt, notify: store.getState().settings.notifyByDefault }),
+    ...(r.notes !== undefined && { notes: r.notes }),
+  });
+
   /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
   const stopEditingIfGone = (next: TasksState): Partial<AppStore> => {
     const id = store.getState().editingId;
@@ -208,6 +246,10 @@ export function createAppStore(deps: StoreDeps) {
       ui: loadJSON(kv, KEYS.ui, DEFAULT_UI),
       editingId: null,
       editingCaret: null,
+      editingField: 'title',
+      editingStartTitle: null,
+      expandedNotes: [],
+      quickAddParent: null,
       editSession: 0,
       settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
       lingering: [],
@@ -302,9 +344,19 @@ export function createAppStore(deps: StoreDeps) {
         if (last) get().setEditing(last, null);
       },
 
-      quickAdd(title) {
-        const parent = get().ui.zoomRootId;
-        get().addTask(parent, title.slice(0, TITLE_MAX));
+      quickAdd(text) {
+        const r = get().parseShorthand(text);
+        if (!r.title && !r.group) return; // only tokens, no title: nothing to add
+        // The `#Group` target may have been deleted or undone since: then fall back to the view.
+        const target = get().quickAddParent;
+        const targetOk = target !== null && findTask(get().tasks, target)?.deletedAt === null;
+        if (target !== null && !targetOk) set({ quickAddParent: null });
+        const parent = targetOk ? target : get().ui.zoomRootId;
+        const id = newId();
+        const task = { ...ops.newTask(id, parent, r.title.slice(0, TITLE_MAX), now()), ...shorthandFields(r) };
+        get().dispatch(ops.addTask(get().tasks, task));
+        // `#Group`: the next quick-adds go inside it (PLAN §9.4 "ready for children").
+        if (r.group) set({ quickAddParent: id });
       },
 
       quickPaste(text) {
@@ -315,10 +367,22 @@ export function createAppStore(deps: StoreDeps) {
       },
 
       finishEditing(id) {
+        const startTitle = get().editingId === id ? get().editingStartTitle : null;
         // Another row may already be editing (focus moved): only clear our own session.
         if (get().editingId === id) get().setEditing(null);
         // The task may already be gone (for example, removed by Backspace).
-        const task = findTask(get().tasks, id);
+        let task = findTask(get().tasks, id);
+        // Shorthand typed during this session (!!, @fri, //…) becomes fields: one undo step.
+        if (task && startTitle !== null && task.title !== startTitle) {
+          const r = get().parseShorthand(task.title);
+          if (r.chips.length) {
+            const fields = { ...shorthandFields(r), title: r.title };
+            // `//` appends to existing notes rather than replacing them.
+            if (r.notes !== undefined && task.notes) fields.notes = `${task.notes}\n${r.notes}`;
+            get().dispatch(ops.editTask(get().tasks, id, fields, now()));
+            task = findTask(get().tasks, id);
+          }
+        }
         // An empty task with no children left behind on blur is discarded
         // (undoable, so history stays consistent).
         if (task && task.title === '' && liveChildIds(get().tasks, id).length === 0) {
@@ -404,13 +468,51 @@ export function createAppStore(deps: StoreDeps) {
 
       setTab: (tab) => set({ ui: { ...get().ui, tab } }),
       setZoom: (zoomRootId) => set({ ui: { ...get().ui, zoomRootId } }),
-      setEditing: (editingId, caret = null) =>
+      setEditing: (editingId, caret = null, field = 'title') =>
         // A new editing session starts a new undo step for typing.
         set({
           editingId,
           editingCaret: caret,
+          editingField: field,
+          // Switching title ↔ notes on the same row keeps the session's start title.
+          editingStartTitle:
+            editingId === null
+              ? null
+              : editingId === get().editingId
+                ? get().editingStartTitle
+                : (findTask(get().tasks, editingId)?.title ?? null),
           editSession: editingId === get().editingId ? get().editSession : get().editSession + 1,
         }),
+
+      toggleNotes(id) {
+        const list = get().expandedNotes;
+        set({ expandedNotes: list.includes(id) ? list.filter((x) => x !== id) : [...list, id] });
+      },
+
+      cyclePriority(id) {
+        const p = getTask(get().tasks, id).priority;
+        get().editTask(id, { priority: ((p + 1) % 4) as Priority });
+      },
+
+      setPriority(id, priority) {
+        if (getTask(get().tasks, id).priority !== priority) get().editTask(id, { priority });
+      },
+
+      clearDue(id) {
+        get().editTask(id, { dueAt: null, notify: false });
+      },
+
+      duplicateTask(id) {
+        const { op } = copy.duplicate(get().tasks, id, now(), newId);
+        get().dispatch(op);
+        get().showToast('DUPLICATED', true);
+      },
+
+      outlineText: (id) => copy.toOutlineText(get().tasks, id),
+
+      parseShorthand: (text) => parse(text, { now: now(), defaultTimeMinutes: get().settings.defaultTimeMinutes }),
+
+      clearQuickAddParent: () => set({ quickAddParent: null }),
       toggleCompletedExpanded(id) {
         const list = get().ui.completedExpanded;
         const completedExpanded = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -464,7 +566,7 @@ export function installPersistence(store: AppStoreInstance, kv: KV, opts: Persis
 
   // Wire one slice to one key: changes mark the writer dirty, and the writer
   // serializes the latest value when its throttle window ends.
-  const wire = <T,>(select: (s: AppStore) => T, write: (value: T) => void) => {
+  const wire = <T>(select: (s: AppStore) => T, write: (value: T) => void) => {
     const writer = createThrottledWriter(() => write(select(store.getState())), undefined, timers);
     writers.push(writer);
     unsubs.push(store.subscribe(select, () => writer.markDirty()));
@@ -478,8 +580,14 @@ export function installPersistence(store: AppStoreInstance, kv: KV, opts: Persis
     // Bring the disk up to date if memory already differs from it at startup.
     if (store.onDisk === null || store.dirtyAtStart) tasksWriter.markDirty();
   }
-  wire((s) => s.ui, (ui) => kv.set(KEYS.ui, JSON.stringify(ui)));
-  wire((s) => s.settings, (st) => kv.set(KEYS.settings, JSON.stringify(st)));
+  wire(
+    (s) => s.ui,
+    (ui) => kv.set(KEYS.ui, JSON.stringify(ui)),
+  );
+  wire(
+    (s) => s.settings,
+    (st) => kv.set(KEYS.settings, JSON.stringify(st)),
+  );
 
   const flushAll = () => writers.forEach((w) => w.flush());
 

@@ -28,6 +28,7 @@ import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space
 
 import { useMinute } from '@/components/common/useMinute';
 import { InlineEditor } from '@/components/edit/InlineEditor';
+import { NotesEditor, NotesView } from '@/components/edit/NotesField';
 import { ActionSheet, type SheetAction } from '@/components/overlays/ActionSheet';
 
 import { NestingGuides } from './NestingGuides';
@@ -85,6 +86,7 @@ const CompletedRow = memo(
   function CompletedRow({ row }: { row: Row }) {
     const task = useAppStore((s) => findTask(s.tasks, row.id));
     const editing = useAppStore((s) => s.editingId === row.id);
+    const field = useAppStore((s) => (s.editingId === row.id ? s.editingField : null));
     const expanded = useAppStore((s) => s.ui.completedExpanded.includes(row.id));
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
@@ -142,7 +144,7 @@ const CompletedRow = memo(
               accessibilityLabel={expanded ? 'Collapse' : 'Expand'}
             >
               {row.hasChildren && (
-                <Text style={[type.body, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                <Text style={[type.glyph, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
                   {expanded ? glyphs.expanded.glyph : glyphs.collapsed.glyph}
                 </Text>
               )}
@@ -154,13 +156,13 @@ const CompletedRow = memo(
               accessibilityRole="checkbox"
               accessibilityState={{ checked: true }}
             >
-              <Text style={[type.body, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              <Text style={[type.glyph, styles.dim, styles.checkboxText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
                 {glyphs.checkboxOn.glyph}
               </Text>
             </Pressable>
             {/* No strikethrough here: a full screen of them is noise (PLAN §9.6). */}
             <View style={styles.title}>
-              {editing ? (
+              {field === 'title' ? (
                 <InlineEditor id={task.id} title={task.title} variant="body" />
               ) : (
                 <Text
@@ -172,6 +174,12 @@ const CompletedRow = memo(
                 >
                   {task.title}
                 </Text>
+              )}
+              {/* Notes can still be added or fixed after the fact. */}
+              {field === 'notes' ? (
+                <NotesEditor id={task.id} notes={task.notes} />
+              ) : (
+                editing && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
               )}
             </View>
             {row.depth === 0 && <Modified at={task.updatedAt} />}
@@ -208,6 +216,7 @@ const styles = StyleSheet.create({
   editing: { backgroundColor: colors.surface },
   caret: { width: size.indent, alignItems: 'center' },
   checkbox: { marginRight: space.md, marginLeft: space.xs },
+  checkboxText: { letterSpacing: shape.checkboxTracking },
   title: { flex: 1, minWidth: 0 },
   dim: { color: colors.textDim, ...platformText },
   modified: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },

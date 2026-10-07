@@ -4,17 +4,7 @@
  * Runs in Europe/London (jest.global-setup.js). 2026 DST changes: clocks go
  * forward on Sun Mar 29 and back on Sun Oct 25.
  */
-import {
-  addDays,
-  addMonths,
-  dayDiff,
-  daysInMonth,
-  formatDue,
-  formatRelative,
-  formatTime,
-  isOverdue,
-  startOfDay,
-} from '@/lib/dates';
+import { addDays, addMonths, dayDiff, daysInMonth, formatDue, formatRelative, formatTime, isOverdue, startOfDay } from '@/lib/dates';
 
 /** Local time → epoch ms (month is 1-based here, for readability). */
 const at = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();

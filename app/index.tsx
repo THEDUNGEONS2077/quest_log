@@ -1,7 +1,7 @@
 /**
  * app/index.tsx: the main screen (PLAN §9.1, §12.1, §12.2).
  *
- *   header      > quest_log_ · counts
+ *   header      > quest_log · counts
  *   tabs        [ ACTIVE QUESTS · 12 ][ COMPLETED · 34 ]
  *   list        the selected tab's list
  *   toast       COMPLETED · UNDO (above the bottom bar)

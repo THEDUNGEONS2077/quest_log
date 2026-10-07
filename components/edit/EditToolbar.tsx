@@ -2,7 +2,7 @@
  * components/edit/EditToolbar.tsx: the toolbar shown above the keyboard
  * while a task is being edited (PLAN §12.3 accessory bar, first part).
  *
- *   [← OUT] [→ IN] [+ SUB] [↩ UNDO] [✓ DONE]
+ *   [← OUT] [→ IN] [+ SUB] [! PRI] [≡ NOTE] [↩ UNDO] [✓ DONE]
  *
  * Layer: UI. Brought forward from Phase 6 after the v0.3.0 test: building
  * structure needed a way to indent and add subtasks without pasting. It
@@ -11,14 +11,15 @@
  *
  * Closing the keyboard (the system back gesture) also finishes editing,
  * so "how do I get out of editing" always has an obvious answer.
- * Priority, notes and due date buttons join this bar in Phase 6.
+ * PRI cycles the priority (none → ! → !! → !!!); NOTE switches between
+ * the title and the notes field. The due date button joins in Phase 7.
  */
 import { useEffect } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useActions, useStoreBundle } from '@/store/react';
+import { useActions, useAppStore, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 interface ButtonSpec {
@@ -39,6 +40,7 @@ export function EditToolbar({ editingId, structure }: Props) {
   const actions = useActions();
   const { store } = useStoreBundle();
   const insets = useSafeAreaInsets();
+  const field = useAppStore((s) => s.editingField);
 
   // The keyboard closing (back gesture, or the keyboard's own hide key) ends editing.
   useEffect(() => {
@@ -54,8 +56,15 @@ export function EditToolbar({ editingId, structure }: Props) {
     { glyph: glyphs.indent.glyph, label: 'IN', a11y: 'Indent', onPress: () => actions.indentTask(editingId) },
     { glyph: glyphs.add.glyph, label: 'SUB', a11y: 'Add subtask', onPress: () => actions.addSubtask(editingId) },
   ];
+  const detailButtons: ButtonSpec[] = [
+    { glyph: glyphs.priority.glyph, label: 'PRI', a11y: 'Change priority', onPress: () => actions.cyclePriority(editingId) },
+    field === 'notes'
+      ? { glyph: glyphs.notes.glyph, label: 'TITLE', a11y: 'Edit title', onPress: () => actions.setEditing(editingId, null, 'title') }
+      : { glyph: glyphs.notes.glyph, label: 'NOTE', a11y: 'Edit notes', onPress: () => actions.setEditing(editingId, null, 'notes') },
+  ];
   const buttons: ButtonSpec[] = [
     ...(structure ? structureButtons : []),
+    ...detailButtons,
     { glyph: glyphs.undo.glyph, label: 'UNDO', a11y: 'Undo', onPress: () => actions.undo() },
     {
       glyph: glyphs.done.glyph,
@@ -84,7 +93,7 @@ export function EditToolbar({ editingId, structure }: Props) {
             // Keep the editor focused: tapping a toolbar button must not blur it.
             focusable={false}
           >
-            <Text style={[type.body, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
               {b.glyph}
             </Text>
             <Text style={[type.meta, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier} numberOfLines={1}>

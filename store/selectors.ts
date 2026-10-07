@@ -60,9 +60,7 @@ export function makeSelectors() {
   );
 
   let completedTasks: TasksState;
-  const completed = memoLast((_version: number, expanded: readonly string[]) =>
-    flattenCompleted(completedTasks, new Set(expanded)),
-  );
+  const completed = memoLast((_version: number, expanded: readonly string[]) => flattenCompleted(completedTasks, new Set(expanded)));
 
   let countTasks: TasksState;
   // `minute` (not `now`) is the key, so counts refresh at most once a minute.

@@ -39,5 +39,10 @@ This is a running list of everything that behaves differently on iOS or still ne
 ## Layout
 - [ ] Safe areas: the home indicator and the Dynamic Island.
 
+## Phase 6 additions
+- [ ] "Copy as text" uses expo-clipboard. Check the iOS paste-permission banner when the outline is pasted into another app.
+- [ ] Links in notes use `Linking.openURL`. Confirm http(s) links open in Safari.
+- [ ] `NotesEditor` is a multiline TextInput with `submitBehavior="newline"`. Check that the editor grows to 8 lines and then scrolls, with the iOS keyboard open.
+
 ## Offline guarantee
 - [ ] iOS has no INTERNET permission to remove, so the guarantee comes from the code itself. Run a dependency audit to confirm there are no network libraries.

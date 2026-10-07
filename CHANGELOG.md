@@ -2,6 +2,26 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.5.0 (build 6)
+
+Details, shorthand and a task menu.
+
+- **Your requests:**
+  - Icons (▸ ▾ [ ] and friends) are 20% bigger.
+  - The `[ ]` checkbox is tighter.
+  - The title now reads `> quest_log`.
+- **Notes.** While editing a task, tap `+ NOTE` (or NOTE in the toolbar) to add notes. Tasks with notes show `≡`; tap it to read the notes. Links in notes are tappable.
+- **Priority.** The PRI toolbar button cycles `!` → `!!` → `!!!` → none.
+- **Shorthand** works in the quick-add bar and in titles, with a live preview while you type:
+  - `!` `!!` `!!!` set the priority.
+  - `@today` `@tomorrow` `@fri` `@5pm` `@mon 9am` `@in 2h` set a due date.
+  - `//` turns the rest into notes.
+  - `#Groceries` creates a group, and the next tasks you add go inside it (tap ✕ to stop).
+  - Put `\` before a word to keep it as typed.
+- **Long-press any task** for a menu: priority, add subtask, indent/outdent, notes, duplicate, copy as text, delete.
+- While editing, chips show the task's priority and due date. Tap ✕ on a chip to clear it.
+- Due-date reminders (notifications) arrive in the next version. For now a due date shows on the task and marks it OVERDUE when it passes.
+
 ## 0.4.0 (build 5)
 
 Checking things off.

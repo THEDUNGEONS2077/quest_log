@@ -13,6 +13,7 @@
  * screen, within thumb reach, and each row is at least 52 pt tall. Tapping
  * outside or pressing back closes it.
  */
+import type { ReactNode } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -30,9 +31,11 @@ interface Props {
   title: string;
   actions: SheetAction[];
   onClose: () => void;
+  /** Optional content between the title and the actions (e.g. the priority selector). */
+  children?: ReactNode;
 }
 
-export function ActionSheet({ visible, title, actions, onClose }: Props) {
+export function ActionSheet({ visible, title, actions, onClose, children }: Props) {
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
@@ -43,6 +46,7 @@ export function ActionSheet({ visible, title, actions, onClose }: Props) {
             {`${glyphs.prompt.glyph} ${title}`}
           </Text>
           <View style={styles.divider} />
+          {children}
           {actions.map((a) => (
             <Pressable
               key={a.label}
@@ -54,7 +58,7 @@ export function ActionSheet({ visible, title, actions, onClose }: Props) {
               accessibilityRole="button"
               accessibilityLabel={a.label}
             >
-              <Text style={[type.body, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
                 {a.glyph}
               </Text>
               <Text style={[type.body, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>

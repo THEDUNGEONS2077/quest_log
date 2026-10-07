@@ -317,3 +317,78 @@ describe('completion actions', () => {
     expect(store.getState().toast!.message).toBe('two');
   });
 });
+
+describe('details and shorthand (Phase 6)', () => {
+  it('quick-add parses shorthand into fields', () => {
+    const { store } = makeStore();
+    store.getState().quickAdd('buy milk !! @tomorrow // the oat one');
+    const t = allTasks(store.getState().tasks)[0]!;
+    expect(t).toMatchObject({ title: 'buy milk', priority: 2, notes: 'the oat one', notify: true });
+    expect(t.dueAt).toBe(new Date(2026, 9, 8, 9).getTime());
+  });
+
+  it('#Group makes later quick-adds go inside it until cleared', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.quickAdd('#Groceries');
+    const g = store.getState().quickAddParent!;
+    s.quickAdd('milk');
+    expect(store.getState().tasks.children[g]).toHaveLength(1);
+    s.clearQuickAddParent();
+    s.quickAdd('top');
+    expect(store.getState().tasks.children.root).toHaveLength(2);
+  });
+
+  it('falls back to top level when the #Group target was undone', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.quickAdd('#Gone');
+    s.undo();
+    s.quickAdd('still works');
+    expect(store.getState().quickAddParent).toBeNull();
+    expect(store.getState().tasks.children.root).toHaveLength(1);
+  });
+
+  it('shorthand typed while editing is applied when editing finishes (one undo step)', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'review');
+    s.setEditing(id);
+    s.updateTitle(id, 'review !!! @fri');
+    s.finishEditing(id);
+    expect(tk(store.getState().tasks, id)).toMatchObject({ title: 'review', priority: 3 });
+    s.undo(); // undoes the shorthand application
+    expect(tk(store.getState().tasks, id)!.title).toBe('review !!! @fri');
+  });
+
+  it('an unchanged title is not re-parsed (escaped literals stay literal)', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'email @fri');
+    s.setEditing(id);
+    s.finishEditing(id);
+    expect(tk(store.getState().tasks, id)!.dueAt).toBeNull();
+  });
+
+  it('priority cycles, duplicate copies below, outline text', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'a');
+    s.cyclePriority(id);
+    s.cyclePriority(id);
+    expect(tk(store.getState().tasks, id)!.priority).toBe(2);
+    s.duplicateTask(id);
+    expect(store.getState().tasks.children.root).toHaveLength(2);
+    expect(s.outlineText(id)).toBe('a');
+  });
+
+  it('notes editing keeps the same session when switching title ↔ notes', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'a');
+    s.setEditing(id);
+    const session = store.getState().editSession;
+    s.setEditing(id, null, 'notes');
+    expect(store.getState()).toMatchObject({ editingField: 'notes', editSession: session, editingStartTitle: 'a' });
+  });
+});

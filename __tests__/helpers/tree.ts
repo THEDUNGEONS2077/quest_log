@@ -15,7 +15,16 @@
 import { newTask } from '@/lib/ops';
 import { allTasks, findTask } from '@/lib/taskMap';
 import { fromDocument, parentKey, toDocument } from '@/lib/tree';
-import { type ID, type ParentKey, ROOT, SCHEMA_VERSION, type Task, type TaskFields, type TasksDocument, type TasksState } from '@/lib/types';
+import {
+  type ID,
+  type ParentKey,
+  ROOT,
+  SCHEMA_VERSION,
+  type Task,
+  type TaskFields,
+  type TasksDocument,
+  type TasksState,
+} from '@/lib/types';
 
 export type Node = [ID] | [ID, Node[]] | [ID, Partial<TaskFields>] | [ID, Partial<TaskFields>, Node[]];
 

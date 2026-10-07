@@ -34,6 +34,11 @@ export const shape = {
   hairline: 1,
   /** Strikethrough line thickness (PLAN §9.5). */
   strike: 1.5,
+  /**
+   * Letter spacing for the `[ ]` / `[x]` checkbox: pulls the brackets in,
+   * so the box reads as one compact control (user request 2026-10-07).
+   */
+  checkboxTracking: -4,
   /** Drop indicator thickness while dragging (PLAN §9.10). */
   dropIndicator: 2,
 } as const;

@@ -23,6 +23,8 @@ export interface PastedLine {
   /** Nesting level, 0 = same level as the paste target. */
   depth: number;
   done: boolean;
+  /** Lines starting with `//` right after a task become its notes (Copy as text writes them). */
+  notes: string;
 }
 
 /** Max title length (PLAN §9.3). Longer pasted lines are cut. */
@@ -34,7 +36,10 @@ const CHECKBOX = /^\[([ xX])\]\s*/;
 
 /** Parses pasted text into lines with depth and done state. Empty lines are skipped. */
 export function parseOutline(text: string): PastedLine[] {
-  const raw = text.replace(/\r\n?/g, '\n').split('\n').filter((l) => l.trim() !== '');
+  const raw = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .filter((l) => l.trim() !== '');
 
   // Measure each line's indent in columns (tab = 1 unit, resolved below).
   const measured = raw.map((line) => {
@@ -50,7 +55,15 @@ export function parseOutline(text: string): PastedLine[] {
   const lines: PastedLine[] = [];
   let prevDepth = -1;
   for (const { line, tabs, spaces } of measured) {
-    let rest = line.trim().replace(BULLET, '');
+    // `// text` belongs to the task above, as a notes line.
+    const trimmed = line.trim();
+    if (trimmed.startsWith('//') && lines.length) {
+      const prev = lines[lines.length - 1]!;
+      const note = trimmed.slice(2).trim();
+      prev.notes = prev.notes ? `${prev.notes}\n${note}` : note;
+      continue;
+    }
+    let rest = trimmed.replace(BULLET, '');
     let done = false;
     const box = CHECKBOX.exec(rest);
     if (box) {
@@ -61,7 +74,7 @@ export function parseOutline(text: string): PastedLine[] {
     // Clamp: a line can be at most one level deeper than the line before it.
     const wanted = tabs + Math.round(spaces / unit);
     const depth = Math.min(wanted, prevDepth + 1);
-    lines.push({ title: rest.slice(0, TITLE_MAX), depth, done });
+    lines.push({ title: rest.slice(0, TITLE_MAX), depth, done, notes: '' });
     prevDepth = depth;
   }
   return lines;
@@ -93,7 +106,7 @@ export function pasteOp(
   for (const line of lines) {
     const parent = line.depth === 0 ? parentId : stack[line.depth - 1]!;
     const id = newId();
-    const task = { ...newTask(id, parent, line.title, at), done: line.done, doneAt: line.done ? at : null };
+    const task = { ...newTask(id, parent, line.title, at), done: line.done, doneAt: line.done ? at : null, notes: line.notes };
     if (line.depth === 0) {
       ops.push({ type: 'insert', parentId: parent, index: nextIndex++, tasks: [task], children: {} });
     } else {

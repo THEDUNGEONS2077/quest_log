@@ -1,7 +1,7 @@
 /**
  * app/dev.tsx: developer screen. Theme/glyph check plus test-data tools.
  *
- * Reached by long-pressing the `> quest_log_` header title for 1.5 s, so
+ * Reached by long-pressing the `> quest_log` header title for 1.5 s, so
  * testers don't open it by accident.
  *
  * Layer: UI. This screen exists to verify the design system on a real
@@ -88,7 +88,7 @@ export default function DevScreen() {
     >
       {/* Header: the app's terminal-style title. */}
       <Text style={[type.display, styles.title]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} quest_log_`}
+        {`${glyphs.prompt.glyph} quest_log`}
       </Text>
       <Text style={[styles.text, type.meta]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {`DEV · ${versionLabel()}`}

@@ -49,12 +49,12 @@ Status markers:
 |---|---|---|
 | `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
 | `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides` *(built)*; drag layer *(planned, Phase 9)* | Store mutations beyond calling actions |
-| `components/edit/` | `InlineEditor`, `QuickAddBar`, `EditToolbar` (OUT/IN/+SUB/UNDO/DONE) *(built)*; notes field, chips, the rest of the accessory bar *(planned, Phase 6)* | Parsing and key rules (those are `lib/`) |
-| `components/overlays/` | `ActionSheet` (bottom menu), `Toast` (with UNDO) *(built)*; context menu, date/repeat sheets, boot sequence *(planned)* | |
+| `components/edit/` | `InlineEditor` (+ `useEditorFocus`), `NotesField` (editor and linkified view), `ParsedChips` (shorthand preview and clearable field chips), `QuickAddBar`, `EditToolbar` (OUT/IN/SUB/PRI/NOTE/UNDO/DONE) *(built)* | Parsing and key rules (those are `lib/`) |
+| `components/overlays/` | `ActionSheet`, `ContextMenu` (long-press on ACTIVE rows, with a priority selector), `Toast` *(built)*; date/repeat sheets, boot sequence *(planned)* | |
 | `components/common/` | `Header`, `Tabs`, `useMinute` (shared minute clock) *(built)*; filter chips, breadcrumb, block cursor *(planned)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete`, `outliner`, `paste`, `dates`, `purge`; planned: `parser`, `recurrence`, `dnd`, `search`)* | Anything impure |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete`, `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`; planned: `recurrence`, `dnd`, `search`)* | Anything impure |
 | `services/` | Native side effects. *(built: `haptics`, which follows the Settings toggle; planned: notifications, external ops queue, widget, backup)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
@@ -215,6 +215,12 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 3. A toast `COMPLETED · UNDO` appears. UNDO undoes the most recent step, which is always the one the toast describes.
 4. **Uncheck** clears the task and every done ancestor. **Restore** (COMPLETED) also clears the subtree.
 5. Haptics: light for check/uncheck, success when a group or top-level task completes, medium for delete, and a tick when a swipe crosses its threshold.
+
+## 6d. Shorthand *(built: `lib/parser.ts`)*
+
+- **Quick-add bar:** the text is parsed on Enter, and the task is created with the parsed fields already set.
+- **Editing a title:** the shorthand is applied once, when editing finishes, as its own undo step, and only if the title changed during that session. That way an escaped literal (`\@5pm`, stored as `@5pm`) isn't re-parsed every time the task is edited.
+- **Live chips** show the parse result while typing. `now` comes from `useMinute()`, so renders stay pure.
 
 ## 7. Side effects
 

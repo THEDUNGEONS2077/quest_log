@@ -86,7 +86,9 @@ describe('budgets (desktop smoke limits)', () => {
   it('logs the full-document cost (daily snapshot, off the startup path)', () => {
     const doc = toDocument(seed);
     const ms = median(() => JSON.stringify(doc), 5, 2);
-    console.log(`full snapshot: ${ids(seed).length} tasks, ${(JSON.stringify(doc).length / 1024).toFixed(0)} KB, ${ms.toFixed(1)} ms (desktop)`);
+    console.log(
+      `full snapshot: ${ids(seed).length} tasks, ${(JSON.stringify(doc).length / 1024).toFixed(0)} KB, ${ms.toFixed(1)} ms (desktop)`,
+    );
     expect(ms).toBeLessThan(100);
   });
 });

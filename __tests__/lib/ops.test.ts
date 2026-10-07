@@ -7,18 +7,7 @@
  * the tree invariants after every step.
  */
 import { flattenActive } from '@/lib/flatten';
-import {
-  addTask,
-  apply,
-  editTask,
-  indent,
-  moveTask,
-  newTask,
-  type Op,
-  outdent,
-  restore,
-  softDelete,
-} from '@/lib/ops';
+import { addTask, apply, editTask, indent, moveTask, newTask, type Op, outdent, restore, softDelete } from '@/lib/ops';
 import { childIds, subtreeIds } from '@/lib/tree';
 import { type ID, ROOT, type TasksState } from '@/lib/types';
 
@@ -52,7 +41,11 @@ function checkInvariants(s: TasksState): void {
   expect(seen.size).toBe(ids(s).length); // no orphans
 }
 
-const base = () => build([['work', [['ship'], ['notes', [['draft'], ['proof']]]]], ['home', { collapsed: true }, [['bank']]]]);
+const base = () =>
+  build([
+    ['work', [['ship'], ['notes', [['draft'], ['proof']]]]],
+    ['home', { collapsed: true }, [['bank']]],
+  ]);
 
 describe('apply', () => {
   it('bumps structureVersion only for structural changes', () => {
@@ -170,7 +163,7 @@ describe('fuzz: random op sequences', () => {
 
   it.each([1, 2, 3, 4, 5])('seed %i: 400 ops keep invariants and undo exactly', (seed) => {
     const rand = rng(seed);
-    const pick = <T,>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)]!;
+    const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)]!;
     let s = build([]);
     let nextId = 0;
 

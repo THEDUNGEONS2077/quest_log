@@ -16,12 +16,15 @@
  * and moves to COMPLETED (PLAN §6.6). Every gesture has a screen-reader
  * action as an alternative (PLAN §13).
  */
-import { memo, useEffect } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
 import { useMinute } from '@/components/common/useMinute';
 import { InlineEditor } from '@/components/edit/InlineEditor';
+import { NotesEditor, NotesView } from '@/components/edit/NotesField';
+import { TaskChips } from '@/components/edit/ParsedChips';
+import { ContextMenu } from '@/components/overlays/ContextMenu';
 import { formatDue, isOverdue } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
 import { findTask } from '@/lib/taskMap';
@@ -48,6 +51,10 @@ export const TaskRow = memo(
   function TaskRow({ row }: { row: Row }) {
     const task = useAppStore((s) => findTask(s.tasks, row.id));
     const editing = useAppStore((s) => s.editingId === row.id);
+    // Which field is being edited, only meaningful (and only subscribed) for the editing row.
+    const field = useAppStore((s) => (s.editingId === row.id ? s.editingField : null));
+    const notesOpen = useAppStore((s) => s.expandedNotes.includes(row.id));
+    const [menu, setMenu] = useState(false);
     const lingering = useAppStore((s) => s.lingering.includes(row.id));
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
@@ -76,6 +83,7 @@ export const TaskRow = memo(
       if (e.nativeEvent.actionName === 'complete') toggle();
       else if (e.nativeEvent.actionName === 'delete') remove();
       else if (e.nativeEvent.actionName === 'edit') actions.setEditing(task.id);
+      else if (e.nativeEvent.actionName === 'menu') setMenu(true);
     };
 
     const isGroup = row.depth === 0 && row.hasChildren;
@@ -89,11 +97,15 @@ export const TaskRow = memo(
           right={{ label: `${glyphs.checkboxOn.glyph} ${task.done ? 'UNDO' : 'DONE'}`, onCommit: toggle }}
           left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
         >
-          <View
+          <Pressable
             style={[styles.row, { paddingLeft: space.lg + visualDepth * size.indent }, isGroup && styles.group, editing && styles.editing]}
             accessible={!editing}
             accessibilityLabel={rowLabel(task, row)}
             accessibilityActions={ROW_ACTIONS}
+            // Long-press anywhere on the row opens the context menu (PLAN §12.6).
+            onLongPress={() => setMenu(true)}
+            delayLongPress={400}
+            disabled={editing}
             onAccessibilityAction={onAccessibilityAction}
           >
             <NestingGuides levels={visualDepth} />
@@ -110,7 +122,7 @@ export const TaskRow = memo(
               accessibilityElementsHidden={!row.hasChildren}
             >
               {row.hasChildren && (
-                <Text style={[type.body, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
                   {task.collapsed ? glyphs.collapsed.glyph : glyphs.expanded.glyph}
                 </Text>
               )}
@@ -126,16 +138,16 @@ export const TaskRow = memo(
               accessibilityLabel={task.title}
             >
               <Text
-                style={[type.body, styles.text, { color: task.done ? colors.textDim : colors.text }]}
+                style={[type.glyph, styles.checkboxText, { color: task.done ? colors.textDim : colors.text }]}
                 maxFontSizeMultiplier={maxFontSizeMultiplier}
               >
                 {task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
               </Text>
             </Pressable>
 
-            {/* Title: the editor when editing, otherwise a tappable Text. */}
+            {/* Title (editor or text), then chips and notes while editing, or notes when expanded. */}
             <View style={styles.title}>
-              {editing ? (
+              {field === 'title' ? (
                 <InlineEditor id={task.id} title={task.title} variant={isGroup ? 'group' : 'body'} />
               ) : (
                 <StrikeText
@@ -144,13 +156,36 @@ export const TaskRow = memo(
                   color={isGroup ? colors.textBright : colors.text}
                   style={titleStyle}
                   onPress={() => actions.setEditing(task.id)}
+                  onLongPress={() => setMenu(true)}
                 />
+              )}
+              {editing && <TaskChips id={task.id} />}
+              {field === 'notes' ? (
+                <NotesEditor id={task.id} notes={task.notes} />
+              ) : (
+                (notesOpen || editing) && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
               )}
             </View>
 
-            <RowMeta task={task} row={row} />
-          </View>
+            {/* While editing the title of a task without notes: the quiet "+ NOTE" affordance (PLAN §9.7). */}
+            {field === 'title' && !task.notes ? (
+              <Pressable
+                onPress={() => actions.setEditing(task.id, null, 'notes')}
+                hitSlop={HIT_SLOP}
+                style={styles.addNote}
+                accessibilityRole="button"
+                accessibilityLabel="Add notes"
+              >
+                <Text style={[type.meta, styles.addNoteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  + NOTE
+                </Text>
+              </Pressable>
+            ) : (
+              <RowMeta task={task} row={row} onNotes={() => actions.toggleNotes(task.id)} />
+            )}
+          </Pressable>
         </SwipeableRow>
+        {menu && <ContextMenu id={task.id} onClose={() => setMenu(false)} />}
       </Animated.View>
     );
   },
@@ -167,6 +202,7 @@ export const TaskRow = memo(
 const ROW_ACTIONS = [
   { name: 'complete', label: 'Complete or uncomplete' },
   { name: 'edit', label: 'Edit' },
+  { name: 'menu', label: 'More actions' },
   { name: 'delete', label: 'Delete' },
 ];
 
@@ -181,21 +217,34 @@ function rowLabel(task: Task, row: Row): string {
 }
 
 /** Right-side indicators: depth badge, priority, ≡ ◔ ↻, due chip, progress count. */
-function RowMeta({ task, row }: { task: Task; row: Row }) {
+function RowMeta({ task, row, onNotes }: { task: Task; row: Row; onNotes: () => void }) {
   // Only the due chip needs the clock, so it subscribes on its own (DueChip).
-  const parts: { text: string; color: string }[] = [];
+  // `icon` parts are pure glyphs and use the 20%-larger metaGlyph role.
+  const parts: { text: string; color: string; icon?: boolean }[] = [];
   if (row.depth > size.maxVisualDepth) parts.push({ text: `${glyphs.depthBadge.glyph}${row.depth}`, color: colors.textDim });
-  if (task.priority > 0) parts.push({ text: glyphs.priority.glyph.repeat(task.priority), color: PRIORITY_COLOR[task.priority] });
-  if (task.notes) parts.push({ text: glyphs.notes.glyph, color: colors.textDim });
+  if (task.priority > 0)
+    parts.push({ text: glyphs.priority.glyph.repeat(task.priority), color: PRIORITY_COLOR[task.priority], icon: true });
+  // ≡ is drawn separately below: it's a button that shows/hides the notes.
   const progress = row.hasChildren ? `[${row.progress.done}/${row.progress.total}]` : null;
-  if (!parts.length && task.dueAt === null && !progress) return null;
+  if (!parts.length && task.dueAt === null && !progress && !task.notes) return null;
   return (
     <View style={styles.meta}>
       {parts.map((p, i) => (
-        <Text key={i} style={[type.meta, styles.text, { color: p.color }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        <Text
+          key={i}
+          style={[p.icon ? type.metaGlyph : type.meta, styles.text, { color: p.color }]}
+          maxFontSizeMultiplier={maxFontSizeMultiplier}
+        >
           {p.text}
         </Text>
       ))}
+      {task.notes !== '' && (
+        <Pressable onPress={onNotes} hitSlop={HIT_SLOP} accessibilityRole="button" accessibilityLabel="Show or hide notes">
+          <Text style={[type.metaGlyph, styles.text, { color: colors.text }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            {glyphs.notes.glyph}
+          </Text>
+        </Pressable>
+      )}
       {task.dueAt !== null && <DueChip task={task} dueAt={task.dueAt} />}
       {progress && (
         <Text style={[type.meta, styles.text, { color: colors.textDim }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
@@ -210,12 +259,15 @@ function RowMeta({ task, row }: { task: Task; row: Row }) {
 function DueChip({ task, dueAt }: { task: Task; dueAt: number }) {
   const now = useMinute();
   const overdue = isOverdue(dueAt, task.done, now);
-  const label = `${task.notify ? `${glyphs.notify.glyph} ` : ''}${task.repeat ? `${glyphs.repeat.glyph} ` : ''}${formatDue(dueAt, now)}`;
+  // Glyph prefixes (◔ notify, ↻ repeat) as nested spans at the larger metaGlyph size.
+  const icons = `${task.notify ? `${glyphs.notify.glyph} ` : ''}${task.repeat ? `${glyphs.repeat.glyph} ` : ''}`;
+  const label = formatDue(dueAt, now);
   return (
     <Text
       style={[type.meta, styles.text, { color: overdue ? colors.accent : colors.textDim }]}
       maxFontSizeMultiplier={maxFontSizeMultiplier}
     >
+      {icons !== '' && <Text style={type.metaGlyph}>{icons}</Text>}
       {overdue ? `${label} OVERDUE` : label}
     </Text>
   );
@@ -242,8 +294,12 @@ const styles = StyleSheet.create({
   caret: { width: size.indent, alignItems: 'center' },
   glyph: { color: colors.text, ...platformText },
   checkbox: { marginRight: space.md, marginLeft: space.xs },
+  // Tighter brackets: `[ ]` reads as one compact box.
+  checkboxText: { letterSpacing: shape.checkboxTracking, ...platformText },
   title: { flex: 1, minWidth: 0 },
   text: { ...platformText },
   // Offset so the smaller meta text sits on the title's first line.
+  addNote: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
+  addNoteText: { color: colors.textDim, ...platformText },
   meta: { flexDirection: 'row', gap: space.sm, marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
 });
