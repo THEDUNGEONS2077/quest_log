@@ -39,7 +39,7 @@ Status markers:
 2. **No business logic in components.** A component renders state and calls store actions; it never decides what a "complete" or a "move" means.
 3. **Every `Platform.OS` branch** lives in `/services` or `/theme/platform.ts`. Anything that will behave differently on iOS gets a line in `IOS_PORT.md` when it's written.
 4. **No magic numbers in components.** Colors, sizes, spacing, durations, and glyphs come from `/theme`. *(built)*
-5. **No network code**, ever (PLAN §3). The release build has no INTERNET permission. *(built: `plugins/withRemoveInternet.js`)*
+5. **No network code**, ever (PLAN §3). The release build has no INTERNET permission. *(built: `android.blockedPermissions` in `app.config.ts`)*
 
 ---
 
@@ -53,11 +53,11 @@ Status markers:
 | `components/overlays/` | Context menu, sheets, toast, boot sequence *(planned)* | |
 | `components/common/` | Header, tabs, filter chips, breadcrumb, block cursor *(planned)* | |
 | `store/` | Zustand slices, memoized selectors, MMKV persistence, migrations *(planned, Phase 3)* | UI code, native calls outside persist.ts |
-| `lib/` | Pure logic: `tree`, `flatten`, `ops`, `parser`, `recurrence`, `dnd`, `paste`, `search`, `dates` *(planned, Phase 2+)* | Anything impure |
+| `lib/` | Pure logic. *(built: `types`, `tree`, `flatten`, `ops`, `dates`; planned: `parser`, `recurrence`, `dnd`, `paste`, `search`)* | Anything impure |
 | `services/` | Native side effects: notifications, external ops queue, widget, haptics, backup *(planned)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
-| `plugins/` | Expo config plugins, the **only** way to change native config *(built: signing, INTERNET removal)* | |
+| `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
 | `scripts/` | Dev tooling: font subset, icon generation, seed, release *(built: fonts, icon)* | App code |
 | `assets/` | Subset fonts, placeholder icons *(built)* | |
 | `__tests__/` | Jest tests, plus `fixtures/` with saved beta data for migration tests *(built: theme, config)* | |
@@ -66,7 +66,7 @@ Status markers:
 
 ---
 
-## 3. Data model *(planned, Phase 2–3)*
+## 3. Data model *(built in `lib/types.ts`; store wiring in Phase 3)*
 
 A **normalized** store (PLAN §7.1):
 
@@ -130,24 +130,28 @@ One code path (`lib/ops.ts`) handles every mutation, wherever it came from.
 
 ---
 
-## 5. The op pattern *(planned, Phase 2)*
+## 5. The op pattern *(built: `lib/ops.ts`)*
 
 **Every mutation is a typed op** in `lib/ops.ts`:
 
 ```ts
 type Op =
-  | { type: 'add'; task: Task; parentId: ID | null; index: number }
-  | { type: 'move'; id: ID; toParent: ID | null; toIndex: number }
-  | { type: 'setDone'; ids: ID[]; done: boolean; at: number }
-  | …;
+  | { type: 'insert'; parentId; index; tasks: Task[]; children }  // a whole subtree
+  | { type: 'remove'; id }                                         // hard remove (subtree)
+  | { type: 'move'; id; parentId; index }                          // index counted without the task
+  | { type: 'update'; changes: { id; fields }[] }                  // field changes
+  | { type: 'batch'; ops: Op[] };                                  // one undo step
 
-apply(state, op) → { state: nextState, inverse: Op }
+apply(state, op) → { state: nextState, inverse: Op, structural: boolean }
 ```
 
-- `apply` is **pure**: same input, same output, no clock or randomness (time and IDs are passed in).
+- `apply` is **pure**: same input, same output, no clock or randomness (time and IDs are passed in). It never mutates its input, and unchanged tasks keep their object identity, so their rows don't re-render.
 - Every op returns its **inverse**. Undo applies the inverse, and redo re-applies the original.
 - Ops that touch several tasks (cascade complete, paste, bulk actions) are **one op**, so they're one undo step.
-- **Test contract:** for every op, `apply(apply(s, op).state, inverse)` deep-equals `s`.
+- **Test contract:** for every op, `apply(apply(s, op).state, inverse)` deep-equals `s`, ignoring `structureVersion`, which only ever increases. A seeded fuzz test runs 2,000 random ops and checks this plus the tree invariants after every one.
+- **Primitive ops vs builders:** `apply` only understands `insert`, `remove`, `move`, `update`, and `batch`. User intents (`addTask`, `editTask`, `moveTask`, `indent`, `outdent`, `softDelete`, `restore`) are *builders* that return those primitives, and they handle `updatedAt` bubbling. New features add builders; the primitive set rarely changes.
+- **Structural fields:** `done`, `deletedAt`, `collapsed`, `priority`, `dueAt`, and `repeat` bump `structureVersion`. `title`, `notes`, and `updatedAt` don't, so typing never re-flattens the tree. As a result, the COMPLETED tab re-sorts on the next structural change or tab switch, not on every keystroke.
+- **Empty child lists:** a parent with no children has *no key* in `children` (except `root`). Keeping a single representation makes undo round-trips exact.
 
 ---
 
@@ -200,9 +204,9 @@ apply(state, op) → { state: nextState, inverse: Op }
 | Package | `com.thedungeons2077.questlog.dev` | `com.thedungeons2077.questlog` |
 | Scheme | `questlog-dev://` | `questlog://` |
 | JS | Metro (live reload, over USB via `adb reverse`) | Hermes bytecode in the APK |
-| INTERNET | Kept | Removed (`plugins/withRemoveInternet.js`) |
+| Permissions | Dev defaults (INTERNET for Metro) | Allow-list (`VIBRATE`); INTERNET, overlay and storage blocked (`blockedPermissions`) |
 | Signing | Debug key | Release key (`plugins/withReleaseSigning.js`) |
-| ABIs | arm64-v8a | arm64-v8a, plus R8 and resource shrinking |
+| ABIs | arm64-v8a | arm64-v8a, plus R8, resource shrinking and compressed native libraries |
 
 - `app.config.ts` reads `APP_VARIANT` and `version.json`, the single source of truth for `versionName` and `versionCode`.
 - **Native changes go only through config plugins** in `/plugins`. A clean `expo prebuild` always reproduces the same app.

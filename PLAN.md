@@ -143,7 +143,7 @@ These are measured on a mid-range Android device (for example a Pixel 6a) in a r
 | Persist write (throttled) | **< 8 ms** for 1,000 tasks |
 | Tab switch | **< 50 ms** |
 | Widget refresh after a change | **< 2 s** |
-| JS bundle (release, Hermes bytecode) | **< 2.5 MB** |
+| JS bundle (release, Hermes bytecode) | **< 3.5 MB** (raised from 2.5 MB on 2026-10-07: Expo Router alone is about 25% of the bundle. Hermes loads bytecode lazily, so the cold-start budget is the real constraint.) |
 | Release APK download (arm64) | **< 25 MB** |
 | Installed app size | **< 40 MB** Android, **< 40 MB** iOS |
 | Memory with 1,000 tasks | **< 150 MB** |

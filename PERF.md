@@ -14,7 +14,7 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 | Persist write, 1,000 tasks | < 8 ms | | | |
 | Tab switch | < 50 ms | | | |
 | Widget refresh after change | < 2 s | | | |
-| JS bundle (Hermes) | < 2.5 MB | | | |
+| JS bundle (Hermes) | < 3.5 MB (was 2.5) | | | |
 | Release APK (arm64) | < 25 MB | | | |
 | Installed size | < 40 MB | | | |
 | Memory, 1,000 tasks | < 150 MB | | | |
@@ -25,3 +25,8 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 - Release APK: **31 MB, over the 25 MB budget.** About 18 MB of it is uncompressed native libraries.
 - JS bundle: **2.9 MB, over the 2.5 MB budget.**
 - Both are flagged for Phase 2. The release manifest also has unwanted storage and SYSTEM_ALERT_WINDOW permissions from library manifests; these get removed in Phase 2 too.
+
+### Phase 2 fixes, 2026-10-07 (same theme screen)
+- Release APK: **17.4 MB** (was 31 MB). Native libraries are now stored compressed (`useLegacyPackaging`). Installed size is still to be measured on the device.
+- Permissions: only `VIBRATE`, plus AndroidX's private `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`.
+- JS bundle: 2.9 MB, within the raised 3.5 MB budget. Expo Router is kept (user decision).

@@ -58,6 +58,10 @@
     ],
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup.ts"
+    ],
+    "globalSetup": "<rootDir>/jest.global-setup.js",
+    "testMatch": [
+      "**/*.test.[jt]s?(x)"
     ]
   }
 }

@@ -33,10 +33,23 @@ describe('release variant', () => {
     expect(cfg.scheme).toBe('questlog');
   });
 
-  it('removes INTERNET and signs with the release key', () => {
-    expect(pluginNames('release')).toEqual(
-      expect.arrayContaining(['./plugins/withRemoveInternet', './plugins/withReleaseSigning']),
+  it('signs with the release key', () => {
+    expect(pluginNames('release')).toContain('./plugins/withReleaseSigning');
+  });
+
+  it('blocks INTERNET and every unused default permission', () => {
+    expect(cfg.android?.blockedPermissions).toEqual(
+      expect.arrayContaining([
+        'android.permission.INTERNET',
+        'android.permission.SYSTEM_ALERT_WINDOW',
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ]),
     );
+  });
+
+  it('requests only the allow-listed permissions', () => {
+    expect(cfg.android?.permissions).toEqual(['android.permission.VIBRATE']);
   });
 
   it('takes its version from version.json', () => {
@@ -56,7 +69,7 @@ describe('dev variant', () => {
   });
 
   it('keeps INTERNET (needed for Metro) and the debug key', () => {
-    expect(pluginNames('dev')).not.toContain('./plugins/withRemoveInternet');
+    expect(buildConfig('dev').android?.blockedPermissions).toEqual([]);
     expect(pluginNames('dev')).not.toContain('./plugins/withReleaseSigning');
   });
 });

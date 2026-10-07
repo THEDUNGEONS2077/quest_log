@@ -34,6 +34,21 @@ export function getVariant(env: Record<string, string | undefined> = process.env
 const APP_ID = 'com.thedungeons2077.questlog';
 const BLACK = '#000000';
 
+/** Android permissions the app requests. VIBRATE: haptics (PLAN §9.18). */
+export const ANDROID_PERMISSIONS = ['android.permission.VIBRATE'];
+
+/**
+ * Permissions removed from the final release manifest, even when a library
+ * declares them. Checked by __tests__/config.test.ts and, on the built APK,
+ * by `aapt2 dump permissions` (RELEASING.md).
+ */
+export const RELEASE_BLOCKED_PERMISSIONS = [
+  'android.permission.INTERNET',
+  'android.permission.SYSTEM_ALERT_WINDOW',
+  'android.permission.READ_EXTERNAL_STORAGE',
+  'android.permission.WRITE_EXTERNAL_STORAGE',
+];
+
 /**
  * Builds the Expo config for one variant. Exported separately from the
  * default export so __tests__/config.test.ts can check both variants.
@@ -69,6 +84,15 @@ export function buildConfig(variant: Variant, base: Partial<ExpoConfig> = {}): E
       // Android back zooms out of the tree (PLAN §9.2); the predictive-back
       // animation would preview leaving the app instead.
       predictiveBackGestureEnabled: false,
+      // Explicit allow-list. Without it, Expo adds a default set (storage,
+      // SYSTEM_ALERT_WINDOW, …) that quest_log never uses. Later phases add
+      // notification permissions here as they need them (PLAN §3).
+      permissions: ANDROID_PERMISSIONS,
+      // Release only: strip anything a library manifest merges back in.
+      // INTERNET removal makes the app physically unable to go online
+      // (PLAN §3); the dev build keeps INTERNET for Metro and the overlay
+      // permission for the dev menu.
+      blockedPermissions: isDev ? [] : RELEASE_BLOCKED_PERMISSIONS,
     },
 
     ios: {
@@ -119,13 +143,17 @@ export function buildConfig(variant: Variant, base: Partial<ExpoConfig> = {}): E
             // R8 code shrinking plus resource shrinking for release (PLAN §5 size budgets).
             enableMinifyInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
+            // Store native libraries compressed in the APK. This cuts the
+            // download by roughly 10 MB (PLAN §5 APK budget); the trade-off
+            // is that Android extracts them on install, so installed size
+            // grows a little.
+            useLegacyPackaging: true,
           },
         },
       ],
 
-      // Release only: physically remove INTERNET (PLAN §3) and sign with the
-      // local release key (PLAN §15.3).
-      ...(isDev ? [] : ['./plugins/withRemoveInternet', './plugins/withReleaseSigning']),
+      // Release only: sign with the local release key (PLAN §15.3).
+      ...(isDev ? [] : ['./plugins/withReleaseSigning']),
     ],
 
     experiments: {
