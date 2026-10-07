@@ -39,3 +39,10 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# quest_log: signing material and build outputs never go in git (PLAN §15.3)
+*.keystore
+*.apk
+*.aab
+*.apk.sha256
+.env*
