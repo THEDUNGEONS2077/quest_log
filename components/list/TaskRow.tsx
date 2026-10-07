@@ -70,15 +70,18 @@ export const TaskRow = memo(
           )}
         </Pressable>
 
-        {/* Checkbox: inert until Phase 5 (completion + animation + cascade). */}
-        <Text
-          style={[type.body, styles.checkbox, { color: task.done ? colors.textDim : colors.text }]}
-          maxFontSizeMultiplier={maxFontSizeMultiplier}
+        {/* Checkbox: a full 44 pt target. Inert until Phase 5 (completion + animation + cascade). */}
+        <Pressable
+          style={styles.checkbox}
+          hitSlop={HIT_SLOP}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: task.done }}
+          accessibilityLabel={task.title}
         >
-          {task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
-        </Text>
+          <Text style={[type.body, styles.text, { color: task.done ? colors.textDim : colors.text }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            {task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
+          </Text>
+        </Pressable>
 
         {/* Title: the editor when editing, otherwise a tappable Text. */}
         <View style={styles.title}>
@@ -147,8 +150,12 @@ function DueChip({ task, dueAt }: { task: Task; dueAt: number }) {
   );
 }
 
-/** Extends small glyph targets to the 44 pt minimum (PLAN §8.3). */
-const HIT_SLOP = { top: space.md, bottom: space.md, left: space.sm, right: space.sm };
+/**
+ * Extends the caret and checkbox to at least 44 × 44 pt (PLAN §8.3, §13).
+ * The glyphs are about 24 pt, so ~12 pt on each side reaches the target
+ * without overlapping the neighbouring control.
+ */
+const HIT_SLOP = { top: space.md, bottom: space.md, left: space.md, right: space.md };
 
 const styles = StyleSheet.create({
   row: {
@@ -163,7 +170,7 @@ const styles = StyleSheet.create({
   editing: { backgroundColor: colors.surface },
   caret: { width: size.indent, alignItems: 'center' },
   glyph: { color: colors.text, ...platformText },
-  checkbox: { marginRight: space.sm, ...platformText },
+  checkbox: { marginRight: space.md, marginLeft: space.xs },
   title: { flex: 1, minWidth: 0 },
   text: { ...platformText },
   // Phase 5 replaces this with the animated strikethrough line.

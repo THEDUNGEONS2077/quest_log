@@ -97,11 +97,15 @@ export interface AppStore {
    */
   replaceAll(next: TasksState): void;
 
-  // --- Outliner editing (rules in lib/outliner.ts) ---
-  /** Enter in task `id` with the caret at `caret`. */
-  pressEnter(id: ID, caret: number): void;
-  /** Backspace with the caret at the start of task `id`; `previousId` is the row above. */
-  pressBackspaceAtStart(id: ID, previousId: ID | null): void;
+  // --- Editing (rules in lib/outliner.ts and lib/ops.ts) ---
+  /** Backspace on task `id` with nothing to erase: deletes it if empty, and stops editing. */
+  backspaceOnEmpty(id: ID): void;
+  /** Toolbar → IN: nests the edited task under the task above it. Editing continues. */
+  indentTask(id: ID): void;
+  /** Toolbar ← OUT: moves the edited task out one level. Editing continues. */
+  outdentTask(id: ID): void;
+  /** Toolbar + SUB: adds an empty subtask at the end of `id` and starts editing it. */
+  addSubtask(id: ID): void;
   /**
    * Text containing line breaks arrived in task `id`'s editor (a paste).
    * The first line becomes this task's title; the rest become tasks below
@@ -112,7 +116,10 @@ export interface AppStore {
   quickAdd(title: string): void;
   /** Quick-add bar paste: every line becomes a task at the end of the current view. */
   quickPaste(text: string): void;
-  /** Editor lost focus: an empty task that was never typed into is removed. */
+  /**
+   * Stops editing task `id` (Enter/Done, toolbar ✓, blur, keyboard closed).
+   * An empty task with no children is discarded, as one undo step.
+   */
   finishEditing(id: ID): void;
   /** Caret tap: collapse or expand one task. */
   toggleCollapsed(id: ID): void;
@@ -146,6 +153,12 @@ export function createAppStore(deps: StoreDeps) {
   const purge = purgeExpiredTrash(tasks, now());
   if (purge) tasks = ops.apply(tasks, purge).state;
 
+  /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
+  const stopEditingIfGone = (next: TasksState): Partial<AppStore> => {
+    const id = store.getState().editingId;
+    return id !== null && !findTask(next, id) ? { editingId: null, editingCaret: null } : {};
+  };
+
   const store = createStore<AppStore>()(
     subscribeWithSelector((set, get) => ({
       tasks,
@@ -170,7 +183,11 @@ export function createAppStore(deps: StoreDeps) {
         if (!entry) return false;
         const result = ops.apply(get().tasks, entry.undo);
         // Store the freshly computed inverse as redo: it reflects the actual tree.
-        set({ tasks: result.state, history: { past: past.slice(0, -1), future: [...future, { ...entry, redo: result.inverse }] } });
+        set({
+          tasks: result.state,
+          history: { past: past.slice(0, -1), future: [...future, { ...entry, redo: result.inverse }] },
+          ...stopEditingIfGone(result.state),
+        });
         return true;
       },
 
@@ -180,7 +197,11 @@ export function createAppStore(deps: StoreDeps) {
         if (!entry) return false;
         const result = ops.apply(get().tasks, entry.redo);
         // `key` is dropped, so typing after a redo starts a fresh undo step.
-        set({ tasks: result.state, history: { past: [...past, { undo: result.inverse, redo: entry.redo }], future: future.slice(0, -1) } });
+        set({
+          tasks: result.state,
+          history: { past: [...past, { undo: result.inverse, redo: entry.redo }], future: future.slice(0, -1) },
+          ...stopEditingIfGone(result.state),
+        });
         return true;
       },
 
@@ -202,17 +223,26 @@ export function createAppStore(deps: StoreDeps) {
         get().dispatch(ops.editTask(get().tasks, id, fields, now()));
       },
 
-      pressEnter(id, caret) {
-        const r = outliner.pressEnter(get().tasks, id, caret, newId(), now());
-        if (r.op) get().dispatch(r.op);
-        get().setEditing(r.focus?.id ?? null, r.focus?.caret ?? null);
+      backspaceOnEmpty(id) {
+        const op = outliner.deleteIfEmpty(get().tasks, id, now());
+        if (!op) return; // has children: Backspace never deletes a subtree
+        get().dispatch(op);
+        get().setEditing(null);
       },
 
-      pressBackspaceAtStart(id, previousId) {
-        const r = outliner.pressBackspaceAtStart(get().tasks, id, previousId, now());
-        if (!r.op) return; // nothing to do: keep editing as is
-        get().dispatch(r.op);
-        get().setEditing(r.focus?.id ?? null, r.focus?.caret ?? null);
+      indentTask(id) {
+        const op = ops.indent(get().tasks, id, now());
+        if (op) get().dispatch(op);
+      },
+
+      outdentTask(id) {
+        const op = ops.outdent(get().tasks, id, now());
+        if (op) get().dispatch(op);
+      },
+
+      addSubtask(id) {
+        const child = get().addTask(id, '');
+        get().setEditing(child);
       },
 
       pasteIntoTask(id, text) {

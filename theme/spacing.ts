@@ -15,12 +15,12 @@ export const space = {
 
 /** Fixed layout sizes. */
 export const size = {
-  /** Horizontal indent per tree depth level. */
-  indent: 20,
+  /** Horizontal indent per tree depth level (20 → 24 with the larger text). */
+  indent: 24,
   /** Indentation stops growing past this depth; deeper rows show a depth badge. */
   maxVisualDepth: 4,
-  /** Minimum task row height. */
-  rowMinHeight: 48,
+  /** Minimum task row height (48 → 52: easier to hit, PLAN §13). */
+  rowMinHeight: 52,
   /** Minimum tap target (width and height) for anything tappable. */
   hitTarget: 44,
   /** Max content width, so split-screen and large phones stay readable. */

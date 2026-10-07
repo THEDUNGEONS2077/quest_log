@@ -366,6 +366,8 @@ Only one effect is allowed: a **soft focus glow**. This is a 0–6 px green-brig
 
 ### 8.2 Typography (JetBrains Mono)
 
+> **Change (2026-10-07):** one size step larger for readability, after the device test: display 22/30, tab 14/20, group 17/24, body 17/24, meta 13/18, notes 15/22. Indent goes from 20 to 24 pt, and the minimum row height from 48 to 52 pt.
+
 | Role | Size / Line height | Weight | Notes |
 |---|---|---|---|
 | `display` | 20 / 28 | Bold | `> quest_log_` header, lowercase as styled |
@@ -443,15 +445,17 @@ All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Ph
 - **No save buttons.** Every change is in the store immediately and persisted within 300 ms.
 - Tap outside or scroll a meaningful distance to exit editing.
 
-**Keyboard behavior:**
+**Keyboard behavior** (revised 2026-10-07 after the v0.3.0 device test: editing and creating are kept separate):
 
 | Key | Behavior |
 |---|---|
-| Enter at the end of a title | Create a new **sibling below** at the same depth and focus it |
-| Enter in the middle of a title | Split: the text after the caret moves into the new sibling |
-| Enter on an **empty** new task | **Outdent** it. If it is already at top level, exit editing and discard it. |
-| Backspace on an empty task | Delete it and focus the end of the previous visible task |
-| Backspace at the start of a non-empty task | Merge into the previous task, provided neither has children |
+| Enter / Done | **Save and stop editing** (keyboard closes). It never creates a task. |
+| Backspace on an empty task | Delete it and stop editing (never deletes a task that has children) |
+| Back gesture / keyboard hide | Stop editing |
+
+**Editing toolbar** (pinned above the keyboard while editing, in place of the quick-add bar): `← OUT` · `→ IN` · `+ SUB` (new empty subtask, edited next) · `↩ UNDO` · `✓ DONE`. Phase 6 adds priority, notes and due date to it.
+
+New tasks come from the quick-add bar (Enter there keeps the keyboard open for rapid entry), from `+ SUB`, or from paste.
 
 **Pasting and limits:**
 - **Paste multiline text** to create one task per line. Leading spaces, tabs, `-`, `*`, or `[ ]` set nesting and done state. A toast reads `PASTED 7 TASKS · UNDO`.

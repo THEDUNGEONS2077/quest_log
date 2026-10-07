@@ -28,20 +28,23 @@ export const maxFontSizeMultiplier = 1.6;
 /** A type role: a complete text style (family, size, line height, spacing). */
 type Role = Pick<TextStyle, 'fontFamily' | 'fontSize' | 'lineHeight' | 'letterSpacing' | 'textTransform'>;
 
-/** Type roles from PLAN §8.2. */
+/**
+ * Type roles from PLAN §8.2, one size step larger after the v0.3.0 device
+ * test asked for better readability (2026-10-07): body 15 → 17.
+ */
 export const type = {
   /** `> quest_log_` header. Lowercase as styled. */
-  display: { fontFamily: fonts.bold, fontSize: 20, lineHeight: 28 },
+  display: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 30 },
   /** Tab labels: uppercase, +1 letter spacing. */
-  tab: { fontFamily: fonts.bold, fontSize: 13, lineHeight: 18, letterSpacing: 1, textTransform: 'uppercase' },
+  tab: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, letterSpacing: 1, textTransform: 'uppercase' },
   /** Top-level group headers: uppercase, drawn in textBright. */
-  group: { fontFamily: fonts.bold, fontSize: 15, lineHeight: 22, textTransform: 'uppercase' },
+  group: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 24, textTransform: 'uppercase' },
   /** Task titles. */
-  body: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
+  body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 },
   /** Tags, counts, due times. */
-  meta: { fontFamily: fonts.medium, fontSize: 12, lineHeight: 16 },
+  meta: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   /** Notes text, drawn in textDim. */
-  notes: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 20 },
+  notes: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
 } as const satisfies Record<string, Role>;
 
 export type TypeRole = keyof typeof type;

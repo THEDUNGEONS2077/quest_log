@@ -24,6 +24,9 @@ This is a running list of everything that behaves differently on iOS or still ne
 
 ## Keyboard and gestures
 - [ ] Check the accessory bar with the iOS keyboard and the predictive text bar.
+- [ ] `EditToolbar` ends editing on `keyboardDidHide`. On iOS that event also fires for keyboard type switches and the floating keyboard on iPad; confirm editing doesn't end unexpectedly.
+- [ ] `EditToolbar` buttons use `focusable={false}` (Android-only) to keep the editor focused. Confirm tapping them doesn't blur the input on iOS.
+- [ ] `InlineEditor` uses `submitBehavior="blurAndSubmit"` with `multiline`. Confirm iOS shows "Done" and doesn't insert newlines.
 - [ ] The edge-swipe back gesture must not conflict with row swipes. Add a left-edge exclusion zone.
 - [ ] Long-press must not trigger the text-selection magnifier on non-editing rows.
 

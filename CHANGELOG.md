@@ -2,6 +2,16 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.3.1 (build 4)
+
+Changes from your feedback on 0.3.0:
+
+- **Editing and adding are separate now.** Done/Enter saves the task and closes the keyboard; it no longer starts a new task.
+- **Deleting stops editing.** Backspace on an empty task deletes it and closes the keyboard, instead of jumping into the task above.
+- **Editing toolbar.** While you edit a task, a bar above the keyboard offers `← OUT` `→ IN` `+ SUB` `↩ UNDO` `✓ DONE`, so you can build groups without pasting.
+- The phone's **back** gesture also finishes editing.
+- **Larger text** throughout (task titles 15 → 17), wider indentation, taller rows, and bigger tap areas for the checkbox and the ▸/▾ caret.
+
 ## 0.3.0 (build 3)
 
 The real task list.

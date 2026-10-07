@@ -1,16 +1,18 @@
 /**
  * components/edit/InlineEditor.tsx: the single TextInput that edits a row's
- * title in place (PLAN §9.3, §6.5).
+ * title in place (PLAN §9.3, §6.5; revised 2026-10-07).
  *
  * Layer: UI. Only the row being edited mounts this component; every other
- * row is a plain <Text>, which keeps the list cheap. The editor contains no
- * rules: keys map to store actions, and the rules live in lib/outliner.ts.
+ * row is a plain <Text>. It contains no rules: keys map to store actions.
  *
- *   typing         → updateTitle (one undo step per editing session)
- *   Enter          → pressEnter at the caret (new sibling / split / outdent)
- *   Backspace at 0 → pressBackspaceAtStart (delete empty / merge into the row above)
- *   paste with \n  → pasteIntoTask (one task per line, nested by indent)
- *   blur           → finishEditing (an untouched empty task is discarded)
+ *   typing              → updateTitle (one undo step per editing session)
+ *   Enter / Done        → finishEditing (save and close; never creates a task)
+ *   Backspace when empty → backspaceOnEmpty (delete it, stop editing)
+ *   paste with \n       → pasteIntoTask (one task per line, nested by indent)
+ *   blur                → finishEditing, unless the same task's editor regains
+ *                          focus right away (see onBlur)
+ *
+ * Structure while editing (OUT / IN / + SUB) comes from the EditToolbar.
  */
 import { useEffect, useRef } from 'react';
 import { type NativeSyntheticEvent, StyleSheet, TextInput, type TextInputKeyPressEventData } from 'react-native';
@@ -18,6 +20,17 @@ import { type NativeSyntheticEvent, StyleSheet, TextInput, type TextInputKeyPres
 import { TITLE_MAX } from '@/lib/paste';
 import { useActions, useStoreBundle } from '@/store/react';
 import { colors, maxFontSizeMultiplier, platformText, type } from '@/theme';
+
+/**
+ * The task whose editor currently has focus (shared by all editors).
+ * Indent/outdent moves the row, so its editor can unmount and remount; the
+ * new editor sets this on focus, which tells the old editor's blur handler
+ * that editing hasn't really ended.
+ */
+let focusedEditorId: string | null = null;
+
+/** How long a blur waits for the same task's editor to take focus again. */
+const REFOCUS_GRACE_MS = 150;
 
 interface Props {
   id: string;
@@ -28,18 +41,15 @@ interface Props {
 
 export function InlineEditor({ id, title, variant }: Props) {
   const actions = useActions();
-  const { store, selectors } = useStoreBundle();
+  const { store } = useStoreBundle();
   const input = useRef<TextInput>(null);
-  // The caret position, tracked without re-rendering (it changes on every keystroke).
   const caret = useRef({ start: title.length, end: title.length });
 
-  // On mount: put the caret where the action that started editing asked
-  // for it (for example, the join point after a merge), or at the end.
+  // On mount: focus, and put the caret where the action asked (default: end).
   useEffect(() => {
     const wanted = store.getState().editingCaret;
     const at = wanted === null ? title.length : Math.min(wanted, title.length);
     caret.current = { start: at, end: at };
-    // Focus first, then place the caret, so the IME opens at the right spot.
     input.current?.focus();
     // setSelection is missing on some TextInput implementations (tests); optional call.
     input.current?.setSelection?.(at, at);
@@ -47,25 +57,26 @@ export function InlineEditor({ id, title, variant }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** The row shown directly above this one, for Backspace merges. */
-  const previousRowId = (): string | null => {
-    const rows = selectors.activeRows(store.getState());
-    const i = rows.findIndex((r) => r.id === id);
-    return i > 0 ? rows[i - 1]!.id : null;
-  };
-
   const onChangeText = (text: string) => {
-    // Enter never inserts a newline (submitBehavior="submit"), so a line
-    // break can only come from a paste.
+    // Enter never inserts a newline (submitBehavior), so a line break means a paste.
     if (text.includes('\n')) actions.pasteIntoTask(id, text);
     else actions.updateTitle(id, text.slice(0, TITLE_MAX));
   };
 
   const onKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
-    const { start, end } = caret.current;
-    if (e.nativeEvent.key === 'Backspace' && start === 0 && end === 0) {
-      actions.pressBackspaceAtStart(id, previousRowId());
-    }
+    // Backspace in an empty title deletes the task. (Empty means the caret
+    // can only be at 0, so no caret check is needed; that also avoids
+    // relying on selection events arriving before the key event.)
+    if (e.nativeEvent.key === 'Backspace' && title === '') actions.backspaceOnEmpty(id);
+  };
+
+  const onBlur = () => {
+    focusedEditorId = null;
+    // Wait briefly: if this task's editor remounted (indent/outdent moved
+    // the row), it refocuses within the grace period and editing continues.
+    setTimeout(() => {
+      if (focusedEditorId === null && store.getState().editingId === id) actions.finishEditing(id);
+    }, REFOCUS_GRACE_MS);
   };
 
   return (
@@ -75,12 +86,14 @@ export function InlineEditor({ id, title, variant }: Props) {
       onChangeText={onChangeText}
       onSelectionChange={(e) => (caret.current = e.nativeEvent.selection)}
       onKeyPress={onKeyPress}
-      onSubmitEditing={() => actions.pressEnter(id, caret.current.start)}
-      onBlur={() => actions.finishEditing(id)}
-      // Multiline so long titles wrap; "submit" makes Enter run onSubmitEditing
-      // without inserting a newline or closing the keyboard.
+      onFocus={() => (focusedEditorId = id)}
+      onSubmitEditing={() => actions.finishEditing(id)}
+      onBlur={onBlur}
+      // Multiline so long titles wrap. "blurAndSubmit": Enter/Done saves and
+      // closes the keyboard, and never inserts a newline.
       multiline
-      submitBehavior="submit"
+      submitBehavior="blurAndSubmit"
+      returnKeyType="done"
       maxLength={TITLE_MAX}
       // Themed native caret (PLAN §2: reliable with selection, autocorrect and IME).
       cursorColor={colors.accent}
@@ -91,6 +104,7 @@ export function InlineEditor({ id, title, variant }: Props) {
       maxFontSizeMultiplier={maxFontSizeMultiplier}
       style={[styles.input, variant === 'group' ? [type.group, { color: colors.textBright }] : type.body]}
       accessibilityLabel="Task title"
+      accessibilityHint="Done saves. Backspace on an empty title deletes the task."
     />
   );
 }

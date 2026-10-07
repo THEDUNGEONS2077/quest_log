@@ -49,7 +49,7 @@ Status markers:
 |---|---|---|
 | `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
 | `components/list/` | `TaskList` (FlashList), `TaskRow` (incl. group header variant), `NestingGuides` *(built)*; strikethrough, drag layer *(planned, Phase 5–9)* | Store mutations beyond calling actions |
-| `components/edit/` | `InlineEditor`, `QuickAddBar` *(built)*; notes field, chips, accessory bar *(planned, Phase 6)* | Parsing and key rules (those are `lib/`) |
+| `components/edit/` | `InlineEditor`, `QuickAddBar`, `EditToolbar` (OUT/IN/+SUB/UNDO/DONE) *(built)*; notes field, chips, the rest of the accessory bar *(planned, Phase 6)* | Parsing and key rules (those are `lib/`) |
 | `components/overlays/` | Context menu, sheets, toast, boot sequence *(planned)* | |
 | `components/common/` | `Header`, `useMinute` (shared minute clock) *(built)*; tabs, filter chips, breadcrumb, block cursor *(planned)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |

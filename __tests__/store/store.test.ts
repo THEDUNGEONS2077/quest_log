@@ -223,4 +223,30 @@ describe('editing actions', () => {
     store.getState().setEditing('x', 3);
     expect(store.getState().editingCaret).toBe(3);
   });
+
+  it('toolbar IN / OUT / + SUB build structure while editing continues', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    const b = s.addTask(null, 'b');
+    s.setEditing(b);
+    s.indentTask(b);
+    expect(tk(store.getState().tasks, b)!.parentId).toBe(a);
+    expect(store.getState().editingId).toBe(b);
+    s.outdentTask(b);
+    expect(tk(store.getState().tasks, b)!.parentId).toBeNull();
+    s.addSubtask(b);
+    const child = store.getState().editingId!;
+    expect(tk(store.getState().tasks, child)!.parentId).toBe(b);
+  });
+
+  it('undo that removes the edited task ends editing', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const parent = s.addTask(null, 'p');
+    s.addSubtask(parent); // creates and edits an empty child
+    expect(store.getState().editingId).not.toBeNull();
+    s.undo();
+    expect(store.getState().editingId).toBeNull();
+  });
 });

@@ -3,21 +3,27 @@
  * (PLAN §9.1, §12.1).
  *
  * Layer: UI (Expo Router screen). Composition only; all behavior lives in
- * the components and the store. The ACTIVE/COMPLETED tabs arrive in Phase 5.
+ * the components and the store. The bottom bar is the quick-add bar, or the
+ * editing toolbar while a task is being edited. The ACTIVE/COMPLETED tabs
+ * arrive in Phase 5.
  */
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Header } from '@/components/common/Header';
+import { EditToolbar } from '@/components/edit/EditToolbar';
 import { QuickAddBar } from '@/components/edit/QuickAddBar';
 import { TaskList } from '@/components/list/TaskList';
+import { useAppStore } from '@/store/react';
 import { colors, size, space } from '@/theme';
 
 export default function ListScreen() {
   const insets = useSafeAreaInsets();
   // The list leaves room at the bottom for the quick-add bar, which floats over it.
   const [barHeight, setBarHeight] = useState<number>(size.hitTarget + space.lg);
+  // While a task is being edited, the editing toolbar takes the quick-add bar's place.
+  const editingId = useAppStore((s) => s.editingId);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -25,7 +31,7 @@ export default function ListScreen() {
         <Header />
         <TaskList bottomInset={barHeight + space.lg} />
       </View>
-      <QuickAddBar onHeight={setBarHeight} />
+      {editingId ? <EditToolbar editingId={editingId} /> : <QuickAddBar onHeight={setBarHeight} />}
     </View>
   );
 }

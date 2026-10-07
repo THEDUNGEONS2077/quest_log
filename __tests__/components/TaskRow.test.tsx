@@ -72,13 +72,23 @@ describe('TaskRow', () => {
     expect(screen.getByDisplayValue('c')).toBeTruthy();
   });
 
-  it('Enter in the editor creates the next task and moves editing to it', async () => {
+  it('Enter/Done saves and stops editing; it never creates a task', async () => {
     const { store } = await setup();
     await act(() => store.getState().setEditing('a'));
     await fireEvent(screen.getByDisplayValue('a'), 'submitEditing');
     const { editingId, tasks } = store.getState();
-    expect(editingId).toBe('new1');
-    expect(tasks.children.root).toEqual(['a', 'new1', 'b', 'c', 'g']);
+    expect(editingId).toBeNull();
+    expect(tasks.children.root).toEqual(['a', 'b', 'c', 'g']);
+  });
+
+  it('Backspace on an empty task deletes it and stops editing', async () => {
+    const { store } = await setup();
+    await act(() => store.getState().setEditing('b'));
+    await fireEvent.changeText(screen.getByDisplayValue('b'), '');
+    await fireEvent(screen.getByDisplayValue(''), 'keyPress', { nativeEvent: { key: 'Backspace' } });
+    const { editingId, tasks } = store.getState();
+    expect(editingId).toBeNull();
+    expect(tasks.children.root).toEqual(['a', 'c', 'g']);
   });
 
   it('a pasted multi-line text becomes several tasks', async () => {

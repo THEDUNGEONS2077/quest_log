@@ -60,6 +60,7 @@ export const glyphs = {
   duplicate: g('⊞', '⧉'),
   copy: g('⎕', '⎘'),
   moveTo: g('↦'),
+  done: g('✓'),
 
   // --- Terminal chrome ---
   cursor: g('█'),
