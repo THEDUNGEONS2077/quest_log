@@ -8,11 +8,16 @@
  *   - every glyph from theme/glyphs.ts next to the glyph PLAN §8.4
  *     originally specified, so the substitutes can be judged side by side.
  *
+ * Phase 3 adds a STORE panel (components/dev/StorePanel.tsx) to check
+ * persistence on the device.
+ *
  * Phase 4 replaces this screen with the real task list (ACTIVE / COMPLETED).
  */
 import Constants from 'expo-constants';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { StorePanel } from '@/components/dev/StorePanel';
 
 import {
   colors,
@@ -86,6 +91,10 @@ export default function ThemeCheckScreen() {
       <Text style={[styles.text, type.meta]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {`THEME CHECK · ${versionLabel()}`}
       </Text>
+
+      {/* Phase 3: store and persistence check (removed in Phase 4). */}
+      <Section title="STORE" />
+      <StorePanel />
 
       <Section title="COLORS" />
       {tokens.map((t) => (

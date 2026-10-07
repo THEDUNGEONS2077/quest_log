@@ -13,6 +13,7 @@ import {
   subtreeIds,
   topLevelOf,
 } from '@/lib/tree';
+import { taskCount } from '@/lib/taskMap';
 import { ROOT } from '@/lib/types';
 
 import { build } from '../helpers/tree';
@@ -32,7 +33,7 @@ describe('createEmptyState', () => {
   it('has an empty root list and no tasks', () => {
     const s = createEmptyState();
     expect(s.children[ROOT]).toEqual([]);
-    expect(s.byId).toEqual({});
+    expect(taskCount(s)).toBe(0);
   });
 });
 

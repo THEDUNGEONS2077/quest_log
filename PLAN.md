@@ -298,6 +298,8 @@ interface TasksState {
 }
 ```
 
+> **Change (2026-10-07, Phase 3):** `byId` is split into 256 hash buckets in memory (`TasksState.buckets`, accessed only through `lib/taskMap.ts`). At 7,500 tasks, copying one flat map per edit cost about 2 ms on desktop (6–10 ms on a phone), over the 4 ms keystroke budget. With buckets, an edit copies about 30 tasks. The flat shape above survives as `TasksDocument`, which migrations, snapshots and backups use.
+
 **Why this shape:**
 - O(1) lookup and update per task.
 - Child order lives in one array per parent, so reordering and dragging are array splices.
@@ -319,6 +321,7 @@ interface TasksState {
 
 ### 7.3 Persistence and migrations
 
+- **Change (2026-10-07, Phase 3):** tasks are stored as `tasks.v1.meta` (child lists and versions) plus one `tasks.v1.b.<n>` key per non-empty bucket, and a save rewrites only the buckets that changed. A single key meant re-serializing 2.3 MB (about 150 ms on a phone) every 300 ms while typing. Load runs a repair pass, so a save interrupted between keys can't lose tasks.
 - **One MMKV key per slice:**
   - `tasks.v1`
   - `settings.v1`

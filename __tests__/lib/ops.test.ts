@@ -22,7 +22,7 @@ import {
 import { childIds, subtreeIds } from '@/lib/tree';
 import { type ID, ROOT, type TasksState } from '@/lib/types';
 
-import { build, outline, shape } from '../helpers/tree';
+import { build, ids, outline, shape, tk } from '../helpers/tree';
 
 /** Applies an op, asserts its inverse restores the original, returns the new state. */
 function applyAndCheckUndo(state: TasksState, op: Op): TasksState {
@@ -41,15 +41,15 @@ function checkInvariants(s: TasksState): void {
   for (const [key, list] of Object.entries(s.children)) {
     if (key !== ROOT) {
       expect(list.length).toBeGreaterThan(0); // no empty lists except root
-      expect(s.byId[key]).toBeDefined(); // parent exists
+      expect(tk(s, key)).toBeDefined(); // parent exists
     }
     for (const id of list) {
       expect(seen.has(id)).toBe(false); // each task listed exactly once
       seen.add(id);
-      expect(s.byId[id]!.parentId).toBe(key === ROOT ? null : key); // parentId matches its list
+      expect(tk(s, id)!.parentId).toBe(key === ROOT ? null : key); // parentId matches its list
     }
   }
-  expect(seen.size).toBe(Object.keys(s.byId).length); // no orphans
+  expect(seen.size).toBe(ids(s).length); // no orphans
 }
 
 const base = () => build([['work', [['ship'], ['notes', [['draft'], ['proof']]]]], ['home', { collapsed: true }, [['bank']]]]);
@@ -64,8 +64,8 @@ describe('apply', () => {
   it('keeps unchanged tasks identical (so their rows do not re-render)', () => {
     const s = base();
     const next = apply(s, editTask(s, 'draft', { title: 'x' }, 1)).state;
-    expect(next.byId.home).toBe(s.byId.home);
-    expect(next.byId.draft).not.toBe(s.byId.draft);
+    expect(tk(next, 'home')).toBe(tk(s, 'home'));
+    expect(tk(next, 'draft')).not.toBe(tk(s, 'draft'));
   });
 
   it('never mutates its input', () => {
@@ -84,7 +84,7 @@ describe('apply', () => {
     const s = base();
     const next = applyAndCheckUndo(s, { type: 'remove', id: 'notes' });
     expect(subtreeIds(next, 'work')).toEqual(['work', 'ship']);
-    expect(next.byId.draft).toBeUndefined();
+    expect(tk(next, 'draft')).toBeUndefined();
     expect(next.children.notes).toBeUndefined();
   });
 });
@@ -94,8 +94,8 @@ describe('builders', () => {
     const s = base();
     const next = applyAndCheckUndo(s, addTask(s, newTask('atm', 'home', 'ATM', 50)));
     expect(childIds(next, 'home')).toEqual(['bank', 'atm']);
-    expect(next.byId.home!.collapsed).toBe(false);
-    expect(next.byId.home!.updatedAt).toBe(50);
+    expect(tk(next, 'home')!.collapsed).toBe(false);
+    expect(tk(next, 'home')!.updatedAt).toBe(50);
   });
 
   it('addTask inserts at a given index', () => {
@@ -107,9 +107,9 @@ describe('builders', () => {
   it('editTask bubbles updatedAt to every ancestor (PLAN §7.1)', () => {
     const s = base();
     const next = applyAndCheckUndo(s, editTask(s, 'draft', { notes: 'hi' }, 77));
-    expect(next.byId.draft!.notes).toBe('hi');
-    expect([next.byId.draft!.updatedAt, next.byId.notes!.updatedAt, next.byId.work!.updatedAt]).toEqual([77, 77, 77]);
-    expect(next.byId.ship!.updatedAt).toBe(0); // siblings untouched
+    expect(tk(next, 'draft')!.notes).toBe('hi');
+    expect([tk(next, 'draft')!.updatedAt, tk(next, 'notes')!.updatedAt, tk(next, 'work')!.updatedAt]).toEqual([77, 77, 77]);
+    expect(tk(next, 'ship')!.updatedAt).toBe(0); // siblings untouched
   });
 
   it('moveTask reorders within a parent', () => {
@@ -122,9 +122,9 @@ describe('builders', () => {
     const s = base();
     const next = applyAndCheckUndo(s, moveTask(s, 'notes', 'home', 1, 9));
     expect(childIds(next, 'home')).toEqual(['bank', 'notes']);
-    expect(next.byId.notes!.parentId).toBe('home');
-    expect(next.byId.work!.updatedAt).toBe(9);
-    expect(next.byId.home!.updatedAt).toBe(9);
+    expect(tk(next, 'notes')!.parentId).toBe('home');
+    expect(tk(next, 'work')!.updatedAt).toBe(9);
+    expect(tk(next, 'home')!.updatedAt).toBe(9);
   });
 
   it('indent nests under the previous sibling; null when first', () => {
@@ -175,29 +175,29 @@ describe('fuzz: random op sequences', () => {
     let nextId = 0;
 
     for (let step = 0; step < 400; step++) {
-      const ids = Object.keys(s.byId);
+      const all = ids(s);
       const at = step + 1;
       let op: Op | null = null;
-      const kind = ids.length < 3 ? 0 : Math.floor(rand() * 7);
+      const kind = all.length < 3 ? 0 : Math.floor(rand() * 7);
 
       if (kind === 0) {
         // Add under a random parent (or top level) at a random index.
-        const parent = ids.length && rand() < 0.7 ? pick(ids) : null;
+        const parent = all.length && rand() < 0.7 ? pick(all) : null;
         const index = Math.floor(rand() * (childIds(s, parent).length + 1));
         op = addTask(s, newTask(`t${nextId++}`, parent, 'x', at), index);
       } else if (kind === 1) {
         // Move to a random valid destination (not inside its own subtree).
-        const id = pick(ids);
+        const id = pick(all);
         const own = new Set(subtreeIds(s, id));
-        const targets = [null, ...ids.filter((x) => !own.has(x))];
+        const targets = [null, ...all.filter((x) => !own.has(x))];
         const parent = pick(targets);
         const len = childIds(s, parent).filter((x) => x !== id).length;
         op = moveTask(s, id, parent, Math.floor(rand() * (len + 1)), at);
-      } else if (kind === 2) op = indent(s, pick(ids), at);
-      else if (kind === 3) op = outdent(s, pick(ids), at);
-      else if (kind === 4) op = editTask(s, pick(ids), { done: rand() < 0.5, title: `s${step}` }, at);
-      else if (kind === 5) op = softDelete(s, pick(ids), at);
-      else op = { type: 'remove', id: pick(ids) };
+      } else if (kind === 2) op = indent(s, pick(all), at);
+      else if (kind === 3) op = outdent(s, pick(all), at);
+      else if (kind === 4) op = editTask(s, pick(all), { done: rand() < 0.5, title: `s${step}` }, at);
+      else if (kind === 5) op = softDelete(s, pick(all), at);
+      else op = { type: 'remove', id: pick(all) };
 
       if (!op) continue; // indent/outdent not possible here
       s = applyAndCheckUndo(s, op);

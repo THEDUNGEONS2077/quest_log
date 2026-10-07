@@ -6,6 +6,7 @@
  * run once per structural change, never per keystroke or per render.
  * Search and filter options are added in Phase 10.
  */
+import { findTask } from './taskMap';
 import { childIds } from './tree';
 import { type ID, ROOT, type Task, type TasksState } from './types';
 
@@ -49,7 +50,7 @@ export function flattenActive(state: TasksState, options: ActiveOptions = {}): R
 
   while (stack.length) {
     const [id, depth] = stack.pop()!;
-    const task = state.byId[id];
+    const task = findTask(state, id);
     if (!task || task.deletedAt !== null) continue;
     // Done top-level tasks belong to COMPLETED (only true top level, not zoom roots' children).
     if (rootId === null && depth === 0 && task.done) continue;
@@ -74,7 +75,7 @@ export function flattenActive(state: TasksState, options: ActiveOptions = {}): R
 export function flattenCompleted(state: TasksState, expanded: ReadonlySet<ID> = new Set()): Row[] {
   const done: Task[] = [];
   for (const id of state.children[ROOT] ?? []) {
-    const t = state.byId[id];
+    const t = findTask(state, id);
     if (t && t.done && t.deletedAt === null) done.push(t);
   }
   // Newest first; ties keep the manual order (Array.prototype.sort is stable).
@@ -97,7 +98,7 @@ function appendSubtree(state: TasksState, parentId: ID, depth: number, rows: Row
   for (let i = kids.length - 1; i >= 0; i--) stack.push([kids[i]!, depth]);
   while (stack.length) {
     const [id, d] = stack.pop()!;
-    const task = state.byId[id];
+    const task = findTask(state, id);
     if (!task || task.deletedAt !== null) continue;
     const grand = childIds(state, id);
     const progress = countProgress(state, grand);
@@ -111,7 +112,7 @@ function countProgress(state: TasksState, ids: readonly ID[]): { done: number; t
   let done = 0;
   let total = 0;
   for (const id of ids) {
-    const t = state.byId[id];
+    const t = findTask(state, id);
     if (!t || t.deletedAt !== null) continue;
     total++;
     if (t.done) done++;

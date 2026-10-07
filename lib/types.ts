@@ -4,10 +4,12 @@
  * Layer: pure lib. Plain data only; no React, no native code. Every other
  * module (store, services, UI) uses these types.
  *
- * Shape: a *normalized* tree. Tasks live in a flat `byId` map, and the order
- * of each parent's children lives in `children[parentKey]`. Moving a task is
- * an array splice, and editing a title never touches the tree structure.
+ * Shape: a *normalized* tree. Tasks live in an ID-keyed map (split into
+ * hash buckets for performance, see lib/taskMap.ts), and the order of each
+ * parent's children lives in `children[parentKey]`. Moving a task is an
+ * array splice, and editing a title never touches the tree structure.
  */
+import type { Bucket } from './taskMap';
 
 /** A task ID (a UUID from expo-crypto, created in the store layer). */
 export type ID = string;
@@ -59,9 +61,13 @@ export interface Task {
   updatedAt: number;
 }
 
-/** The whole task tree. */
+/** The whole task tree, in memory. */
 export interface TasksState {
-  byId: Record<ID, Task>;
+  /**
+   * Tasks keyed by ID, split into hash buckets so an edit copies about 30
+   * entries instead of all of them. Access only through lib/taskMap.ts.
+   */
+  buckets: readonly Bucket[];
   /**
    * Ordered child IDs per parent. ROOT is always present. A parent with no
    * children has no key (not an empty array), which keeps undo round-trips
@@ -71,6 +77,18 @@ export interface TasksState {
   /** Bumped on every structural change; derived rows recompute only when it changes. */
   structureVersion: number;
   /** Data format version; drives migrations (PLAN §7.3). */
+  schemaVersion: number;
+}
+
+/**
+ * The same tree as one flat JSON document. Used where a single readable
+ * value matters more than update speed: migrations and their fixtures,
+ * daily snapshots, and backup export/import.
+ */
+export interface TasksDocument {
+  byId: Record<ID, Task>;
+  children: Record<ParentKey, ID[]>;
+  structureVersion: number;
   schemaVersion: number;
 }
 

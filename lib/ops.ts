@@ -16,10 +16,11 @@
  * new task objects in, so every op replays identically. That's also what
  * makes external ops (widget, notifications) safe to drain later (§6.4).
  *
- * Immutability: `apply` never mutates its input. It copies only the maps and
- * arrays it changes, so unchanged tasks keep their object identity and rows
- * subscribed to them don't re-render.
+ * Immutability: `apply` never mutates its input. It copies only the task
+ * buckets and child lists it changes (lib/taskMap.ts), so unchanged tasks
+ * keep their object identity and rows subscribed to them don't re-render.
  */
+import { findTask, withTasks, withoutTasks } from './taskMap';
 import { childIds, getTask, isInSubtree, parentKey, ancestors, liveChildIds, subtreeIds } from './tree';
 import { type ID, type ParentKey, type Task, type TaskFields, type TasksState, ROOT } from './types';
 
@@ -129,15 +130,14 @@ function applyInsert(state: TasksState, op: Extract<Op, { type: 'insert' }>): Ap
   const siblings = childIds(state, op.parentId);
   if (op.index < 0 || op.index > siblings.length) throw new Error(`ops.insert: index ${op.index} out of range`);
 
-  const byId = { ...state.byId };
   for (const t of op.tasks) {
-    if (byId[t.id]) throw new Error(`ops.insert: task ${t.id} already exists`);
-    byId[t.id] = t;
+    if (findTask(state, t.id)) throw new Error(`ops.insert: task ${t.id} already exists`);
   }
+  const buckets = withTasks(state.buckets, op.tasks);
   const children = { ...state.children, ...op.children };
   children[parentKey(op.parentId)] = insertAt(siblings, op.index, root.id);
 
-  return { state: { ...state, byId, children }, inverse: { type: 'remove', id: root.id }, structural: true };
+  return { state: { ...state, buckets, children }, inverse: { type: 'remove', id: root.id }, structural: true };
 }
 
 /** Removes a subtree. Inverse: re-insert an exact snapshot at the old position. */
@@ -147,20 +147,17 @@ function applyRemove(state: TasksState, id: ID): Applied {
   const ids = subtreeIds(state, id);
 
   // Snapshot the subtree (task objects and the child order inside it) for the inverse.
-  const tasks = ids.map((i) => state.byId[i]!);
+  const tasks = ids.map((i) => getTask(state, i));
   const innerChildren: Record<ID, ID[]> = {};
   for (const i of ids) if (state.children[i]) innerChildren[i] = state.children[i]!;
 
-  const byId = { ...state.byId };
+  const buckets = withoutTasks(state.buckets, ids);
   const children = { ...state.children };
-  for (const i of ids) {
-    delete byId[i];
-    delete children[i];
-  }
+  for (const i of ids) delete children[i];
   setChildList(children, parentKey(root.parentId), removeAt(childIds(state, root.parentId), index));
 
   return {
-    state: { ...state, byId, children },
+    state: { ...state, buckets, children },
     inverse: { type: 'insert', parentId: root.parentId, index, tasks, children: innerChildren },
     structural: true,
   };
@@ -185,9 +182,9 @@ function applyMove(state: TasksState, op: Extract<Op, { type: 'move' }>): Applie
   if (op.index < 0 || op.index > dest.length) throw new Error(`ops.move: index ${op.index} out of range`);
   children[toKey] = insertAt(dest, op.index, op.id);
 
-  const byId = { ...state.byId, [op.id]: { ...task, parentId: op.parentId } };
+  const buckets = withTasks(state.buckets, [{ ...task, parentId: op.parentId }]);
   return {
-    state: { ...state, byId, children },
+    state: { ...state, buckets, children },
     inverse: { type: 'move', id: op.id, parentId: task.parentId, index: fromIndex },
     structural: true,
   };
@@ -195,23 +192,26 @@ function applyMove(state: TasksState, op: Extract<Op, { type: 'move' }>): Applie
 
 /** Changes fields. Inverse: the previous values of exactly those fields. */
 function applyUpdate(state: TasksState, changes: FieldChange[]): Applied {
-  const byId = { ...state.byId };
+  // Track the latest version of each task, so several changes to one task in
+  // a single op build on each other; then write them all in one bucket pass.
+  const updated = new Map<ID, Task>();
   const inverse: FieldChange[] = [];
   let structural = false;
 
   for (const { id, fields } of changes) {
-    const current = byId[id] ?? getTask(state, id);
+    const current = updated.get(id) ?? getTask(state, id);
     // Record each field's old value before overwriting it.
     const previous: Partial<TaskFields> = {};
     for (const key of Object.keys(fields) as (keyof TaskFields)[]) {
       (previous as Record<string, unknown>)[key] = current[key];
       if (STRUCTURAL_FIELDS.has(key)) structural = true;
     }
-    byId[id] = { ...current, ...fields };
+    updated.set(id, { ...current, ...fields });
     inverse.push({ id, fields: previous });
   }
+  const buckets = withTasks(state.buckets, [...updated.values()]);
   // Undo restores fields in reverse order, so repeated changes to one task unwind correctly.
-  return { state: { ...state, byId }, inverse: { type: 'update', changes: inverse.reverse() }, structural };
+  return { state: { ...state, buckets }, inverse: { type: 'update', changes: inverse.reverse() }, structural };
 }
 
 // ---------------------------------------------------------------------------
@@ -226,7 +226,7 @@ function applyUpdate(state: TasksState, changes: FieldChange[]): Applied {
 export function touchChanges(state: TasksState, ids: readonly ID[], at: number): FieldChange[] {
   const seen = new Set<ID>();
   for (const id of ids) {
-    if (!state.byId[id]) continue;
+    if (!findTask(state, id)) continue;
     seen.add(id);
     for (const a of ancestors(state, id)) seen.add(a);
   }

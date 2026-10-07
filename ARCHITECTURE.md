@@ -52,13 +52,14 @@ Status markers:
 | `components/edit/` | Inline editor, notes field, chips, accessory bar, quick-add *(planned, Phase 4–6)* | Parsing (that's `lib/parser.ts`) |
 | `components/overlays/` | Context menu, sheets, toast, boot sequence *(planned)* | |
 | `components/common/` | Header, tabs, filter chips, breadcrumb, block cursor *(planned)* | |
-| `store/` | Zustand slices, memoized selectors, MMKV persistence, migrations *(planned, Phase 3)* | UI code, native calls outside persist.ts |
-| `lib/` | Pure logic. *(built: `types`, `tree`, `flatten`, `ops`, `dates`; planned: `parser`, `recurrence`, `dnd`, `paste`, `search`)* | Anything impure |
+| `components/dev/` | Temporary on-device check panels *(Phase 3 STORE panel; removed in Phase 4)* | Anything shipped long-term |
+| `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `dates`, `purge`; planned: `parser`, `recurrence`, `dnd`, `paste`, `search`)* | Anything impure |
 | `services/` | Native side effects: notifications, external ops queue, widget, haptics, backup *(planned)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
-| `scripts/` | Dev tooling: font subset, icon generation, seed, release *(built: fonts, icon)* | App code |
+| `scripts/` | Dev tooling: font subset, icon generation, `seed.ts` (7,500-task perf data), release *(built: fonts, icon, seed)* | App code |
 | `assets/` | Subset fonts, placeholder icons *(built)* | |
 | `__tests__/` | Jest tests, plus `fixtures/` with saved beta data for migration tests *(built: theme, config)* | |
 | `e2e/android/` | Maestro flows *(planned, Phase 14)* | |
@@ -66,16 +67,22 @@ Status markers:
 
 ---
 
-## 3. Data model *(built in `lib/types.ts`; store wiring in Phase 3)*
+## 3. Data model *(built: `lib/types.ts`, `lib/taskMap.ts`)*
 
 A **normalized** store (PLAN §7.1):
 
 ```ts
-byId:     Record<ID, Task>          // O(1) lookup and update
+buckets:  Bucket[256]               // tasks by ID, split by a hash of the ID
 children: Record<ID | 'root', ID[]> // ordered child ids per parent
 structureVersion: number            // bumped on every structural change
 schemaVersion: number               // drives migrations
 ```
+
+**Buckets** (a deviation from PLAN's flat `byId`, made in Phase 3 for the keystroke budget):
+- An immutable edit copies the 256-slot outer array plus the one bucket of about 30 tasks it touches, instead of a 7,500-entry map.
+- Always read and write tasks through `lib/taskMap.ts`: `findTask`, `withTasks`, `withoutTasks`, `forEachTask`. Never index buckets directly.
+- `bucketOf(id)` maps a UUID's last two hex digits straight to a bucket, with no loop, because Hermes is mostly interpreted. Any other ID falls back to an FNV hash.
+- **`TasksDocument`** is the same tree with a flat `byId`. It's used where readability matters more than speed: migrations, fixtures, snapshots, and backups. Convert with `toDocument` and `fromDocument` (`lib/tree.ts`).
 
 **Rules:**
 - **Text edits** (title, notes) write only to `byId[id]`. They never touch `children` and never bump `structureVersion`, so typing never re-flattens the tree.
@@ -121,8 +128,10 @@ One code path (`lib/ops.ts`) handles every mutation, wherever it came from.
 ```
 1. Native splash (black, green <|->)                       (built)
 2. Fonts: embedded at build time, no wait                  (built)
-3. Hydrate store from MMKV, synchronously, before render  (planned, Phase 3)
-4. Run migrations (snapshot first)                         (planned, Phase 3)
+3. Hydrate store from MMKV, synchronously, at import       (built: store/index.ts)
+4. Migrate (pre-migration snapshot first), repair, validate (built: store/persist.ts)
+4b. Purge Trash older than 7 days (not undoable)            (built)
+4c. Daily snapshot, deferred about 3 s after launch         (built)
 5. Drain ops.pending                                       (planned, Phase 7)
 6. Reconcile notifications (async)                         (planned, Phase 7)
 7. Boot sequence overlay, in parallel with readiness       (planned, Phase 11)
@@ -155,22 +164,37 @@ apply(state, op) → { state: nextState, inverse: Op, structural: boolean }
 
 ---
 
-## 6. Persistence and migrations *(planned, Phase 3)*
+## 6. Persistence and migrations *(built: `store/persist.ts`, `store/repair.ts`, `store/migrations/`)*
 
 | MMKV key | Contents |
 |---|---|
-| `tasks.v1` | The normalized task state |
+| `tasks.v1.meta` | `children`, `structureVersion`, `schemaVersion` |
+| `tasks.v1.b.<n>` | One task bucket (only if non-empty) |
+| `snapshot.premigration.v<N>` | Exact data before a migration ran |
+| `corrupt.<time>` | Raw bytes of anything that failed to load (never overwritten) |
 | `settings.v1` | User settings |
 | `ui.v1` | Collapsed/zoom state, last tab |
 | `ops.pending` | External ops queue |
 | `widget.snapshot` | Compact widget data |
 | `snapshot.YYYY-MM-DD` | Daily safety copies (keep the last 3) |
 
-**Writes:** throttled to one per 300 ms (trailing edge), plus a forced flush on `AppState` → `background`. Budget: under 8 ms for 1,000 tasks.
+**Writes:**
+- Throttled to one per 300 ms (trailing edge), plus a forced flush whenever the app leaves the foreground.
+- **Incremental:** the saver remembers the last bucket objects it wrote and re-serializes only buckets whose identity changed. `meta` is written only when the structure changes.
+- Buckets are written **before** `meta`.
+- Measured with the seed: a keystroke plus its save takes about 0.05 ms on desktop.
+
+**Loading** never throws:
+1. Assemble meta and all buckets into a document.
+2. Migrate.
+3. **Repair** what an interrupted save could leave behind: orphans are re-attached, missing list entries dropped, cycles broken.
+4. Validate.
+
+Anything unreadable is kept under `corrupt.<time>`, and the app recovers from the newest daily snapshot. Data from a *newer* app version opens read-only and is never overwritten.
 
 **Adding a migration** (required for **every** schema change once friends have data):
-1. Save the current data shape as a fixture: `__tests__/fixtures/tasks-v<N>.json`, taken from a real beta install.
-2. Add `store/migrations/<N>-to-<N+1>.ts`, a pure `(old) => new` function.
+1. Save the current data shape as a fixture: `__tests__/fixtures/tasks-v<N>.json`, a flat `TasksDocument` taken from a real beta install (for example, the daily snapshot).
+2. Add `store/migrations/<N>-to-<N+1>.ts`, a pure `(old document) => new document` function.
 3. Register it in the migrations index and bump `schemaVersion`.
 4. Add a test that loads the fixture, migrates it, and checks the result.
 5. Startup snapshots the data **before** running any migration.
@@ -192,7 +216,7 @@ apply(state, op) → { state: nextState, inverse: Op, structural: boolean }
 2. **At most one `TextInput` is mounted.** Every other row is a plain `Text`.
 3. **FlashList** with `getItemType` by row kind (group header, task, completed), and stable keys (task IDs).
 4. **Animations run on the UI thread** via Reanimated worklets. Never animate with `setState`.
-5. **Measure with the seed data** (`scripts/seed.ts`: 1,000 active plus 5,000 completed) in a **release** build.
+5. **Measure with the seed data** (`scripts/seed.ts`: 1,000 active plus 5,000 completed) in a **release** build. `__tests__/perf.test.ts` runs desktop smoke limits on every `npm test`.
 6. If a change would break a budget, **stop and flag it**. Don't work around it silently.
 
 ---

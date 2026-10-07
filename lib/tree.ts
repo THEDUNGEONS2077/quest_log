@@ -5,11 +5,32 @@
  * ops.ts (which builds changes), flatten.ts (which builds rows) and the
  * store's selectors.
  */
-import { type ID, type ParentKey, ROOT, type Task, type TasksState, SCHEMA_VERSION } from './types';
+import { bucketsFromRecord, emptyBuckets, findTask, recordFromBuckets } from './taskMap';
+import { type ID, type ParentKey, ROOT, type Task, type TasksDocument, type TasksState, SCHEMA_VERSION } from './types';
 
 /** An empty tree: no tasks, ROOT present with no children. */
 export function createEmptyState(): TasksState {
-  return { byId: {}, children: { [ROOT]: [] }, structureVersion: 0, schemaVersion: SCHEMA_VERSION };
+  return { buckets: emptyBuckets(), children: { [ROOT]: [] }, structureVersion: 0, schemaVersion: SCHEMA_VERSION };
+}
+
+/** The tree as one flat document (snapshots, backup, migrations). */
+export function toDocument(state: TasksState): TasksDocument {
+  return {
+    byId: recordFromBuckets(state.buckets),
+    children: state.children,
+    structureVersion: state.structureVersion,
+    schemaVersion: state.schemaVersion,
+  };
+}
+
+/** The in-memory tree from a flat document. */
+export function fromDocument(doc: TasksDocument): TasksState {
+  return {
+    buckets: bucketsFromRecord(doc.byId),
+    children: doc.children,
+    structureVersion: doc.structureVersion,
+    schemaVersion: doc.schemaVersion,
+  };
 }
 
 /** The `children` key for a parent: its ID, or ROOT for top level. */
@@ -24,7 +45,7 @@ export function childIds(state: TasksState, parentId: ID | null): readonly ID[] 
 
 /** Looks up a task, throwing if it doesn't exist (a bug in the caller). */
 export function getTask(state: TasksState, id: ID): Task {
-  const task = state.byId[id];
+  const task = findTask(state, id);
   if (!task) throw new Error(`tree: unknown task ${id}`);
   return task;
 }
@@ -85,7 +106,7 @@ export function subtreeIds(state: TasksState, rootId: ID): ID[] {
 
 /** Child IDs that aren't soft-deleted. */
 export function liveChildIds(state: TasksState, parentId: ID | null): ID[] {
-  return childIds(state, parentId).filter((c) => state.byId[c]?.deletedAt === null);
+  return childIds(state, parentId).filter((c) => findTask(state, c)?.deletedAt === null);
 }
 
 /** The previous live sibling of a task, or null if it is the first. */
