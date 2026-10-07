@@ -21,7 +21,11 @@ import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 import * as ops from '@/lib/ops';
+import * as outliner from '@/lib/outliner';
+import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
+import { findTask } from '@/lib/taskMap';
+import { childIds, getTask, liveChildIds } from '@/lib/tree';
 import type { ID, TaskFields, TasksState } from '@/lib/types';
 
 import { EMPTY_HISTORY, type History, record } from './history';
@@ -63,6 +67,8 @@ export interface AppStore {
   ui: UiState;
   /** The row being edited (PLAN §6.5: at most one). Not persisted. */
   editingId: ID | null;
+  /** Where the caret goes when the editor for editingId mounts (null = end). */
+  editingCaret: number | null;
   /**
    * Increments whenever editing starts on a row. Part of the typing
    * coalesce key, so each editing session is its own undo step.
@@ -91,10 +97,33 @@ export interface AppStore {
    */
   replaceAll(next: TasksState): void;
 
+  // --- Outliner editing (rules in lib/outliner.ts) ---
+  /** Enter in task `id` with the caret at `caret`. */
+  pressEnter(id: ID, caret: number): void;
+  /** Backspace with the caret at the start of task `id`; `previousId` is the row above. */
+  pressBackspaceAtStart(id: ID, previousId: ID | null): void;
+  /**
+   * Text containing line breaks arrived in task `id`'s editor (a paste).
+   * The first line becomes this task's title; the rest become tasks below
+   * it, nested by indentation. One undo step.
+   */
+  pasteIntoTask(id: ID, text: string): void;
+  /** Quick-add bar: adds a task at the end of the current view (root or zoom). */
+  quickAdd(title: string): void;
+  /** Quick-add bar paste: every line becomes a task at the end of the current view. */
+  quickPaste(text: string): void;
+  /** Editor lost focus: an empty task that was never typed into is removed. */
+  finishEditing(id: ID): void;
+  /** Caret tap: collapse or expand one task. */
+  toggleCollapsed(id: ID): void;
+  /** Caret long-press: collapse or expand a task and all its siblings at once. */
+  setSiblingsCollapsed(id: ID, collapsed: boolean): void;
+
   // --- UI actions ---
   setTab(tab: Tab): void;
   setZoom(id: ID | null): void;
-  setEditing(id: ID | null): void;
+  /** Starts editing a row (or stops, with null); `caret` = initial caret position (default: end). */
+  setEditing(id: ID | null, caret?: number | null): void;
   toggleCompletedExpanded(id: ID): void;
 
   // --- Settings ---
@@ -123,6 +152,7 @@ export function createAppStore(deps: StoreDeps) {
       history: EMPTY_HISTORY,
       ui: loadJSON(kv, KEYS.ui, DEFAULT_UI),
       editingId: null,
+      editingCaret: null,
       editSession: 0,
       settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
       loadStatus: loaded.status,
@@ -172,6 +202,69 @@ export function createAppStore(deps: StoreDeps) {
         get().dispatch(ops.editTask(get().tasks, id, fields, now()));
       },
 
+      pressEnter(id, caret) {
+        const r = outliner.pressEnter(get().tasks, id, caret, newId(), now());
+        if (r.op) get().dispatch(r.op);
+        get().setEditing(r.focus?.id ?? null, r.focus?.caret ?? null);
+      },
+
+      pressBackspaceAtStart(id, previousId) {
+        const r = outliner.pressBackspaceAtStart(get().tasks, id, previousId, now());
+        if (!r.op) return; // nothing to do: keep editing as is
+        get().dispatch(r.op);
+        get().setEditing(r.focus?.id ?? null, r.focus?.caret ?? null);
+      },
+
+      pasteIntoTask(id, text) {
+        const [first = '', ...rest] = text.replace(/\r\n?/g, '\n').split('\n');
+        const tasks = get().tasks;
+        const task = getTask(tasks, id);
+        const lines = parseOutline(rest.join('\n'));
+        const index = childIds(tasks, task.parentId).indexOf(id) + 1;
+        const { op, ids } = pasteOp(tasks, lines, task.parentId, index, now(), newId);
+        // Title update + inserted tasks as a single undo step.
+        get().dispatch({ type: 'batch', ops: [ops.editTask(tasks, id, { title: first.slice(0, TITLE_MAX) }, now()), op] });
+        const last = ids[ids.length - 1];
+        if (last) get().setEditing(last, null);
+      },
+
+      quickAdd(title) {
+        const parent = get().ui.zoomRootId;
+        get().addTask(parent, title.slice(0, TITLE_MAX));
+      },
+
+      quickPaste(text) {
+        const parent = get().ui.zoomRootId;
+        const tasks = get().tasks;
+        const { op } = pasteOp(tasks, parseOutline(text), parent, childIds(tasks, parent).length, now(), newId);
+        get().dispatch(op);
+      },
+
+      finishEditing(id) {
+        // Another row may already be editing (focus moved): only clear our own session.
+        if (get().editingId === id) get().setEditing(null);
+        // The task may already be gone (for example, removed by Backspace).
+        const task = findTask(get().tasks, id);
+        // An empty task with no children left behind on blur is discarded
+        // (undoable, so history stays consistent).
+        if (task && task.title === '' && liveChildIds(get().tasks, id).length === 0) {
+          get().dispatch({ type: 'remove', id });
+        }
+      },
+
+      toggleCollapsed(id) {
+        const task = getTask(get().tasks, id);
+        get().editTask(id, { collapsed: !task.collapsed });
+      },
+
+      setSiblingsCollapsed(id, collapsed) {
+        const tasks = get().tasks;
+        const siblings = childIds(tasks, getTask(tasks, id).parentId);
+        // Only siblings that have children can collapse.
+        const changes = siblings.filter((s) => (tasks.children[s]?.length ?? 0) > 0).map((s) => ({ id: s, fields: { collapsed } }));
+        if (changes.length) get().dispatch({ type: 'update', changes });
+      },
+
       replaceAll(next) {
         // Keep structureVersion increasing, so memoized rows can't be stale.
         const structureVersion = Math.max(next.structureVersion, get().tasks.structureVersion) + 1;
@@ -180,9 +273,13 @@ export function createAppStore(deps: StoreDeps) {
 
       setTab: (tab) => set({ ui: { ...get().ui, tab } }),
       setZoom: (zoomRootId) => set({ ui: { ...get().ui, zoomRootId } }),
-      setEditing: (editingId) =>
+      setEditing: (editingId, caret = null) =>
         // A new editing session starts a new undo step for typing.
-        set({ editingId, editSession: editingId === get().editingId ? get().editSession : get().editSession + 1 }),
+        set({
+          editingId,
+          editingCaret: caret,
+          editSession: editingId === get().editingId ? get().editSession : get().editSession + 1,
+        }),
       toggleCompletedExpanded(id) {
         const list = get().ui.completedExpanded;
         const completedExpanded = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];

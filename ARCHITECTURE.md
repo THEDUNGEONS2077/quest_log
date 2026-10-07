@@ -47,14 +47,14 @@ Status markers:
 
 | Path | Purpose | Does **not** contain |
 |---|---|---|
-| `app/` | Expo Router screens. `_layout.tsx` is the root shell. *(built: shell + theme check screen)* | Reusable components, logic |
-| `components/list/` | Task list, rows, group headers, nesting guides, strikethrough, drag layer *(planned, Phase 4–9)* | Store mutations beyond calling actions |
-| `components/edit/` | Inline editor, notes field, chips, accessory bar, quick-add *(planned, Phase 4–6)* | Parsing (that's `lib/parser.ts`) |
+| `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
+| `components/list/` | `TaskList` (FlashList), `TaskRow` (incl. group header variant), `NestingGuides` *(built)*; strikethrough, drag layer *(planned, Phase 5–9)* | Store mutations beyond calling actions |
+| `components/edit/` | `InlineEditor`, `QuickAddBar` *(built)*; notes field, chips, accessory bar *(planned, Phase 6)* | Parsing and key rules (those are `lib/`) |
 | `components/overlays/` | Context menu, sheets, toast, boot sequence *(planned)* | |
-| `components/common/` | Header, tabs, filter chips, breadcrumb, block cursor *(planned)* | |
-| `components/dev/` | Temporary on-device check panels *(Phase 3 STORE panel; removed in Phase 4)* | Anything shipped long-term |
+| `components/common/` | `Header`, `useMinute` (shared minute clock) *(built)*; tabs, filter chips, breadcrumb, block cursor *(planned)* | |
+| `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `dates`, `purge`; planned: `parser`, `recurrence`, `dnd`, `paste`, `search`)* | Anything impure |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `outliner`, `paste`, `dates`, `purge`; planned: `parser`, `recurrence`, `dnd`, `search`)* | Anything impure |
 | `services/` | Native side effects: notifications, external ops queue, widget, haptics, backup *(planned)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
@@ -98,7 +98,7 @@ schemaVersion: number               // drives migrations
 
 ## 4. Data flows
 
-### 4.1 Keystroke *(planned, Phase 4)*
+### 4.1 Keystroke *(built; verified by `__tests__/components/TaskRow.test.tsx`)*
 ```
 TextInput → store.updateTitle(id, text) → byId[id] replaced
           → only <TaskRow id> re-renders (selector on byId[id])
@@ -200,6 +200,13 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 5. Startup snapshots the data **before** running any migration.
 
 ---
+
+## 6b. React bindings *(built: `store/react.tsx`)*
+
+- Components get the store from **context** (`<StoreProvider>`), never by importing `store/index.ts`. That module creates the MMKV-backed singleton, and only `app/_layout.tsx` imports it, so component tests can render against an in-memory store.
+- `useAppStore(selector)` subscribes narrowly. Rows select their own task (`findTask(s.tasks, id)`) and a boolean (`s.editingId === id`).
+- `useActions()` is for **actions only** inside event handlers. For current values inside a handler, use `useStoreBundle().store.getState()`.
+- Render functions must be pure: no `Date.now()`. Time-relative UI subscribes to `useMinute()`, a single timer aligned to each minute boundary.
 
 ## 7. Side effects
 

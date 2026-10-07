@@ -2,6 +2,23 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.3.0 (build 3)
+
+The real task list.
+
+- Tasks show as a nested tree. Top-level tasks with subtasks become group headers with a `[done/total]` count.
+- Tap any task to edit it in place.
+  - **Enter** adds the next task.
+  - Enter in the middle of a title splits it in two.
+  - Enter on an empty task moves it out one level.
+  - **Backspace** on an empty task deletes it.
+  - Backspace at the start of a title joins it with the task above.
+- The **quick-add bar** at the bottom adds tasks without leaving the keyboard.
+- **Paste** several lines to create several tasks at once. Indentation, `-`, `*` and `[x]` are understood.
+- Tap **▸ / ▾** to collapse or expand a group. Long-press it to collapse or expand all of its siblings.
+- Checking tasks off arrives in the next version (the checkbox doesn't respond yet).
+- Long-press the `> quest_log_` title to open the developer screen (test data, theme check).
+
 ## 0.2.0 (build 2)
 
 Tasks are now saved on the phone. There's still no task list: use the temporary STORE panel at the top of the screen.

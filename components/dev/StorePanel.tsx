@@ -1,22 +1,17 @@
 /**
- * components/dev/StorePanel.tsx: temporary store and persistence check
- * panel (Phase 3).
+ * components/dev/StorePanel.tsx: test-data tools on the dev screen.
  *
- * Layer: UI. Lets you verify on the phone, before the real list exists
- * (Phase 4), that:
- *   - tasks persist across killing and relaunching the app,
- *   - undo works,
- *   - the 7,500-task seed loads, and the app stays responsive with it.
- * It shows counts and the load status, plus a few buttons. Phase 4 removes
- * it, together with the theme check screen.
+ * Layer: UI. Shows counts and the load status, and can:
+ *   - load the 7,500-task seed for performance checks (PLAN §5),
+ *   - clear everything.
+ * Both replace the user's tasks, so each asks for confirmation first.
  */
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { generateSeed } from '@/scripts/seed';
-import { findTask } from '@/lib/taskMap';
 import { createEmptyState } from '@/lib/tree';
-import { appStore, selectors, useAppStore } from '@/store';
+import { useActions, useAppStore, useSelectors } from '@/store/react';
 import { colors, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** A terminal-style text button: `[ LABEL ]`. */
@@ -30,7 +25,16 @@ function Button({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
+/** Asks before an action that replaces all tasks. */
+function confirmReplace(what: string, run: () => void) {
+  Alert.alert(what, 'This replaces ALL your tasks and cannot be undone.', [
+    { text: 'CANCEL', style: 'cancel' },
+    { text: 'REPLACE', style: 'destructive', onPress: run },
+  ]);
+}
+
 export function StorePanel() {
+  const selectors = useSelectors();
   // Narrow subscriptions: the panel re-renders only when these change.
   const counts = useAppStore((s) => selectors.counts(s, Date.now()));
   const rows = useAppStore((s) => selectors.activeRows(s));
@@ -52,7 +56,7 @@ export function StorePanel() {
     setLastMs(performance.now() - t0);
   };
 
-  const s = appStore.getState();
+  const s = useActions();
   return (
     <View>
       <Text style={[styles.text, type.meta]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
@@ -66,27 +70,15 @@ export function StorePanel() {
       </Text>
 
       <View style={styles.buttons}>
-        <Button label="+ ADD TASK" onPress={() => timed(() => s.addTask(null, `task ${counts.active + 1}`))} />
         <Button label="UNDO" onPress={() => canUndo && timed(() => s.undo())} />
-        <Button label="LOAD SEED (7,500)" onPress={() => timed(() => s.replaceAll(generateSeed({ now: Date.now() })))} />
-        <Button label="CLEAR ALL" onPress={() => timed(() => s.replaceAll(createEmptyState()))} />
+        <Button
+          label="LOAD SEED (7,500)"
+          onPress={() => confirmReplace('Load 7,500 test tasks?', () => timed(() => s.replaceAll(generateSeed({ now: Date.now() }))))}
+        />
+        <Button label="CLEAR ALL" onPress={() => confirmReplace('Delete all tasks?', () => timed(() => s.replaceAll(createEmptyState())))} />
       </View>
 
-      {/* The first few active rows, so added tasks are visible. */}
-      {rows.slice(0, 5).map((r) => (
-        <RowLine key={r.id} id={r.id} depth={r.depth} />
-      ))}
     </View>
-  );
-}
-
-/** One row. It subscribes to its own task only, the pattern the real list uses (ARCHITECTURE.md §8). */
-function RowLine({ id, depth }: { id: string; depth: number }) {
-  const title = useAppStore((st) => findTask(st.tasks, id)?.title ?? '');
-  return (
-    <Text style={[styles.text, type.body]} numberOfLines={1} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-      {`${'  '.repeat(depth)}[ ] ${title}`}
-    </Text>
   );
 }
 

@@ -172,3 +172,55 @@ describe('selectors', () => {
     expect(makeSelectors().counts(store.getState(), NOW)).toEqual({ active: 1, completed: 1, doneToday: 1, overdue: 1 });
   });
 });
+
+describe('editing actions', () => {
+  it('finishEditing discards an empty task (undoably) and keeps non-empty ones', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, '');
+    s.setEditing(id);
+    s.finishEditing(id);
+    expect(store.getState().editingId).toBeNull();
+    expect(ids(store.getState().tasks)).toEqual([]);
+    s.undo(); // the discard is a normal history step
+    expect(ids(store.getState().tasks)).toEqual([id]);
+  });
+
+  it('finishEditing does not clear editing when focus already moved to another row', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    const b = s.addTask(null, 'b');
+    s.setEditing(b); // focus moved to b before a's blur arrived
+    s.finishEditing(a);
+    expect(store.getState().editingId).toBe(b);
+  });
+
+  it('quickAdd adds to the end of the current view, including when zoomed', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const g = s.addTask(null, 'group');
+    s.setZoom(g);
+    s.quickAdd('inside');
+    expect(store.getState().tasks.children[g]).toHaveLength(1);
+  });
+
+  it('long-press collapse applies to every sibling that has children', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    s.addTask(a, 'a1');
+    const b = s.addTask(null, 'b');
+    s.addTask(b, 'b1');
+    const leaf = s.addTask(null, 'leaf');
+    s.setSiblingsCollapsed(a, true);
+    const t = store.getState().tasks;
+    expect([tk(t, a)!.collapsed, tk(t, b)!.collapsed, tk(t, leaf)!.collapsed]).toEqual([true, true, false]);
+  });
+
+  it('setEditing records where the caret should go', () => {
+    const { store } = makeStore();
+    store.getState().setEditing('x', 3);
+    expect(store.getState().editingCaret).toBe(3);
+  });
+});

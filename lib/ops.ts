@@ -277,13 +277,17 @@ export function addTask(state: TasksState, task: Task, index?: number): Op {
     children: {},
   };
   if (task.parentId === null) return insert;
-  const expand: FieldChange[] = getTask(state, task.parentId).collapsed
-    ? [{ id: task.parentId, fields: { collapsed: false } }]
-    : [];
-  return {
-    type: 'batch',
-    ops: [insert, { type: 'update', changes: mergeChanges([...touchChanges(state, [task.parentId], task.createdAt), ...expand]) }],
-  };
+  return { type: 'batch', ops: [insert, { type: 'update', changes: receiveChildChanges(state, task.parentId, task.createdAt) }] };
+}
+
+/**
+ * Changes for a parent that just received new children: bubble updatedAt
+ * up its ancestor chain, and expand it if collapsed so the new children are
+ * visible. Shared by addTask and paste.
+ */
+export function receiveChildChanges(state: TasksState, parentId: ID, at: number): FieldChange[] {
+  const expand: FieldChange[] = getTask(state, parentId).collapsed ? [{ id: parentId, fields: { collapsed: false } }] : [];
+  return mergeChanges([...touchChanges(state, [parentId], at), ...expand]);
 }
 
 /** Edits fields on one task and bubbles updatedAt to its ancestors. */
