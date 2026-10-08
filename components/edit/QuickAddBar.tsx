@@ -3,7 +3,9 @@
  * bottom of the ACTIVE tab (PLAN §9.4).
  *
  * Layer: UI. Pinned above the keyboard by KeyboardStickyView.
- *   - Idle, it reads `> new task█`.
+ *   - Idle, it reads `> new task█`, with the shared blinking block cursor.
+ *   - It takes focus when asked (`quickAddFocus`: the app icon's "New
+ *     task" shortcut, and the first launch).
  *   - Enter adds the task at the end of the current view, then closes the
  *     keyboard (user request 2026-10-08). Enter on empty text closes it too.
  *   - Pasting several lines adds one task per line, nested by indent.
@@ -12,11 +14,12 @@
  *   - After `#Group`, new tasks go inside that group; an `IN: GROUP ✕`
  *     chip shows the target and clears it.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { BlockCursor } from '@/components/common/BlockCursor';
 import { ShorthandChips, useShorthand } from '@/components/edit/ParsedChips';
 import { TITLE_MAX } from '@/lib/paste';
 import { findTask } from '@/lib/taskMap';
@@ -27,6 +30,9 @@ interface Props {
   /** Reports the bar's height, so the list can leave room for it. */
   onHeight?: (height: number) => void;
 }
+
+/** The last `quickAddFocus` request acted on (module-wide: survives remounts). */
+let handledFocus = 0;
 
 export function QuickAddBar({ onHeight }: Props) {
   const actions = useActions();
@@ -48,6 +54,17 @@ export function QuickAddBar({ onHeight }: Props) {
   };
 
   const input = useRef<TextInput>(null);
+
+  // Focus when asked: each request once, even if it came in before this bar was
+  // on screen (the bar remounts after editing, which must not re-focus it).
+  const focusRequest = useAppStore((s) => s.quickAddFocus);
+  useEffect(() => {
+    if (focusRequest === handledFocus) return;
+    handledFocus = focusRequest;
+    // After this frame's layout, so the keyboard opens under a placed bar.
+    const t = setTimeout(() => input.current?.focus(), 0);
+    return () => clearTimeout(t);
+  }, [focusRequest]);
 
   const submit = () => {
     const title = text.trim();
@@ -92,27 +109,40 @@ export function QuickAddBar({ onHeight }: Props) {
           <Text style={[type.glyph, styles.prompt]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             {glyphs.prompt.glyph}
           </Text>
-          <TextInput
-            ref={input}
-            value={text}
-            onChangeText={onChangeText}
-            onSubmitEditing={submit}
-            onFocus={() => {
-              setFocused(true);
-              actions.setEditing(null); // only one editor at a time (PLAN §6.5)
-            }}
-            onBlur={() => setFocused(false)}
-            placeholder={`new task${glyphs.cursor.glyph}`}
-            placeholderTextColor={colors.textDim}
-            multiline
-            submitBehavior="submit"
-            maxLength={TITLE_MAX}
-            cursorColor={colors.accent}
-            selectionColor={colors.accent}
-            maxFontSizeMultiplier={maxFontSizeMultiplier}
-            style={[type.body, styles.input]}
-            accessibilityLabel="New task"
-          />
+          <View style={styles.inputWrap}>
+            {/* Idle: "new task█" with a blinking cursor (a placeholder can't blink). */}
+            {!focused && text === '' && (
+              <Text
+                style={[type.body, styles.idle]}
+                pointerEvents="none"
+                accessibilityElementsHidden
+                importantForAccessibility="no-hide-descendants"
+                maxFontSizeMultiplier={maxFontSizeMultiplier}
+              >
+                new task
+                <BlockCursor color={colors.textDim} />
+              </Text>
+            )}
+            <TextInput
+              ref={input}
+              value={text}
+              onChangeText={onChangeText}
+              onSubmitEditing={submit}
+              onFocus={() => {
+                setFocused(true);
+                actions.setEditing(null); // only one editor at a time (PLAN §6.5)
+              }}
+              onBlur={() => setFocused(false)}
+              multiline
+              submitBehavior="submit"
+              maxLength={TITLE_MAX}
+              cursorColor={colors.accent}
+              selectionColor={colors.accent}
+              maxFontSizeMultiplier={maxFontSizeMultiplier}
+              style={[type.body, styles.input]}
+              accessibilityLabel="New task"
+            />
+          </View>
         </View>
       </View>
     </KeyboardStickyView>
@@ -138,5 +168,8 @@ const styles = StyleSheet.create({
   target: { color: colors.accent, flexShrink: 1, ...platformText },
   targetClear: { color: colors.text, paddingHorizontal: space.sm, ...platformText },
   prompt: { color: colors.accent, marginRight: space.sm, ...platformText },
-  input: { flex: 1, color: colors.text, padding: 0, ...platformText },
+  inputWrap: { flex: 1, justifyContent: 'center' },
+  input: { color: colors.text, padding: 0, ...platformText },
+  // Exactly where the input's text starts; touches pass through to the input.
+  idle: { position: 'absolute', left: 0, color: colors.textDim, ...platformText },
 });

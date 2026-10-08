@@ -47,20 +47,20 @@ Status markers:
 
 | Path | Purpose | Does **not** contain |
 |---|---|---|
-| `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list, back-button handling), `help.tsx` (collapsible user guide; update it with every new gesture or shorthand), `trash.tsx`, `task/[id].tsx` (deep link), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
-| `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides`, `drag` (controller, row gesture, overlay), `keepInView`, `titleStyle`, `HighlightFlash` *(built)* | Store mutations beyond calling actions |
+| `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list, back-button handling), `help.tsx` (collapsible user guide; update it with every new gesture or shorthand), `whats-new.tsx` (changelog after an update), `trash.tsx`, `task/[id].tsx` (deep link), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
+| `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides`, `drag` (controller, row gesture, overlay), `keepInView`, `titleStyle`, `HighlightFlash`, `Caret` (rotating ▸), `FocusGlow` *(built)* | Store mutations beyond calling actions |
 | `components/edit/` | `InlineEditor` (+ `useEditorFocus`), `NotesField` (editor and linkified view), `ParsedChips` (shorthand preview and clearable field chips), `QuickAddBar`, `EditToolbar` (OUT/IN/SUB/PRI/NOTE/UNDO/DONE) *(built)* | Parsing and key rules (those are `lib/`) |
-| `components/overlays/` | `ActionSheet` (scrolls when long), `ContextMenu`, `DueSheet` (single task or selection), `RepeatSheet`, `MovePicker`, `Toast` *(built)*; boot sequence *(planned)* | |
-| `components/common/` | `Header`, `Tabs`, `SearchBar` (+ filter chips), `Breadcrumb`, `useMinute` *(built)*; block cursor *(planned)* | |
+| `components/overlays/` | `ActionSheet` (scrolls when long), `ContextMenu`, `DueSheet` (single task or selection), `RepeatSheet`, `MovePicker`, `Toast` *(built)* | |
+| `components/common/` | `Header`, `Tabs`, `SearchBar` (+ filter chips), `Breadcrumb`, `useMinute`, `motion` (Reduce Motion: `MotionConfig`, `useReduceMotion`), `BlockCursor` (one shared blink value), `BootSequence` (`BootGate`, `useBooting`), `useOnboarding` (tips, What's new, first-launch focus) *(built)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
-| `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many))* | Anything impure |
-| `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes). Planned: widget, backup)* | UI |
+| `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`), `onboarding` (first-run tips, last build seen) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many), `sample` (example tasks), `changelog` (CHANGELOG.md → What's new))* | Anything impure |
+| `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes); `quickActions` (app icon "New task"); `appInfo` (version, build). Planned: widget, backup)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
-| `scripts/` | Dev tooling: font subset, icon generation, `seed.ts` (7,500-task perf data), release *(built: fonts, icon, seed)* | App code |
-| `assets/` | Subset fonts, placeholder icons *(built)* | |
+| `scripts/` | Dev tooling: font subset, icon generation, `seed.ts` (7,500-task perf data), `gen-changelog.mjs` (CHANGELOG.md → `assets/changelog.json`; a test fails when stale), release *(built: fonts, icon, seed, changelog)* | App code |
+| `assets/` | Subset fonts, placeholder icons, `changelog.json` (generated) *(built)* | |
 | `__tests__/` | Jest tests, plus `fixtures/` with saved beta data for migration tests *(built: theme, config)* | |
 | `e2e/android/` | Maestro flows *(planned, Phase 14)* | |
 | `android/`, `ios/` | **Generated** by `expo prebuild`. Never edited, never committed. | Anything hand-written |
@@ -134,7 +134,10 @@ One code path (`lib/ops.ts`) handles every mutation, wherever it came from.
 4c. Daily snapshot, deferred about 3 s after launch         (built)
 5. Drain ops.pending                                       (built: services/reminderLifecycle.ts)
 6. Reconcile notifications (async)                         (built; also on foreground and after changes)
-7. Boot sequence overlay, in parallel with readiness       (planned, Phase 11)
+7. Boot sequence overlay, in parallel with readiness       (built: BootGate; cold start only, skippable,
+                                                            skipped with Reduce Motion or the setting)
+8. After the boot screen: What's new (after an update) or   (built: useOnboarding)
+   quick-add focus (fresh install); first-run tips
 ```
 
 ---
@@ -173,6 +176,7 @@ apply(state, op) → { state: nextState, inverse: Op, structural: boolean }
 | `snapshot.premigration.v<N>` | Exact data before a migration ran |
 | `corrupt.<time>` | Raw bytes of anything that failed to load (never overwritten) |
 | `settings.v1` | User settings |
+| `onboarding.v1` | First-run tips seen, last build whose What's new was shown |
 | `ui.v1` | Collapsed/zoom state, last tab |
 | `ops.pending` | External ops queue |
 | `widget.snapshot` | Compact widget data |
@@ -246,7 +250,7 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 1. **Rows subscribe to their own task only** (`useStore(s => s.byId[id])`), never to the whole list.
 2. **At most one `TextInput` is mounted.** Every other row is a plain `Text`.
 3. **FlashList** with `getItemType` by row kind (group header, task, completed), and stable keys (task IDs).
-4. **Animations run on the UI thread** via Reanimated worklets. Never animate with `setState`.
+4. **Animations run on the UI thread** via Reanimated worklets. Never animate with `setState`. Reduce Motion is applied globally by `<MotionConfig/>` (Reanimated's `ReducedMotionConfig`), so animations need no per-call checks; only multi-step effects (boot screen, blinking cursor) read `useReduceMotion()`.
 5. **Measure with the seed data** (`scripts/seed.ts`: 1,000 active plus 5,000 completed) in a **release** build. `__tests__/perf.test.ts` runs desktop smoke limits on every `npm test`.
 6. If a change would break a budget, **stop and flag it**. Don't work around it silently.
 

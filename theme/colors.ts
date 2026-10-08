@@ -62,3 +62,14 @@ export const focusGlow = {
   shadowRadius: 6,
   shadowOffset: { width: 0, height: 0 },
 } as const;
+
+/**
+ * The same glow as CSS box-shadows, which Android draws too (the shadow*
+ * props above are iOS-only). `inset` glows inside a list row, where the
+ * neighboring rows can't cover it; `outset` is for floating views such as
+ * the lifted drag row. rgba(57, 255, 20) is `accent`.
+ */
+export const glowShadow = {
+  inset: 'inset 0 0 6px 0 rgba(57, 255, 20, 0.35)',
+  outset: '0 0 6px 0 rgba(57, 255, 20, 0.35)',
+} as const;

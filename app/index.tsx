@@ -27,6 +27,7 @@ import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { Header } from '@/components/common/Header';
 import { SearchBar } from '@/components/common/SearchBar';
 import { Tabs } from '@/components/common/Tabs';
+import { useOnboarding } from '@/components/common/useOnboarding';
 import { EditToolbar } from '@/components/edit/EditToolbar';
 import { QuickAddBar } from '@/components/edit/QuickAddBar';
 import { SelectionBar } from '@/components/edit/SelectionBar';
@@ -49,6 +50,8 @@ export default function ListScreen() {
   const searchOpen = useAppStore((s) => s.search[s.ui.tab].open);
   const zoomed = useAppStore((s) => s.ui.zoomRootId !== null);
   const { store } = useStoreBundle();
+  // First-run tips, What's new after an update, first-launch focus.
+  useOnboarding();
 
   // Mount COMPLETED lazily, then keep it (its scroll position survives tab switches).
   const [completedMounted, setCompletedMounted] = useState(tab === 'completed');

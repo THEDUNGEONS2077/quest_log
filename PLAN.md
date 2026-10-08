@@ -366,6 +366,8 @@ Only one effect is allowed: a **soft focus glow**. This is a 0–6 px green-brig
 
 ### 8.2 Typography (JetBrains Mono)
 
+> **Change (2026-10-08, later):** the ▸ caret is 31 pt (another +20%) in its own 36 pt column, with an 8 pt gap before the checkbox. It rotates 90° to open instead of switching to ▾.
+
 > **Change (2026-10-08):** *every* main (top-level) task uses the caps title style (14/20 uppercase bold, bright), with or without subtasks. Subtask titles are 15/22 (between groups and top-level tasks), on ACTIVE and COMPLETED alike (`components/list/titleStyle.ts`). Group titles are 20% smaller than body (14/20, uppercase bold). Row details (priority, notes, due, repeat, progress) sit on a line *under* the title instead of beside it, so titles keep the full width.
 
 > **Change (2026-10-07):** one size step larger for readability, after the device test: display 22/30, tab 14/20, group 17/24, body 17/24, meta 13/18, notes 15/22. Indent goes from 20 to 24 pt, and the minimum row height from 48 to 52 pt.
@@ -737,6 +739,11 @@ Checking a parent always completes its subtasks, parents always auto-complete, a
 
 ### 9.19 Empty states, first run, and beta niceties
 
+> **As built (Phase 11, 2026-10-08):**
+> - The tips match the gestures as they now work: "Tap a task to edit it" · "Enter saves · Backspace on an empty task deletes it" · "Hold a task to drag it · keep still for more" · "Swipe right to complete · left to delete". Each waits for its moment (for example, the Enter tip shows while editing), and a tip never replaces another toast.
+> - What's new is generated from `CHANGELOG.md` into `assets/changelog.json` (the latest 6 versions). It lists every version since the last build seen, which is stored in `onboarding.v1`. A fresh install skips it and focuses the quick-add bar instead. Help links to it too.
+> - The empty state also covers search ("NO MATCHES") and empty zoomed groups.
+
 - **Empty states:**
   - **ACTIVE:** `> NO ACTIVE QUESTS. TYPE BELOW TO BEGIN█`, with the quick-add bar focused on first launch.
   - **COMPLETED:** `> NOTHING COMPLETED YET.`
@@ -770,6 +777,7 @@ Checking a parent always completes its subtasks, parents always auto-complete, a
 
 | # | Animation | Spec |
 |---|---|---|
+| — | *As built (Phase 11)* | Reduce Motion is applied globally through Reanimated's `ReducedMotionConfig` (setting: system / on / off). The focus glow is an inset `boxShadow`, so neighboring rows can't cover it. 10.6 (row insert/delete height animation) is **not** built: FlashList recycling makes per-row layout animations unreliable, and rows appear instantly instead. The boot screen is also skipped when the app icon's "New task" shortcut opens the app. |
 | 10.1 | **Boot sequence** | Lines type at about 8 ms per character (≤ 1.2 s total) **in parallel** with app readiness: `> quest_log v1.0` · `> MOUNTING /quests ...... OK` · `> 12 ACTIVE · 1 OVERDUE` · `> READY█`. It shows on cold start only, is skippable by tap, never shows with Reduce Motion, and exits with a 160 ms fade. |
 | 10.2 | **Cursor blink** | A block `█` in `accent` at a 530 ms interval, using one shared Reanimated value for every block cursor. |
 | 10.3 | **Strikethrough** | 200 ms draw with a color fade in parallel. |

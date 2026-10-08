@@ -2,6 +2,24 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.10.0 (build 16)
+
+Polish: the finishing touches.
+
+- **The ▸ caret is bigger** (another 20%) with more room before the checkbox, and it **turns** smoothly to open or close a group.
+- **Boot screen:** a short terminal start-up on launch. Tap to skip it. It doesn't show when animations are reduced.
+- **Blinking block cursor** `█` on the empty list and in the idle new-task bar.
+- **A soft green glow** around the task you're editing.
+- **Empty list:** a **LOAD EXAMPLE TASKS** button adds a few tasks to try things out (UNDO removes them). Search and empty groups get their own messages.
+- **Tips:** short one-time hints at the bottom while you learn the app.
+- **What's new:** after each update, this page shows what changed. Open it any time from the end of the `?` guide.
+- **App icon shortcut:** hold the quest_log icon and choose **New task** to open straight into typing.
+- **Accessibility:**
+  - TalkBack reads repeat rules on tasks and offers **Move to…** in each task's actions.
+  - The COMPLETED tab's buttons are now labeled.
+  - Pop-up sheets read their contents properly.
+- **Reduce motion** now applies to every animation.
+
 ## 0.9.0 (build 15)
 
 Finding, focusing and organizing.

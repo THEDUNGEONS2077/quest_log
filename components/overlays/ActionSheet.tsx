@@ -46,7 +46,9 @@ export function ActionSheet({ visible, title, actions, onClose, children }: Prop
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       {/* Backdrop: tap outside the sheet to close. */}
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close menu">
+      {/* The backdrop isn't a screen-reader element (it would swallow the sheet's text);
+          Android back closes the sheet instead. */}
+      <Pressable style={styles.backdrop} onPress={onClose} accessible={false}>
         <Pressable
           style={[styles.sheet, { paddingBottom: insets.bottom + space.sm, maxHeight: height * MAX_HEIGHT_SHARE }]}
           onPress={() => {}}

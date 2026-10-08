@@ -17,11 +17,13 @@
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useRef } from 'react';
-import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { BlockCursor } from '@/components/common/BlockCursor';
 
 import type { Row } from '@/lib/flatten';
-import { useAppStore, useSelectors, useStoreBundle } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, size, space, type } from '@/theme';
+import { useActions, useAppStore, useSelectors, useStoreBundle } from '@/store/react';
+import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { DragOverlay, DragProvider, useDragController } from './drag';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
@@ -129,13 +131,41 @@ export function TaskList({ bottomInset }: Props) {
   );
 }
 
-/** Shown when there are no active tasks (PLAN §9.19). */
+/**
+ * Shown when the ACTIVE list has no rows (PLAN §9.19): the terminal prompt
+ * with a blinking cursor and, when there are no tasks at all, a button that
+ * loads a small example tree. Searching and zooming get their own wording.
+ */
 function EmptyState() {
+  const actions = useActions();
+  const searching = useAppStore((s) => s.search.active.open && (s.search.active.query.trim() !== '' || s.search.active.filter !== 'all'));
+  const zoomed = useAppStore((s) => s.ui.zoomRootId !== null);
+  if (searching || zoomed) {
+    return (
+      <View style={styles.empty}>
+        <Text style={[type.body, styles.emptyText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          {searching ? `${glyphs.prompt.glyph} NO MATCHES.` : `${glyphs.prompt.glyph} EMPTY GROUP. TYPE BELOW TO ADD`}
+        </Text>
+      </View>
+    );
+  }
   return (
     <View style={styles.empty}>
       <Text style={[type.body, styles.emptyText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} NO ACTIVE QUESTS. TYPE BELOW TO BEGIN${glyphs.cursor.glyph}`}
+        {`${glyphs.prompt.glyph} NO ACTIVE QUESTS. TYPE BELOW TO BEGIN`}
+        <BlockCursor />
       </Text>
+      <Pressable
+        onPress={actions.loadExampleTasks}
+        style={({ pressed }) => [styles.example, pressed && styles.examplePressed]}
+        accessibilityRole="button"
+        accessibilityLabel="Load example tasks"
+        accessibilityHint="Adds a few tasks that show how the app works. You can undo it."
+      >
+        <Text style={[type.tab, styles.exampleText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          [ LOAD EXAMPLE TASKS ]
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -144,4 +174,16 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   empty: { paddingHorizontal: space.lg, paddingTop: space.xl },
   emptyText: { color: colors.textDim, ...platformText },
+  example: {
+    alignSelf: 'flex-start',
+    marginTop: space.xl,
+    minHeight: size.hitTarget,
+    paddingHorizontal: space.lg,
+    justifyContent: 'center',
+    borderWidth: shape.hairline,
+    borderColor: colors.line,
+    borderRadius: shape.radius,
+  },
+  examplePressed: { backgroundColor: colors.surface },
+  exampleText: { color: colors.accent, ...platformText },
 });

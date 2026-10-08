@@ -15,6 +15,7 @@
     "expo-haptics": "~57.0.3",
     "expo-linking": "~57.0.12",
     "expo-notifications": "~57.0.22",
+    "expo-quick-actions": "^6.0.2",
     "expo-router": "~57.0.25",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
@@ -47,7 +48,8 @@
   "scripts": {
     "start": "APP_VARIANT=dev expo start --dev-client",
     "android:dev": "APP_VARIANT=dev expo run:android --device",
-    "android:release": "APP_VARIANT=release expo prebuild --clean --platform android && cd android && ./gradlew assembleRelease; s=$?; ./gradlew --stop >/dev/null; exit $s",
+    "changelog": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gen-changelog.mjs",
+    "android:release": "npm run changelog && APP_VARIANT=release expo prebuild --clean --platform android && cd android && ./gradlew assembleRelease; s=$?; ./gradlew --stop >/dev/null; exit $s",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest --maxWorkers=50% --testPathIgnorePatterns /node_modules/ /android/ /ios/ /__tests__/fixtures/ perf.test && npm run test:perf",

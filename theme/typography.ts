@@ -59,10 +59,11 @@ export const type = {
   glyph: { fontFamily: fonts.regular, fontSize: 20, lineHeight: 24 },
   /**
    * The ▸ / ▾ collapse caret (user requests 2026-10-08): +15% on top of
-   * `glyph` (20 → 23), then +15% again (23 → 26). Its line height matches
-   * its size, so the glyph isn't clipped.
+   * `glyph` (20 → 23), +15% (→ 26), then +20% (→ 31). Its line height
+   * matches its size, so the glyph isn't clipped; rows absorb the extra
+   * height with a negative margin (see `caretFit` in theme/spacing.ts).
    */
-  caretGlyph: { fontFamily: fonts.regular, fontSize: 26, lineHeight: 26 },
+  caretGlyph: { fontFamily: fonts.regular, fontSize: 31, lineHeight: 31 },
   /** Icon glyphs next to meta text (≡ ◔ ↻ !): 20% larger than meta (13 → 16), same line height. */
   metaGlyph: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 18 },
 } as const satisfies Record<string, Role>;

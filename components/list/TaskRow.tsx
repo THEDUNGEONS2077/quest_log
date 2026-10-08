@@ -28,6 +28,7 @@ import { TaskChips } from '@/components/edit/ParsedChips';
 import { ContextMenu } from '@/components/overlays/ContextMenu';
 import { formatDue, isOverdue } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
+import { repeatLabel } from '@/lib/recurrence';
 import { matchRange, type FoundRow } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
 import { isInSubtree } from '@/lib/tree';
@@ -37,6 +38,8 @@ import { ADVANCE_MS, LINGER_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
 
+import { Caret } from './Caret';
+import { FocusGlow } from './FocusGlow';
 import { NestingGuides } from './NestingGuides';
 import { StrikeText } from './StrikeText';
 import { titleStyles, titleVariant } from './titleStyle';
@@ -114,6 +117,7 @@ export const TaskRow = memo(
         menu: () => actions.openMenu(task.id),
         moveUp: () => actions.moveTaskBy(task.id, -1),
         moveDown: () => actions.moveTaskBy(task.id, 1),
+        moveTo: () => actions.openMovePicker([task.id]),
         addSubtask: () => actions.addSubtask(task.id),
         indent: () => actions.indentTask(task.id),
         outdent: () => actions.outdentTask(task.id),
@@ -153,6 +157,8 @@ export const TaskRow = memo(
             accessibilityActions={ROW_ACTIONS}
             onAccessibilityAction={onAccessibilityAction}
           >
+            {/* The soft green glow on the row being edited (PLAN §10.9). */}
+            {editing && <FocusGlow />}
             {/* Flashes when the task is opened from a notification or link. */}
             <HighlightFlash rowId={row.id} />
             <NestingGuides levels={visualDepth} />
@@ -168,11 +174,7 @@ export const TaskRow = memo(
               accessibilityLabel={`${task.collapsed ? 'Expand' : 'Collapse'} ${task.title || 'task'}`}
               accessibilityElementsHidden={!row.hasChildren}
             >
-              {row.hasChildren && (
-                <Text style={[type.caretGlyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                  {task.collapsed ? glyphs.collapsed.glyph : glyphs.expanded.glyph}
-                </Text>
-              )}
+              {row.hasChildren && <Caret id={task.id} open={!task.collapsed} childCount={row.progress.total} style={styles.glyph} />}
             </Pressable>
 
             {/* Checkbox: a full 44 pt target. */}
@@ -269,6 +271,7 @@ const ROW_ACTIONS = [
   { name: 'outdent', label: 'Outdent' },
   { name: 'moveUp', label: 'Move up' },
   { name: 'moveDown', label: 'Move down' },
+  { name: 'moveTo', label: 'Move to…' },
   { name: 'priority', label: 'Change priority' },
   { name: 'due', label: 'Set due date' },
   { name: 'notes', label: 'Show or hide notes' },
@@ -277,7 +280,7 @@ const ROW_ACTIONS = [
   { name: 'delete', label: 'Delete' },
 ];
 
-/** What a screen reader announces for a row, e.g. "Ship v2 build, high priority, not done, 2 of 5 subtasks done". */
+/** What a screen reader announces for a row, e.g. "Ship v2 build, high priority, repeats weekly, not done, 2 of 5 subtasks done". */
 function rowLabel(task: Task, row: Row, now: number): string {
   const parts = [task.title || 'Untitled task'];
   if (row.depth === 0 && row.hasChildren) parts.push('group');
@@ -285,6 +288,7 @@ function rowLabel(task: Task, row: Row, now: number): string {
   if (task.dueAt !== null) {
     parts.push(`due ${formatDue(task.dueAt, now).toLowerCase()}${isOverdue(task.dueAt, task.done, now) ? ', overdue' : ''}`);
   }
+  if (task.repeat) parts.push(`repeats ${repeatLabel(task.repeat).toLowerCase()}`);
   if (task.notify && task.dueAt !== null) parts.push('reminder on');
   parts.push(task.done ? 'done' : 'not done');
   if (row.hasChildren) parts.push(`${row.progress.done} of ${row.progress.total} subtasks done`);
@@ -379,7 +383,14 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: colors.surfaceRaised, borderLeftWidth: shape.dropIndicator, borderLeftColor: colors.accent },
   topLevel: { borderTopWidth: shape.hairline, borderTopColor: colors.line, marginTop: space.sm },
   editing: { backgroundColor: colors.surface },
-  caret: { width: size.indent, alignItems: 'center' },
+  // The caret's own column, plus a gap before the checkbox. The 31 pt glyph is taller
+  // than a body line, so a negative margin keeps the row height unchanged.
+  caret: {
+    width: size.caretColumn,
+    marginRight: size.caretGap,
+    alignItems: 'center',
+    marginVertical: (type.body.lineHeight - type.caretGlyph.lineHeight) / 2,
+  },
   glyph: { color: colors.text, ...platformText },
   checkbox: { marginRight: space.md, marginLeft: space.xs },
   // Tighter brackets: `[ ]` reads as one compact box.

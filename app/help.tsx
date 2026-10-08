@@ -46,6 +46,7 @@ const SECTIONS: Section[] = [
       { key: '2. Finish', what: `Tap the ${g.checkboxOff.glyph} box (or swipe the task right) when it's done.` },
       { key: '3. Change', what: 'Tap any task title to edit it. Press Done on the keyboard to save.' },
       { key: 'Oops?', what: 'Most actions show a message with UNDO for 5 seconds.' },
+      { key: 'Try it out', what: 'On an empty list, LOAD EXAMPLE TASKS adds a few tasks to play with. UNDO removes them again.' },
     ],
   },
   {
@@ -56,6 +57,7 @@ const SECTIONS: Section[] = [
         key: `${g.prompt.glyph} new task`,
         what: 'The bar at the bottom of ACTIVE QUESTS. Type, press Enter. The keyboard closes after each task.',
       },
+      { key: 'App icon', what: 'Hold the quest_log icon on your home screen and choose New task: the app opens ready to type.' },
       { key: `${g.add.glyph} next to a group`, what: 'Adds a subtask inside that group and opens it for typing.' },
       { key: `${g.add.glyph} SUB`, what: 'While editing a task: adds a subtask under it.' },
       {
@@ -200,12 +202,21 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    title: 'TIPS & UPDATES',
+    intro: 'A few small extras that help you find your way.',
+    lines: [
+      { key: 'Boot screen', what: 'The short start-up text when the app opens. Tap to skip it. It never shows with reduced motion.' },
+      { key: 'TIP: …', what: 'One-time hints at the bottom of the screen while you learn the app. Each shows only once.' },
+      { key: "WHAT'S NEW", what: 'After an update, a page lists what changed. Open it again with the button at the end of this guide.' },
+    ],
+  },
+  {
     title: 'ACCESSIBILITY',
     intro: 'Everything works without gestures, and text follows your phone’s size setting.',
     lines: [
       {
         key: 'TalkBack',
-        what: 'Each task’s actions menu has complete, edit, add subtask, indent, outdent, move up/down, priority, due date, notes, collapse, delete.',
+        what: 'Each task’s actions menu has complete, edit, add subtask, indent, outdent, move up/down, move to, priority, due date, notes, collapse, delete.',
       },
       { key: 'Text size', what: 'Follows Android’s font size (up to 1.6×).' },
       { key: 'Reduce motion', what: 'When Android’s “Remove animations” is on, animations are skipped.' },
@@ -290,6 +301,17 @@ export default function HelpScreen() {
             </View>
           );
         })}
+        {/* What's new: every bundled version's changes. */}
+        <Pressable
+          onPress={() => router.push('/whats-new')}
+          style={({ pressed }) => [styles.whatsNew, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel="What's new"
+        >
+          <Text style={[type.tab, styles.accent]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            [ WHAT&apos;S NEW ]
+          </Text>
+        </Pressable>
         <Text style={[type.meta, styles.version]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
           {`quest_log ${versionLabel()} · offline, no accounts, no tracking`}
         </Text>
@@ -331,4 +353,13 @@ const styles = StyleSheet.create({
   bright: { color: colors.textBright, ...platformText },
   text: { color: colors.text, marginTop: space.xs, ...platformText },
   version: { color: colors.textDim, marginTop: space.xl, ...platformText },
+  whatsNew: {
+    marginTop: space.xl,
+    minHeight: size.hitTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: shape.hairline,
+    borderColor: colors.line,
+    borderRadius: shape.radius,
+  },
 });

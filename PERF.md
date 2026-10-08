@@ -14,7 +14,7 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 | Persist write, 1,000 tasks | < 8 ms | | | |
 | Tab switch | < 50 ms | | | |
 | Widget refresh after change | < 2 s | | | |
-| JS bundle (Hermes) | < 3.5 MB (was 2.5) | | | |
+| JS bundle (Hermes) | < 4.0 MB (was 2.5, then 3.5) | | | |
 | Release APK (arm64) | < 25 MB | | | |
 | Installed size | < 40 MB | | | |
 | Memory, 1,000 tasks | < 150 MB | | | |
@@ -34,3 +34,8 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 ### v0.6.0 (build 8), 2026-10-08: reminders
 - Release APK 19.2 MB (budget 25). JS bundle 3.40 MB (budget 3.5): expo-notifications, task-manager and the date picker added about 0.12 MB. Phases 8–13 will cross 3.5 MB; per the user's OK, the budget will be raised then, with the reason recorded.
 - Release permissions: POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, SCHEDULE_EXACT_ALARM, USE_EXACT_ALARM, VIBRATE, WAKE_LOCK. Blocked: INTERNET, the Firebase push permissions, the install referrer, and 16 launcher badge permissions.
+
+### v0.10.0 (build 16), 2026-10-08: polish (Phase 11)
+- Release APK 20.3 MB (budget 25). JS bundle 3,668,908 bytes = **3.50 MiB**, right at the 3.5 budget. Phase 11 added about 30 KB: the boot screen, block cursor, glow, caret, onboarding, the What's new screen, its changelog data (about 6 KB, capped at the latest 6 versions) and the expo-quick-actions JS.
+- **Budget raised to 4.0 MB**, with the user's standing OK. Why: Phase 12 (Android widget) and Phase 13 (settings, backup and import) add whole screens and native-module JS. The bundle is still mostly React Native, Expo Router and Reanimated. App code stays lean: every new module is used on device and there's no dead weight to cut.
+- Permissions unchanged (7, no INTERNET); expo-quick-actions adds none.

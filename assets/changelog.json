@@ -1,0 +1,93 @@
+[
+  {
+    "version": "0.10.0",
+    "build": 16,
+    "lines": [
+      "Polish: the finishing touches.",
+      "- **The ▸ caret is bigger** (another 20%) with more room before the checkbox, and it **turns** smoothly to open or close a group.",
+      "- **Boot screen:** a short terminal start-up on launch. Tap to skip it. It doesn't show when animations are reduced.",
+      "- **Blinking block cursor** `█` on the empty list and in the idle new-task bar.",
+      "- **A soft green glow** around the task you're editing.",
+      "- **Empty list:** a **LOAD EXAMPLE TASKS** button adds a few tasks to try things out (UNDO removes them). Search and empty groups get their own messages.",
+      "- **Tips:** short one-time hints at the bottom while you learn the app.",
+      "- **What's new:** after each update, this page shows what changed. Open it any time from the end of the `?` guide.",
+      "- **App icon shortcut:** hold the quest_log icon and choose **New task** to open straight into typing.",
+      "- **Accessibility:**",
+      "  - TalkBack reads repeat rules on tasks and offers **Move to…** in each task's actions.",
+      "  - The COMPLETED tab's buttons are now labeled.",
+      "  - Pop-up sheets read their contents properly.",
+      "- **Reduce motion** now applies to every animation."
+    ]
+  },
+  {
+    "version": "0.9.0",
+    "build": 15,
+    "lines": [
+      "Finding, focusing and organizing.",
+      "- **All main tasks are in caps,** like group titles, whether or not they have subtasks.",
+      "- **A rewritten user guide** (`?`): plain-language sections that open with a tap, starting with **START HERE**.",
+      "- **Search** (`/` at the top right) searches titles and notes on the tab you're on. Capitals and accents don't matter. Results show the groups they're in, dimmed, and the matched text is highlighted.",
+      "- **Filters** (with search on ACTIVE): **!!!** high priority · **DUE** · **OVERDUE** · **↻** repeating.",
+      "- **Zoom into a group** (hold → Zoom into) to see only that group. The path at the top (`← ALL / WORK / …`) takes you back up, and so does the back button.",
+      "- **Select several tasks** (hold → Select, then tap more). The bar at the bottom offers **DONE · PRI · DUE · MOVE · GROUP · DEL**.",
+      "- **Move to…** (hold menu) sends a task to any group from a searchable list.",
+      "- **Sort subtasks…** (hold menu) orders a group by priority, due date or A–Z, once.",
+      "- **Trash** (on the COMPLETED tab): deleted tasks are kept for 7 days. Restore them to where they were, or delete them for good.",
+      "- **Back button** steps out of selection, then search, then zoom, before leaving the app."
+    ]
+  },
+  {
+    "version": "0.8.0",
+    "build": 14,
+    "lines": [
+      "Drag-and-drop.",
+      "- **Hold a task for a moment, then drag** to move it:",
+      "  - **Up or down** reorders it.",
+      "  - **Sideways** nests it under the task above (drag right) or moves it out a level (drag left).",
+      "  - A green line shows exactly where, and how deep, it will land.",
+      "- Subtasks always travel with their task. The lifted row shows how many (`+3`).",
+      "- **The list scrolls by itself** when you drag near the top or bottom.",
+      "- **Hovering over a closed group** for a moment opens it, so you can drop inside.",
+      "- You feel a tick when you lift a task and each time the landing spot changes. Every move can be undone (**MOVED · UNDO**).",
+      "- **Holding still without dragging** still opens the task menu.",
+      "- **TalkBack:** new **Move up** and **Move down** actions."
+    ]
+  },
+  {
+    "version": "0.7.2",
+    "build": 13,
+    "lines": [
+      "- **Subtasks are a size smaller** (15 pt), between group titles and main tasks, so the tree reads clearly.",
+      "- **The COMPLETED tab matches:** the same title sizes, group-style titles for completed groups, and details (↻, last changed) under the title.",
+      "- **Fixed: shorthand when editing a saved task.**",
+      "  - Typing only shorthand (like `!!`) into a task no longer deletes it. The title stays and the priority is set.",
+      "  - Words already in a saved title (like an escaped `@fri`) stay as text when you edit the title later. Only newly typed shorthand is applied.",
+      "  - The chips shown while typing now match exactly what gets applied."
+    ]
+  },
+  {
+    "version": "0.7.1",
+    "build": 12,
+    "lines": [
+      "- **Titles keep their full width.** A task's details (priority, notes ≡, due date and time, ↻ repeat, `[done/total]`) now sit on their own line under the title, instead of squeezing it into a broken-up wrap.",
+      "- **Group titles are 20% smaller.** They're still uppercase and bright, so they stand out without shouting."
+    ]
+  },
+  {
+    "version": "0.7.0",
+    "build": 11,
+    "lines": [
+      "Repeating tasks.",
+      "- **Make any task repeat:** use **↻ REPEAT…** in the date sheet or the long-press menu.",
+      "  - Choose daily, weekdays, weekly (pick the days), monthly, yearly, or every N days, weeks, months or years.",
+      "  - Choose whether the next date counts **from the schedule** or **after you finish**.",
+      "- **Shorthand:** `*daily` `*weekdays` `*weekly` `*monthly` `*yearly` `*mon,thu` `*every 2w`. For example: `standup *weekdays @9am`.",
+      "- **When you check off a repeating task,** the line draws through it and then it springs back with its **next date**. A message shows when the next one is due.",
+      "  - Its subtasks reset, so a repeating group works as a reusable checklist.",
+      "  - A completed copy is kept on the **COMPLETED** tab, marked **↻**.",
+      "- **Overdue repeating tasks skip ahead** to the next future date. No pile-up of missed ones.",
+      "- **Monthly on the 31st** falls on the last day of shorter months, then returns to the 31st.",
+      "- DONE and SNOOZE on a repeating task's notification work as expected. Snoozing doesn't shift future reminders."
+    ]
+  }
+]

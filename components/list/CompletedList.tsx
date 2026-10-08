@@ -33,6 +33,8 @@ import { InlineEditor } from '@/components/edit/InlineEditor';
 import { NotesEditor, NotesView } from '@/components/edit/NotesField';
 import { ActionSheet, type SheetAction } from '@/components/overlays/ActionSheet';
 
+import { Caret } from './Caret';
+import { FocusGlow } from './FocusGlow';
 import { HighlightFlash } from './HighlightFlash';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { NestingGuides } from './NestingGuides';
@@ -182,26 +184,27 @@ const CompletedRow = memo(
             >
               <HighlightFlash rowId={row.id} />
               <NestingGuides levels={visualDepth} />
+              {editing && <FocusGlow />}
               {/* Caret: subtrees are collapsed by default on this tab. */}
               <Pressable
                 style={styles.caret}
                 hitSlop={HIT_SLOP}
                 disabled={!row.hasChildren}
                 onPress={() => actions.toggleCompletedExpanded(task.id)}
-                accessibilityLabel={expanded ? 'Collapse' : 'Expand'}
+                accessibilityRole="button"
+                accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} ${task.title || 'task'}`}
+                accessibilityElementsHidden={!row.hasChildren}
               >
-                {row.hasChildren && (
-                  <Text style={[type.caretGlyph, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                    {expanded ? glyphs.expanded.glyph : glyphs.collapsed.glyph}
-                  </Text>
-                )}
+                {row.hasChildren && <Caret id={task.id} open={expanded} childCount={row.progress.total} style={styles.dim} />}
               </Pressable>
+              {/* Checkbox: tapping the [x] restores the task. */}
               <Pressable
                 style={styles.checkbox}
                 hitSlop={HIT_SLOP}
                 onPress={restore}
                 accessibilityRole="checkbox"
                 accessibilityState={{ checked: true }}
+                accessibilityLabel={`Restore ${task.title || 'task'}`}
               >
                 <Text style={[type.glyph, styles.dim, styles.checkboxText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
                   {glyphs.checkboxOn.glyph}
@@ -279,7 +282,14 @@ const styles = StyleSheet.create({
   editing: { backgroundColor: colors.surface },
   // Same separation as ACTIVE: a divider above every top-level task.
   topLevel: { borderTopWidth: shape.hairline, borderTopColor: colors.line, marginTop: space.sm },
-  caret: { width: size.indent, alignItems: 'center' },
+  // The caret's own column, plus a gap before the checkbox. The 31 pt glyph is taller
+  // than a body line, so a negative margin keeps the row height unchanged.
+  caret: {
+    width: size.caretColumn,
+    marginRight: size.caretGap,
+    alignItems: 'center',
+    marginVertical: (type.body.lineHeight - type.caretGlyph.lineHeight) / 2,
+  },
   checkbox: { marginRight: space.md, marginLeft: space.xs },
   checkboxText: { letterSpacing: shape.checkboxTracking },
   title: { flex: 1, minWidth: 0 },

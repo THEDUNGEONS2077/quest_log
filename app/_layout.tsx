@@ -13,8 +13,9 @@
  *     schedule reconciled at start, on foreground and after changes
  *     (services/reminderLifecycle.ts). The notification background task is
  *     defined by importing services/notificationTask first, at load time.
- *
- * Planned: the boot sequence overlay (Phase 11).
+ *   - motion: the Reduce Motion setting, applied to every animation,
+ *   - the boot screen, laid over the app on a cold start (BootGate),
+ *   - the app icon's "New task" shortcut (services/quickActions.ts).
  *
  * Fonts need no loading step here: they're embedded at build time by the
  * expo-font config plugin (app.config.ts).
@@ -31,7 +32,10 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { BootGate } from '@/components/common/BootSequence';
+import { MotionConfig } from '@/components/common/motion';
 import { setHapticsEnabled } from '@/services/haptics';
+import { startQuickActions } from '@/services/quickActions';
 import { startReminders } from '@/services/reminderLifecycle';
 import { appBundle, kv } from '@/store';
 import { StoreProvider } from '@/store/react';
@@ -56,6 +60,17 @@ export default function RootLayout() {
     [],
   );
 
+  // App icon shortcut "New task": open the ACTIVE list ready to type.
+  useEffect(
+    () =>
+      startQuickActions(() => {
+        // Back to the main screen if another one is open (at a cold start it already is).
+        if (router.canDismiss()) router.dismissAll();
+        appBundle.store.getState().requestQuickAdd();
+      }),
+    [],
+  );
+
   return (
     <GestureHandlerRootView style={styles.root}>
       <StoreProvider value={appBundle}>
@@ -64,14 +79,17 @@ export default function RootLayout() {
             {/* Light icons on black. The app draws edge-to-edge, so the Android
                 navigation bar shows the black root background beneath it. */}
             <StatusBar style="light" />
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: styles.root,
-                // A black background during transitions prevents white flashes.
-                animation: 'fade',
-              }}
-            />
+            <MotionConfig />
+            <BootGate>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: styles.root,
+                  // A black background during transitions prevents white flashes.
+                  animation: 'fade',
+                }}
+              />
+            </BootGate>
           </SafeAreaProvider>
         </KeyboardProvider>
       </StoreProvider>

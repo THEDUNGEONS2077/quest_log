@@ -29,7 +29,7 @@ import { findTask } from '@/lib/taskMap';
 import { subtreeIds } from '@/lib/tree';
 import { haptics } from '@/services/haptics';
 import type { AppStoreInstance } from '@/store/createStore';
-import { colors, focusGlow, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
+import { colors, focusGlow, glowShadow, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
 
 /** The lifted row's scale (PLAN §9.10: slight lift). */
 const LIFT_SCALE = 1.02;
@@ -346,6 +346,8 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     borderRadius: shape.radius,
     ...focusGlow,
+    // Android draws box-shadows (the shadow* props in focusGlow are iOS-only).
+    boxShadow: glowShadow.outset,
     elevation: shape.liftElevation,
   },
   handle: { color: colors.accent, ...platformText },

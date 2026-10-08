@@ -31,6 +31,7 @@ import { parse, type ParseResult } from '@/lib/parser';
 import { firstOccurrence } from '@/lib/recurrence';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
+import { SAMPLE_OUTLINE } from '@/lib/sample';
 import { findTask } from '@/lib/taskMap';
 import { ancestors, childIds, getTask, liveChildIds } from '@/lib/tree';
 import type { Filter } from '@/lib/search';
@@ -49,6 +50,7 @@ import {
   type Timers,
   type Writer,
 } from './persist';
+import { DEFAULT_ONBOARDING, type Onboarding, type Tip } from './onboarding';
 import { DEFAULT_SETTINGS, type Settings } from './settings';
 import { DEFAULT_UI, type Tab, type UiState } from './uiState';
 
@@ -154,6 +156,13 @@ export interface AppStore {
   advancing: ID[];
   /** The toast on screen, if any. Not persisted. */
   toast: Toast | null;
+  /** First-run tips seen and the last "What's new" shown. Persisted (store/onboarding.ts). */
+  onboarding: Onboarding;
+  /**
+   * Bumped to ask the quick-add bar to take focus (app icon "New task"
+   * quick action, first launch). Not persisted.
+   */
+  quickAddFocus: number;
   /** How the tasks were loaded at startup (for diagnostics and recovery messages). */
   loadStatus: LoadResult['status'];
 
@@ -223,6 +232,17 @@ export interface AppStore {
 
   // --- Toasts ---
   showToast(message: string, undo?: boolean): void;
+  /** Shows a first-run tip as a toast and records it as seen (each tip shows once). */
+  showTip(tip: Tip): void;
+  /** Records that "What's new" for this build has been shown (or skipped). */
+  markWhatsNewSeen(build: number): void;
+  /** Empty state → Load example tasks: adds the demo tree at the top level (one undo step). */
+  loadExampleTasks(): void;
+  /**
+   * Opens the ACTIVE tab ready to type a new task: leaves editing, selection
+   * and search, then asks the quick-add bar to take focus.
+   */
+  requestQuickAdd(): void;
   /** Hides the toast, only if it's still the one with this key. */
   dismissToast(key: number): void;
 
@@ -381,6 +401,8 @@ export function createAppStore(deps: StoreDeps) {
       lingering: [],
       advancing: [],
       toast: null,
+      onboarding: loadJSON(kv, KEYS.onboarding, DEFAULT_ONBOARDING),
+      quickAddFocus: 0,
       loadStatus: loaded.status,
 
       dispatch(op, options = {}) {
@@ -597,6 +619,33 @@ export function createAppStore(deps: StoreDeps) {
 
       dismissToast(key) {
         if (get().toast?.key === key) set({ toast: null });
+      },
+
+      showTip(tip) {
+        const { onboarding } = get();
+        if (onboarding.tipsSeen.includes(tip.id)) return;
+        set({ onboarding: { ...onboarding, tipsSeen: [...onboarding.tipsSeen, tip.id] } });
+        get().showToast(tip.message);
+      },
+
+      markWhatsNewSeen(build) {
+        set({ onboarding: { ...get().onboarding, lastSeenBuild: build } });
+      },
+
+      loadExampleTasks() {
+        const tasks = get().tasks;
+        const { op } = pasteOp(tasks, parseOutline(SAMPLE_OUTLINE), null, childIds(tasks, null).length, now(), newId);
+        get().dispatch(op);
+        get().showToast('EXAMPLE TASKS ADDED', true);
+      },
+
+      requestQuickAdd() {
+        const s = get();
+        if (s.editingId !== null) s.finishEditing(s.editingId);
+        if (s.selection) s.clearSelection();
+        if (s.search.active.open) s.closeSearch('active');
+        if (s.ui.tab !== 'active') s.setTab('active');
+        set({ menuFor: null, quickAddFocus: get().quickAddFocus + 1 });
       },
 
       replaceAll(next) {
@@ -884,6 +933,10 @@ export function installPersistence(store: AppStoreInstance, kv: KV, opts: Persis
   wire(
     (s) => s.ui,
     (ui) => kv.set(KEYS.ui, JSON.stringify(ui)),
+  );
+  wire(
+    (s) => s.onboarding,
+    (o) => kv.set(KEYS.onboarding, JSON.stringify(o)),
   );
   wire(
     (s) => s.settings,

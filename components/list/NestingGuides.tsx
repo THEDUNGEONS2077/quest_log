@@ -12,7 +12,7 @@ import { colors, shape, size, space } from '@/theme';
 
 /** Horizontal position of guide `i` (centred under the caret column of level i). */
 export function guideX(i: number): number {
-  return space.lg + i * size.indent + size.indent / 2 - shape.hairline;
+  return space.lg + i * size.indent + size.caretColumn / 2 - shape.hairline;
 }
 
 export const NestingGuides = memo(function NestingGuides({ levels }: { levels: number }) {

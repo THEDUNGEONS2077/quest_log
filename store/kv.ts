@@ -22,6 +22,8 @@ export const KEYS = {
   tasks: 'tasks.v1',
   settings: 'settings.v1',
   ui: 'ui.v1',
+  /** First-run tips seen and the last "What's new" shown (store/onboarding.ts). */
+  onboarding: 'onboarding.v1',
   opsPending: 'ops.pending',
   widgetSnapshot: 'widget.snapshot',
   /** Daily safety copies: `snapshot.YYYY-MM-DD`. */

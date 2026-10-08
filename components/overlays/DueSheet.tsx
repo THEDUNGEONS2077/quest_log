@@ -106,7 +106,9 @@ function DueSheetBody({ id }: { id: string }) {
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent navigationBarTranslucent>
-      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close">
+      {/* The backdrop isn't a screen-reader element (it would swallow the sheet's text);
+          Android back closes the sheet instead. */}
+      <Pressable style={styles.backdrop} onPress={close} accessible={false}>
         <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]} onPress={() => {}} accessible={false}>
           <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : task.title || 'Untitled task'}`}

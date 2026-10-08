@@ -17,6 +17,13 @@ export const space = {
 export const size = {
   /** Horizontal indent per tree depth level (20 → 24 with the larger text). */
   indent: 24,
+  /**
+   * Width of the ▸ / ▾ caret column. Wider than the indent since the caret
+   * grew to 31 pt (user request 2026-10-08), so it never crowds the checkbox.
+   */
+  caretColumn: 36,
+  /** Gap between the caret column and the checkbox (user request 2026-10-08). */
+  caretGap: 8,
   /** Indentation stops growing past this depth; deeper rows show a depth badge. */
   maxVisualDepth: 4,
   /** Minimum task row height (48 → 52: easier to hit, PLAN §13). */
