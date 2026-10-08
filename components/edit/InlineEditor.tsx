@@ -18,6 +18,7 @@ import { useEffect, useRef } from 'react';
 import { type NativeSyntheticEvent, StyleSheet, TextInput, type TextInputKeyPressEventData } from 'react-native';
 
 import { TITLE_MAX } from '@/lib/paste';
+import { useKeepInView } from '@/components/list/keepInView';
 import { useActions, useStoreBundle } from '@/store/react';
 import { colors, maxFontSizeMultiplier, platformText, type } from '@/theme';
 
@@ -40,10 +41,15 @@ const REFOCUS_GRACE_MS = 150;
 export function useEditorFocus(id: string) {
   const actions = useActions();
   const { store } = useStoreBundle();
+  const keepInView = useKeepInView();
   return {
     onFocus: () => {
       focusedEditorId = id;
+      // Whatever is being typed must be visible (keepInView.tsx).
+      keepInView.ensure();
     },
+    /** The text box grew (a new line): keep its bottom above the toolbar. */
+    onContentSizeChange: () => keepInView.ensure(),
     onBlur: () => {
       focusedEditorId = null;
       setTimeout(() => {
@@ -103,6 +109,7 @@ export function InlineEditor({ id, title, variant }: Props) {
       onSelectionChange={(e) => (caret.current = e.nativeEvent.selection)}
       onKeyPress={onKeyPress}
       onFocus={focus.onFocus}
+      onContentSizeChange={focus.onContentSizeChange}
       onSubmitEditing={() => actions.finishEditing(id)}
       onBlur={focus.onBlur}
       // Multiline so long titles wrap. "blurAndSubmit": Enter/Done saves and

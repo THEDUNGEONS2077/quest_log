@@ -51,5 +51,8 @@ This is a running list of everything that behaves differently on iOS or still ne
 - [ ] Notification small icon and color are Android-only. Check the iOS notification appearance.
 - [ ] Request permission with provisional authorization in mind.
 
+## Typed text always visible
+- [ ] `keepInView.tsx` uses `TextInput.State.currentlyFocusedInput()` and `measureInWindow` on the input and the editing toolbar (inside KeyboardStickyView). Confirm on iOS that measurements include the sticky view's transform, so the "floor" is the toolbar's visible top.
+
 ## Offline guarantee
 - [ ] iOS has no INTERNET permission to remove, so the guarantee comes from the code itself. Run a dependency audit to confirm there are no network libraries.

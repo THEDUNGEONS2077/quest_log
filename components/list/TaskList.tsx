@@ -6,37 +6,29 @@
  * Rows come from the memoized `activeRows` selector, which recomputes only
  * on structural changes, never on keystrokes.
  *
- * Keyboard: the scroll view is keyboard-aware, and keeps the edited title
- * just above the editing toolbar, which rides on the keyboard (with room for
- * the chips row under the title). A row that starts editing off-screen (a new
- * subtask at the end of a long group) is scrolled into view first, so its
- * editor can mount and take focus. Dragging the list a meaningful distance
- * ends editing (PLAN §9.3).
+ * Keyboard: whatever is being typed stays in view (keepInView.tsx): the
+ * focused text box is measured against the editing toolbar and the list
+ * scrolls by exactly the difference, on focus, when the keyboard opens, and
+ * as the text grows. While the keyboard is open the content gets extra
+ * bottom padding, so even the last row can scroll above it. A row that
+ * starts editing off-screen (a new subtask at the end of a long group) is
+ * scrolled to first, so its editor can mount and take focus. Dragging the
+ * list a meaningful distance ends editing (PLAN §9.3).
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { type ComponentProps, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, StyleSheet, Text, View } from 'react-native';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
 import type { Row } from '@/lib/flatten';
 import { useAppStore, useSelectors } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, size, space, type } from '@/theme';
 
+import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { TaskRow } from './TaskRow';
+import { useKeyboardHeight } from './useKeyboardHeight';
 
 /** Dragging the list this far (pt) while editing closes the keyboard. */
 const DISMISS_DRAG_DISTANCE = size.rowMinHeight * 3;
-
-/**
- * Gap kept between the keyboard and the edited title's caret: the toolbar
- * (which sits on the keyboard) plus one chips row and a margin.
- */
-const CARET_CLEARANCE = size.toolbarHeight + size.hitTarget + space.lg;
-
-/** The keyboard-aware scroll view with this list's caret clearance. */
-function ScrollView(props: ComponentProps<typeof KeyboardAwareScrollView>) {
-  return <KeyboardAwareScrollView {...props} bottomOffset={CARET_CLEARANCE} />;
-}
 
 interface Props {
   /** Space reserved at the bottom for the quick-add bar. */
@@ -49,6 +41,15 @@ export function TaskList({ bottomInset }: Props) {
   const editingId = useAppStore((s) => s.editingId);
   const highlightId = useAppStore((s) => s.highlightId);
   const list = useRef<FlashListRef<Row>>(null);
+  const container = useRef<View>(null);
+  const keyboardHeight = useKeyboardHeight();
+
+  // Keep the text being typed in view (see keepInView.tsx).
+  const keepInView = useKeepInViewController(container, list);
+  // The keyboard finished opening: re-check the edited row against its final position.
+  useEffect(() => {
+    if (keyboardHeight > 0 && editingId) keepInView.ensure();
+  }, [keyboardHeight, editingId, keepInView]);
   // Index range currently on screen, from FlashList's viewability callback.
   const visible = useRef({ first: 0, last: -1 });
 
@@ -80,27 +81,32 @@ export function TaskList({ bottomInset }: Props) {
   const renderItem = useCallback(({ item }: { item: Row }) => <TaskRow row={item} />, []);
 
   return (
-    <FlashList
-      ref={list}
-      data={rows}
-      renderItem={renderItem}
-      keyExtractor={(r) => r.id}
-      // Separate recycling pools: group headers and plain rows differ in layout.
-      getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
-      renderScrollComponent={ScrollView}
-      onViewableItemsChanged={({ viewableItems }) => {
-        const indices = viewableItems.map((v) => v.index ?? 0);
-        visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };
-      }}
-      // Taps on rows work while the keyboard is open; taps on empty space dismiss it.
-      keyboardShouldPersistTaps="handled"
-      onScrollBeginDrag={onScrollBeginDrag}
-      onScrollEndDrag={() => (dragStartY.current = null)}
-      onScroll={onScroll}
-      scrollEventThrottle={32}
-      contentContainerStyle={{ paddingBottom: bottomInset }}
-      ListEmptyComponent={EmptyState}
-    />
+    <View ref={container} style={styles.container} collapsable={false}>
+      <KeepInViewProvider value={keepInView}>
+        <FlashList
+          ref={list}
+          data={rows}
+          renderItem={renderItem}
+          keyExtractor={(r) => r.id}
+          // Separate recycling pools: group headers and plain rows differ in layout.
+          getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
+          onViewableItemsChanged={({ viewableItems }) => {
+            const indices = viewableItems.map((v) => v.index ?? 0);
+            visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };
+          }}
+          // Taps on rows work while the keyboard is open; taps on empty space dismiss it.
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={onScrollBeginDrag}
+          onScrollEndDrag={() => (dragStartY.current = null)}
+          onScroll={onScroll}
+          scrollEventThrottle={32}
+          // While the keyboard is open, pad by its height (plus the toolbar on it)
+          // so even the last row can be scrolled up to just above the toolbar.
+          contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
+          ListEmptyComponent={EmptyState}
+        />
+      </KeepInViewProvider>
+    </View>
   );
 }
 
@@ -116,6 +122,7 @@ function EmptyState() {
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   empty: { paddingHorizontal: space.lg, paddingTop: space.xl },
   emptyText: { color: colors.textDim, ...platformText },
 });

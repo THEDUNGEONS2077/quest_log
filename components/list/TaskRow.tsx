@@ -20,7 +20,7 @@ import { memo, useEffect, useState } from 'react';
 import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
-import { useMinute } from '@/components/common/useMinute';
+import { useMinute, useMinuteIf } from '@/components/common/useMinute';
 import { InlineEditor } from '@/components/edit/InlineEditor';
 import { NotesEditor, NotesView } from '@/components/edit/NotesField';
 import { TaskChips } from '@/components/edit/ParsedChips';
@@ -56,6 +56,8 @@ export const TaskRow = memo(
     const field = useAppStore((s) => (s.editingId === row.id ? s.editingField : null));
     const notesOpen = useAppStore((s) => s.expandedNotes.includes(row.id));
     const [menu, setMenu] = useState(false);
+    // Only rows with a due date subscribe to the clock (for the spoken "due …, overdue").
+    const now = useMinuteIf(task?.dueAt != null);
     const lingering = useAppStore((s) => s.lingering.includes(row.id));
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
@@ -80,11 +82,22 @@ export const TaskRow = memo(
       haptics.delete();
       actions.deleteTask(task.id);
     };
+    // Screen-reader actions: everything a gesture or button can do (PLAN §13).
     const onAccessibilityAction = (e: AccessibilityActionEvent) => {
-      if (e.nativeEvent.actionName === 'complete') toggle();
-      else if (e.nativeEvent.actionName === 'delete') remove();
-      else if (e.nativeEvent.actionName === 'edit') actions.setEditing(task.id);
-      else if (e.nativeEvent.actionName === 'menu') setMenu(true);
+      const run: Record<string, () => void> = {
+        complete: toggle,
+        delete: remove,
+        edit: () => actions.setEditing(task.id),
+        menu: () => setMenu(true),
+        addSubtask: () => actions.addSubtask(task.id),
+        indent: () => actions.indentTask(task.id),
+        outdent: () => actions.outdentTask(task.id),
+        priority: () => actions.cyclePriority(task.id),
+        due: () => actions.openDueSheet(task.id),
+        notes: () => actions.toggleNotes(task.id),
+        collapse: () => actions.toggleCollapsed(task.id),
+      };
+      run[e.nativeEvent.actionName]?.();
     };
 
     const isGroup = row.depth === 0 && row.hasChildren;
@@ -101,7 +114,7 @@ export const TaskRow = memo(
           <Pressable
             style={[styles.row, { paddingLeft: space.lg + visualDepth * size.indent }, isGroup && styles.group, editing && styles.editing]}
             accessible={!editing}
-            accessibilityLabel={rowLabel(task, row)}
+            accessibilityLabel={rowLabel(task, row, now)}
             accessibilityActions={ROW_ACTIONS}
             // Long-press anywhere on the row opens the context menu (PLAN §12.6).
             onLongPress={() => setMenu(true)}
@@ -121,7 +134,7 @@ export const TaskRow = memo(
               onPress={() => actions.toggleCollapsed(task.id)}
               onLongPress={() => actions.setSiblingsCollapsed(task.id, !task.collapsed)}
               accessibilityRole="button"
-              accessibilityLabel={task.collapsed ? 'Expand' : 'Collapse'}
+              accessibilityLabel={`${task.collapsed ? 'Expand' : 'Collapse'} ${task.title || 'task'}`}
               accessibilityElementsHidden={!row.hasChildren}
             >
               {row.hasChildren && (
@@ -138,7 +151,7 @@ export const TaskRow = memo(
               onPress={toggle}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: task.done }}
-              accessibilityLabel={task.title}
+              accessibilityLabel={`${task.done ? 'Uncheck' : 'Complete'} ${task.title || 'task'}`}
             >
               <Text
                 style={[type.glyph, styles.checkboxText, { color: task.done ? colors.textDim : colors.text }]}
@@ -171,6 +184,20 @@ export const TaskRow = memo(
             </View>
 
             {/* While editing the title of a task without notes: the quiet "+ NOTE" affordance (PLAN §9.7). */}
+            {/* Group headers: "+" adds a subtask straight from the title (user request 2026-10-08). */}
+            {isGroup && !editing && (
+              <Pressable
+                onPress={() => actions.addSubtask(task.id)}
+                hitSlop={HIT_SLOP}
+                style={({ pressed }) => [styles.addSub, pressed && styles.addSubPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Add subtask to ${task.title || 'group'}`}
+              >
+                <Text style={[type.glyph, styles.addSubText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  {glyphs.add.glyph}
+                </Text>
+              </Pressable>
+            )}
             {field === 'title' && !task.notes ? (
               <Pressable
                 onPress={() => actions.setEditing(task.id, null, 'notes')}
@@ -204,18 +231,31 @@ export const TaskRow = memo(
 /** Screen-reader alternatives to the row's gestures (PLAN §13). */
 const ROW_ACTIONS = [
   { name: 'complete', label: 'Complete or uncomplete' },
-  { name: 'edit', label: 'Edit' },
+  { name: 'edit', label: 'Edit title' },
+  { name: 'addSubtask', label: 'Add subtask' },
+  { name: 'indent', label: 'Indent' },
+  { name: 'outdent', label: 'Outdent' },
+  { name: 'priority', label: 'Change priority' },
+  { name: 'due', label: 'Set due date' },
+  { name: 'notes', label: 'Show or hide notes' },
+  { name: 'collapse', label: 'Collapse or expand' },
   { name: 'menu', label: 'More actions' },
   { name: 'delete', label: 'Delete' },
 ];
 
 /** What a screen reader announces for a row, e.g. "Ship v2 build, high priority, not done, 2 of 5 subtasks done". */
-function rowLabel(task: Task, row: Row): string {
+function rowLabel(task: Task, row: Row, now: number): string {
   const parts = [task.title || 'Untitled task'];
+  if (row.depth === 0 && row.hasChildren) parts.push('group');
   if (task.priority > 0) parts.push(['', 'low', 'medium', 'high'][task.priority] + ' priority');
+  if (task.dueAt !== null) {
+    parts.push(`due ${formatDue(task.dueAt, now).toLowerCase()}${isOverdue(task.dueAt, task.done, now) ? ', overdue' : ''}`);
+  }
+  if (task.notify && task.dueAt !== null) parts.push('reminder on');
   parts.push(task.done ? 'done' : 'not done');
   if (row.hasChildren) parts.push(`${row.progress.done} of ${row.progress.total} subtasks done`);
   if (task.collapsed && row.hasChildren) parts.push('collapsed');
+  if (task.notes) parts.push('has notes');
   return parts.join(', ');
 }
 
@@ -307,6 +347,16 @@ const styles = StyleSheet.create({
   title: { flex: 1, minWidth: 0 },
   text: { ...platformText },
   // Offset so the smaller meta text sits on the title's first line.
+  addSub: {
+    minWidth: size.hitTarget,
+    alignItems: 'center',
+    marginLeft: space.sm,
+    borderWidth: shape.hairline,
+    borderColor: colors.line,
+    borderRadius: shape.radius,
+  },
+  addSubPressed: { backgroundColor: colors.surfaceRaised },
+  addSubText: { color: colors.accent, ...platformText },
   addNote: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
   addNoteText: { color: colors.textDim, ...platformText },
   meta: { flexDirection: 'row', gap: space.sm, marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },

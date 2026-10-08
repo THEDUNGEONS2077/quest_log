@@ -407,7 +407,7 @@ Font sizes respect the OS text-size setting via `allowFontScaling`, clamped with
 
 All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Phase 15.
 
-> **Change (2026-10-08):** the ▸/▾ caret is another 15% larger (`type.caretGlyph`, 23 pt).
+> **Change (2026-10-08):** the ▸/▾ caret was made 15% larger twice (`type.caretGlyph`, 26 pt).
 
 > **Change (2026-10-07):** icon glyphs render 20% larger than the text beside them (`type.glyph` 20 pt beside 17 pt body; `type.metaGlyph` 16 pt beside 13 pt meta), at the same line height. The `[ ]` checkbox is drawn with tighter letter spacing.
 
@@ -457,9 +457,11 @@ All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Ph
 | Backspace on an empty task | Delete it and stop editing (never deletes a task that has children) |
 | Back gesture / keyboard hide | Stop editing |
 
+**Typed text is always visible** (requirement, 2026-10-08): while editing, the focused text box is measured against the toolbar and the list snaps so the box sits just above it, on focus, when the keyboard opens, and as the text grows (`components/list/keepInView.tsx`).
+
 **Editing toolbar** (pinned above the keyboard while editing, in place of the quick-add bar): `← OUT` · `→ IN` · `+ SUB` (new empty subtask, edited next) · `↩ UNDO` · `✓ DONE`. Phase 6 adds priority, notes and due date to it.
 
-New tasks come from the quick-add bar, from `+ SUB`, or from paste. **Change (2026-10-08):** Enter in the quick-add bar adds the task and **closes the keyboard** (user request); it no longer stays open for rapid entry. While editing, the list keeps the edited title just above the editing toolbar.
+New tasks come from the quick-add bar, from `+ SUB`, from the `+` on a group header (added 2026-10-08), or from paste. **Change (2026-10-08):** Enter in the quick-add bar adds the task and **closes the keyboard** (user request); it no longer stays open for rapid entry. While editing, the list keeps the edited title just above the editing toolbar.
 
 **Pasting and limits:**
 - **Paste multiline text** to create one task per line. Leading spaces, tabs, `-`, `*`, or `[ ]` set nesting and done state. A toast reads `PASTED 7 TASKS · UNDO`.

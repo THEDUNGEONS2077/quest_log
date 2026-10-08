@@ -106,4 +106,28 @@ describe('TaskRow', () => {
     await fireEvent.press(boxes[0]!); // row "a"
     expect(tk(store.getState().tasks, 'a')!.done).toBe(true);
   });
+
+  it('group headers have a "+" that adds a subtask and starts editing it', async () => {
+    const { store } = await setup();
+    await fireEvent.press(screen.getByLabelText('Add subtask to g'));
+    const { editingId, tasks } = store.getState();
+    expect(tasks.children.g).toEqual(['g1', editingId]);
+    expect(tk(tasks, editingId!)!.parentId).toBe('g');
+  });
+
+  it('only group headers get the "+" (plain tasks use the toolbar or menu)', async () => {
+    await setup();
+    expect(screen.queryByLabelText('Add subtask to a')).toBeNull();
+  });
+
+  it('screen-reader actions cover the row operations', async () => {
+    const { store } = await setup();
+    const row = screen.getByLabelText(/^b, not done/);
+    await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'indent' } });
+    expect(tk(store.getState().tasks, 'b')!.parentId).toBe('a');
+    await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'priority' } });
+    expect(tk(store.getState().tasks, 'b')!.priority).toBe(1);
+    await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'due' } });
+    expect(store.getState().dueSheetFor).toBe('b');
+  });
 });

@@ -54,3 +54,15 @@ function subscribe(listener: () => void) {
 export function useMinute(): number {
   return useSyncExternalStore(subscribe, () => minute);
 }
+
+/** No-op subscription for components that don't need the clock right now. */
+const subscribeNever = () => () => {};
+
+/**
+ * The current minute, but only subscribed while `enabled`: a row without a
+ * due date shouldn't re-render every minute. Returns the last known minute
+ * otherwise.
+ */
+export function useMinuteIf(enabled: boolean): number {
+  return useSyncExternalStore(enabled ? subscribe : subscribeNever, () => minute);
+}

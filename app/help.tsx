@@ -69,6 +69,8 @@ const SECTIONS: { title: string; lines: Line[] }[] = [
       { key: 'Swipe left', what: 'Delete (to Trash)' },
       { key: 'Long-press', what: 'Menu: priority, subtask, indent, notes, duplicate, copy, delete' },
       { key: `${g.expanded.glyph} ${g.collapsed.glyph}`, what: 'Collapse / expand. Long-press: all at that level' },
+      { key: `${g.add.glyph} on a group`, what: 'Add a subtask to that group' },
+      { key: 'TalkBack', what: 'Every action above is in the row’s actions menu (swipe up/down)' },
       { key: g.notes.glyph, what: 'Show the task’s notes' },
       { key: 'UNDO', what: 'In the message after any complete or delete (5 s)' },
     ],

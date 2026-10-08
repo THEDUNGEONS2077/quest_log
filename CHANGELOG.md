@@ -2,6 +2,15 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.6.1 (build 9)
+
+From your feedback on 0.6.0:
+
+- **What you're typing is always visible.** The list measures where your text box is and snaps it to sit just above the toolbar and keyboard: when you start typing, when the keyboard opens, and when the text wraps onto a new line. This covers new subtasks, titles and notes.
+- **`+` next to every group title** adds a subtask straight away.
+- **▸ / ▾ are bigger** again.
+- **Accessibility.** TalkBack now offers every row action (complete, edit, add subtask, indent, outdent, priority, due date, notes, collapse, menu, delete). Rows announce their due date, overdue status, reminder and notes. Buttons say which task they act on ("Collapse WORK", "Complete Ship v2").
+
 ## 0.6.0 (build 8)
 
 Reminders.

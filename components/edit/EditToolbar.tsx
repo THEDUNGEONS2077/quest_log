@@ -20,6 +20,7 @@ import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { registerFloor } from '@/components/list/keepInView';
 import { useActions, useAppStore, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
@@ -84,7 +85,8 @@ export function EditToolbar({ editingId, structure }: Props) {
     // Rides on top of the keyboard; shifts down by the safe-area inset while
     // it's open, because the keyboard already covers that strip.
     <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }} style={styles.sticky}>
-      <View style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="toolbar">
+      {/* Registered as the "floor": typed text is kept above this bar's top edge. */}
+      <View ref={registerFloor} collapsable={false} style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="toolbar">
         {buttons.map((b) => (
           <Pressable
             key={b.label}

@@ -42,6 +42,7 @@ export function NotesEditor({ id, notes }: { id: string; notes: string }) {
       value={notes}
       onChangeText={(text) => actions.updateNotes(id, text.slice(0, NOTES_MAX))}
       onFocus={focus.onFocus}
+      onContentSizeChange={focus.onContentSizeChange}
       onBlur={focus.onBlur}
       multiline
       submitBehavior="newline"

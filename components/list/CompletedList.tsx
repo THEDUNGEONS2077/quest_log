@@ -32,7 +32,9 @@ import { NotesEditor, NotesView } from '@/components/edit/NotesField';
 import { ActionSheet, type SheetAction } from '@/components/overlays/ActionSheet';
 
 import { HighlightFlash } from './HighlightFlash';
+import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { NestingGuides } from './NestingGuides';
+import { useKeyboardHeight } from './useKeyboardHeight';
 import { SwipeableRow } from './SwipeableRow';
 
 export function CompletedList({ bottomInset }: { bottomInset: number }) {
@@ -40,6 +42,15 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
   const rows = useAppStore((s) => selectors.completedRows(s));
   const renderItem = useCallback(({ item }: { item: Row }) => <CompletedRow row={item} />, []);
   const list = useRef<FlashListRef<Row>>(null);
+  const container = useRef<View>(null);
+  const keyboardHeight = useKeyboardHeight();
+  const editing = useAppStore((s) => s.editingId !== null);
+
+  // Completed tasks can be edited too: keep the typed text in view (keepInView.tsx).
+  const keepInView = useKeepInViewController(container, list);
+  useEffect(() => {
+    if (keyboardHeight > 0 && editing) keepInView.ensure();
+  }, [keyboardHeight, editing, keepInView]);
 
   // A task opened from a notification or link: scroll to it.
   const highlightId = useAppStore((s) => s.highlightId);
@@ -50,17 +61,21 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
   }, [highlightId, rows]);
 
   return (
-    <FlashList
-      ref={list}
-      data={rows}
-      renderItem={renderItem}
-      keyExtractor={(r) => r.id}
-      getItemType={(r) => (r.depth === 0 ? 'top' : 'sub')}
-      keyboardShouldPersistTaps="handled"
-      ListHeaderComponent={rows.length ? ClearButton : null}
-      ListEmptyComponent={Empty}
-      contentContainerStyle={{ paddingBottom: bottomInset }}
-    />
+    <View ref={container} style={styles.container} collapsable={false}>
+      <KeepInViewProvider value={keepInView}>
+        <FlashList
+          ref={list}
+          data={rows}
+          renderItem={renderItem}
+          keyExtractor={(r) => r.id}
+          getItemType={(r) => (r.depth === 0 ? 'top' : 'sub')}
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={rows.length ? ClearButton : null}
+          ListEmptyComponent={Empty}
+          contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
+        />
+      </KeepInViewProvider>
+    </View>
   );
 }
 
@@ -217,6 +232,7 @@ function Modified({ at }: { at: number }) {
 const HIT_SLOP = { top: space.md, bottom: space.md, left: space.md, right: space.md };
 
 const styles = StyleSheet.create({
+  container: { flex: 1 },
   row: {
     minHeight: size.rowMinHeight,
     flexDirection: 'row',
