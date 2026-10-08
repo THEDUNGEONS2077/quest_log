@@ -21,15 +21,17 @@ import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 
 import * as complete from '@/lib/complete';
+import { formatDue } from '@/lib/dates';
 import * as copy from '@/lib/copy';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
 import { parse, type ParseResult } from '@/lib/parser';
+import { firstOccurrence } from '@/lib/recurrence';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { findTask } from '@/lib/taskMap';
 import { ancestors, childIds, getTask, liveChildIds } from '@/lib/tree';
-import type { ID, Priority, TaskFields, TasksState } from '@/lib/types';
+import type { ID, Priority, RepeatRule, TaskFields, TasksState } from '@/lib/types';
 
 import { EMPTY_HISTORY, type History, record } from './history';
 import { KEYS, type KV } from './kv';
@@ -66,7 +68,10 @@ export interface Toast {
 }
 
 /** What a checkbox tap did, so the UI can pick the haptic (PLAN §9.18). */
-export type ToggleOutcome = 'checked' | 'unchecked' | 'parent-completed' | 'moved-to-completed';
+export type ToggleOutcome = 'checked' | 'unchecked' | 'parent-completed' | 'moved-to-completed' | 'repeated';
+
+/** How long a repeating task shows its strike before un-striking with the new date (PLAN §10.5). */
+export const ADVANCE_MS = 500;
 
 /** How long a just-checked top-level task stays on ACTIVE: strike (200 ms) + hold (500 ms). */
 export const LINGER_MS = 700;
@@ -101,6 +106,8 @@ export interface AppStore {
   quickAddParent: ID | null;
   /** The task whose due-date sheet is open (PLAN §9.8), or null. Not persisted. */
   dueSheetFor: ID | null;
+  /** The task whose repeat sheet is open (PLAN §9.9), or null. Not persisted. */
+  repeatSheetFor: ID | null;
   /** A task to scroll to and flash (opened from a notification or link). Not persisted. */
   highlightId: ID | null;
   /**
@@ -114,6 +121,11 @@ export interface AppStore {
    * strikethrough plays and holds (PLAN §6.6). Not persisted.
    */
   lingering: ID[];
+  /**
+   * Repeating tasks just checked: their strike plays and holds, then
+   * un-strikes with the new date (PLAN §10.5). Not persisted.
+   */
+  advancing: ID[];
   /** The toast on screen, if any. Not persisted. */
   toast: Toast | null;
   /** How the tasks were loaded at startup (for diagnostics and recovery messages). */
@@ -172,6 +184,8 @@ export interface AppStore {
   toggleDone(id: ID): ToggleOutcome;
   /** The lingering animation for a completed top-level task is over: let it leave ACTIVE. */
   releaseLingering(id: ID): void;
+  /** The repeat animation for task `id` is over. */
+  releaseAdvancing(id: ID): void;
   /** COMPLETED → swipe right / Restore: unchecks the task and its subtree; it returns to its place. */
   restoreTask(id: ID): void;
   /** COMPLETED → Run again: a fresh unchecked copy at the end of ACTIVE. */
@@ -211,6 +225,14 @@ export interface AppStore {
 
   // --- Due dates and reminders (Phase 7) ---
   openDueSheet(id: ID): void;
+  openRepeatSheet(id: ID): void;
+  closeRepeatSheet(): void;
+  /**
+   * Sets (or with null, stops) a task's repeat rule. A rule needs a due
+   * date: without one, the first occurrence at the default time is used
+   * (PLAN §9.9). "Stop repeating" keeps the date.
+   */
+  setRepeat(id: ID, rule: RepeatRule | null): void;
   closeDueSheet(): void;
   /** Sets (or with null, clears) a due date and whether it sends a notification. One undo step. */
   setDue(id: ID, dueAt: number | null, notify: boolean): void;
@@ -244,11 +266,21 @@ export function createAppStore(deps: StoreDeps) {
   if (purge) tasks = ops.apply(tasks, purge).state;
 
   /** Task fields from parsed shorthand; a due date turns on its notification per the setting. */
-  const shorthandFields = (r: ParseResult): Partial<TaskFields> => ({
-    ...(r.priority !== undefined && { priority: r.priority }),
-    ...(r.dueAt !== undefined && { dueAt: r.dueAt, notify: store.getState().settings.notifyByDefault }),
-    ...(r.notes !== undefined && { notes: r.notes }),
-  });
+  const shorthandFields = (r: ParseResult, existingDue: number | null = null): Partial<TaskFields> => {
+    const { notifyByDefault, defaultTimeMinutes } = store.getState().settings;
+    const fields: Partial<TaskFields> = {
+      ...(r.priority !== undefined && { priority: r.priority }),
+      ...(r.dueAt !== undefined && { dueAt: r.dueAt, notify: notifyByDefault }),
+      ...(r.notes !== undefined && { notes: r.notes }),
+    };
+    if (r.repeat) {
+      // A repeat needs a date: typed, existing, or the first occurrence at the default time.
+      const dueAt = r.dueAt ?? existingDue ?? firstOccurrence(r.repeat, now(), defaultTimeMinutes);
+      fields.repeat = r.repeat.freq === 'month' || r.repeat.freq === 'year' ? { ...r.repeat, monthDay: new Date(dueAt).getDate() } : r.repeat;
+      if (fields.dueAt === undefined && existingDue === null) Object.assign(fields, { dueAt, notify: notifyByDefault });
+    }
+    return fields;
+  };
 
   /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
   const stopEditingIfGone = (next: TasksState): Partial<AppStore> => {
@@ -268,10 +300,12 @@ export function createAppStore(deps: StoreDeps) {
       expandedNotes: [],
       quickAddParent: null,
       dueSheetFor: null,
+      repeatSheetFor: null,
       highlightId: null,
       editSession: 0,
       settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
       lingering: [],
+      advancing: [],
       toast: null,
       loadStatus: loaded.status,
 
@@ -395,7 +429,7 @@ export function createAppStore(deps: StoreDeps) {
         if (task && startTitle !== null && task.title !== startTitle) {
           const r = get().parseShorthand(task.title);
           if (r.chips.length) {
-            const fields = { ...shorthandFields(r), title: r.title };
+            const fields = { ...shorthandFields(r, task.dueAt), title: r.title };
             // `//` appends to existing notes rather than replacing them.
             if (r.notes !== undefined && task.notes) fields.notes = `${task.notes}\n${r.notes}`;
             get().dispatch(ops.editTask(get().tasks, id, fields, now()));
@@ -431,6 +465,12 @@ export function createAppStore(deps: StoreDeps) {
         }
         const r = complete.check(tasks, id, now());
         get().dispatch(r.op);
+        if (r.advanced) {
+          // Repeat: strike, hold, then un-strike with the new date chip.
+          set({ advancing: [...get().advancing, r.advanced.id] });
+          get().showToast(`NEXT: ${formatDue(r.advanced.nextDue, now())}`, true);
+          return 'repeated';
+        }
         if (r.completedTopLevel) {
           // Keep it visible while the strike plays; TaskRow releases it after LINGER_MS.
           set({ lingering: [...get().lingering, r.completedTopLevel] });
@@ -438,6 +478,10 @@ export function createAppStore(deps: StoreDeps) {
           return 'moved-to-completed';
         }
         return r.autoCompleted.length ? 'parent-completed' : 'checked';
+      },
+
+      releaseAdvancing(id) {
+        if (get().advancing.includes(id)) set({ advancing: get().advancing.filter((x) => x !== id) });
       },
 
       releaseLingering(id) {
@@ -534,6 +578,24 @@ export function createAppStore(deps: StoreDeps) {
       clearQuickAddParent: () => set({ quickAddParent: null }),
 
       openDueSheet: (id) => set({ dueSheetFor: id }),
+      openRepeatSheet: (id) => set({ repeatSheetFor: id }),
+      closeRepeatSheet: () => set({ repeatSheetFor: null }),
+
+      setRepeat(id, rule) {
+        const task = getTask(get().tasks, id);
+        if (rule === null) {
+          if (task.repeat !== null) get().editTask(id, { repeat: null });
+          return;
+        }
+        // A repeat needs a date: start at the first occurrence if there isn't one.
+        const dueAt = task.dueAt ?? firstOccurrence(rule, now(), get().settings.defaultTimeMinutes);
+        const anchored = rule.freq === 'month' || rule.freq === 'year' ? { ...rule, monthDay: new Date(dueAt).getDate() } : rule;
+        get().editTask(id, {
+          repeat: anchored,
+          dueAt,
+          ...(task.dueAt === null && { notify: get().settings.notifyByDefault }),
+        });
+      },
       closeDueSheet: () => set({ dueSheetFor: null }),
 
       setDue(id, dueAt, notify) {

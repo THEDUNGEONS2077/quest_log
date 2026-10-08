@@ -18,6 +18,7 @@ import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } fro
 import { useMinute } from '@/components/common/useMinute';
 import { formatDue } from '@/lib/dates';
 import { parse, type ParseResult } from '@/lib/parser';
+import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
@@ -61,13 +62,20 @@ function Chip({ label, onClear, onPress, a11y }: { label: string; onClear?: () =
   );
 }
 
+/** A parsed chip's label, with its glyph for dates (◔) and repeats (↻). */
+function chipLabel(kind: ParseResult['chips'][number]['kind'], label: string): string {
+  if (kind === 'due') return `${glyphs.notify.glyph} ${label}`;
+  if (kind === 'repeat') return `${glyphs.repeat.glyph} ${label}`;
+  return label;
+}
+
 /** Live preview of the shorthand in `text`. Renders nothing for plain text. */
 export function ShorthandChips({ result, style }: { result: ParseResult; style?: StyleProp<ViewStyle> }) {
   if (!result.chips.length) return null;
   return (
     <View style={[styles.row, style]} accessibilityLabel={`Shorthand: ${result.chips.map((c) => c.label).join(', ')}`}>
       {result.chips.map((c) => (
-        <Chip key={c.kind} label={c.kind === 'due' ? `${glyphs.notify.glyph} ${c.label}` : c.label} a11y={c.kind} />
+        <Chip key={c.kind} label={chipLabel(c.kind, c.label)} a11y={c.kind} />
       ))}
     </View>
   );
@@ -83,12 +91,13 @@ export function TaskChips({ id }: { id: string }) {
 
   const showPriority = task.priority > 0 && parsed.priority === undefined;
   const showDue = task.dueAt !== null && parsed.dueAt === undefined;
-  if (!parsed.chips.length && !showPriority && !showDue) return null;
+  const showRepeat = task.repeat !== null && parsed.repeat === undefined;
+  if (!parsed.chips.length && !showPriority && !showDue && !showRepeat) return null;
 
   return (
     <View style={styles.row}>
       {parsed.chips.map((c) => (
-        <Chip key={`p-${c.kind}`} label={c.kind === 'due' ? `${glyphs.notify.glyph} ${c.label}` : c.label} a11y={c.kind} />
+        <Chip key={`p-${c.kind}`} label={chipLabel(c.kind, c.label)} a11y={c.kind} />
       ))}
       {showPriority && (
         <Chip
@@ -103,6 +112,14 @@ export function TaskChips({ id }: { id: string }) {
           onPress={() => actions.openDueSheet(id)}
           onClear={() => actions.clearDue(id)}
           a11y="due date"
+        />
+      )}
+      {showRepeat && (
+        <Chip
+          label={`${glyphs.repeat.glyph} ${repeatLabel(task.repeat!)}`}
+          onPress={() => actions.openRepeatSheet(id)}
+          onClear={() => actions.setRepeat(id, null)}
+          a11y="repeat"
         />
       )}
     </View>

@@ -31,6 +31,18 @@ export interface RepeatRule {
   weekdays?: number[];
   /** Next date counts from the due date ('schedule') or from completion time. */
   from: 'schedule' | 'completion';
+  /**
+   * Monthly/yearly: the day of the month to return to after clamping
+   * (31 → Feb 28 → Mar 31). Optional; defaults to the due date's day.
+   * Added in Phase 8 as an optional field, so no migration is needed.
+   */
+  monthDay?: number;
+  /**
+   * The occurrence's usual time of day (minutes after midnight). Set when a
+   * repeating reminder is snoozed (09:00 → 09:15), so later occurrences
+   * return to 09:00 instead of drifting. Optional; defaults to the due time.
+   */
+  timeOfDay?: number;
 }
 
 /** One task. Every field is plain JSON, so it persists and backs up as-is. */

@@ -609,6 +609,13 @@ New tasks come from the quick-add bar, from `+ SUB`, from the `+` on a group hea
   - On Android, the next occurrence is scheduled on completion, including completion from the widget or a notification via the headless task.
   - On iOS, the next **3** occurrences are pre-scheduled so a repeat keeps notifying even if the app isn't opened.
 - **`lib/recurrence.ts`** is pure, about 150 lines, and heavily tested.
+- **Implementation notes (2026-10-08):**
+  - `RepeatRule` gained two optional fields, so no migration was needed:
+    - `monthDay`: the day to return to after month-end clamping, so 31 → Feb 28 → Mar 31 with no drift.
+    - `timeOfDay`: pinned when a repeating reminder is snoozed, so a snoozed 09:00 → 09:15 doesn't move later occurrences.
+  - Archived copies have deterministic IDs (`<id>~<old due>`).
+  - DONE from a notification carries the occurrence (its due time), so re-draining never advances twice.
+  - A repeating **group** archives and resets as a whole when its last open subtask is checked, which makes it a reusable checklist.
 
 ### 9.10 Drag-and-drop (reorder and re-nest)
 

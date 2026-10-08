@@ -214,6 +214,16 @@ const CompletedRow = memo(
                 editing && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
               )}
             </View>
+            {/* An archived occurrence of a repeating task (PLAN §9.6). */}
+            {task.repeatSourceId !== null && (
+              <Text
+                style={[type.metaGlyph, styles.dim, styles.repeatMark]}
+                accessibilityLabel="repeat occurrence"
+                maxFontSizeMultiplier={maxFontSizeMultiplier}
+              >
+                {glyphs.repeat.glyph}
+              </Text>
+            )}
             {row.depth === 0 && <Modified at={task.updatedAt} />}
           </Pressable>
         </SwipeableRow>
@@ -254,6 +264,7 @@ const styles = StyleSheet.create({
   checkboxText: { letterSpacing: shape.checkboxTracking },
   title: { flex: 1, minWidth: 0 },
   dim: { color: colors.textDim, ...platformText },
+  repeatMark: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.metaGlyph.lineHeight) / 2 },
   modified: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
   clearRow: { alignItems: 'flex-end', paddingHorizontal: space.lg },
   clear: {

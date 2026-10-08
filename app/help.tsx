@@ -87,6 +87,19 @@ const SECTIONS: { title: string; lines: Line[] }[] = [
     ],
   },
   {
+    title: 'REPEATING',
+    lines: [
+      {
+        key: `${g.repeat.glyph} REPEAT…`,
+        what: 'In the date sheet or menu: daily, weekdays, weekly (pick days), monthly, yearly, every N',
+      },
+      { key: '*daily *weekdays', what: 'Shorthand; also *weekly *monthly *yearly' },
+      { key: '*mon,thu  *every 2w', what: 'Chosen days / every 2 weeks (or 3d, 6mo)' },
+      { key: 'Check it off', what: 'It moves to its next date and its subtasks reset; a done copy goes to COMPLETED' },
+      { key: 'AFTER DONE', what: 'Next date counts from when you finished, not the schedule' },
+    ],
+  },
+  {
     title: 'COMPLETED QUESTS',
     lines: [
       { key: 'Order', what: 'Most recently changed first' },

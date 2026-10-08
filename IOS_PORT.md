@@ -9,7 +9,7 @@ This is a running list of everything that behaves differently on iOS or still ne
 
 ## Notifications
 - [ ] iOS allows **64 pending notifications** per app. Schedule the nearest 60 and top up during reconciliation.
-- [ ] Pre-schedule the **next 3 occurrences** of repeating tasks, since there's no headless task to reschedule on completion.
+- [ ] Pre-schedule the **next 3 occurrences** of repeating tasks, since there's no headless task to reschedule on completion. Use `nextOccurrence` (lib/recurrence.ts) to compute them in `desiredReminders`, and give each the `task:<id>:<dueAt>` identifier.
 - [ ] Notification actions (DONE / SNOOZE): the app drains `ops.pending` on launch and foreground.
 - [ ] Request notification permission, considering provisional authorization.
 

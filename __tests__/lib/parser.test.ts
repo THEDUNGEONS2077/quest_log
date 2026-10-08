@@ -101,3 +101,23 @@ describe('parseTime', () => {
     expect(parseTime('13pm')).toBeNull();
   });
 });
+
+describe('repeat shorthand (Phase 8)', () => {
+  it('presets', () => {
+    expect(p('standup *daily').repeat).toEqual({ freq: 'day', interval: 1, from: 'schedule' });
+    expect(p('x *weekdays').repeat!.weekdays).toEqual([1, 2, 3, 4, 5]);
+    expect(p('x *monthly').repeat!.freq).toBe('month');
+  });
+  it('chosen weekdays and intervals', () => {
+    expect(p('gym *mon,thu').repeat).toEqual({ freq: 'week', interval: 1, weekdays: [1, 4], from: 'schedule' });
+    expect(p('x *every 2w').repeat).toEqual({ freq: 'week', interval: 2, from: 'schedule' });
+    expect(p('x *every3d').repeat).toEqual({ freq: 'day', interval: 3, from: 'schedule' });
+    expect(p('x *every 6mo').repeat!.interval).toBe(6);
+  });
+  it('strips the token, makes a chip, combines with a date, and leaves unknown *words alone', () => {
+    const r = p('review *weekly @fri 4pm');
+    expect(r.title).toBe('review');
+    expect(r.chips.map((c) => c.label)).toEqual(['FRI 16:00', 'WEEKLY']);
+    expect(p('5 * 3 *bold').title).toBe('5 * 3 *bold');
+  });
+});

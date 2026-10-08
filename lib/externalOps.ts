@@ -14,6 +14,7 @@
  */
 import { check } from './complete';
 import { editTask, type Op } from './ops';
+import { pinTimeOfDay } from './recurrence';
 import { SNOOZE_MS } from './reminders';
 import { findTask } from './taskMap';
 import type { ID, TasksState } from './types';
@@ -26,6 +27,12 @@ export interface ExternalOp {
   at: number;
   /** Where it came from, for the toast ("COMPLETED FROM NOTIFICATION"). */
   source: 'notification' | 'widget';
+  /**
+   * The occurrence acted on (the notification's due time). A repeating task
+   * never stays done; once it has moved past this occurrence, the action
+   * has been applied, which keeps re-draining idempotent.
+   */
+  dueAt?: number;
 }
 
 /**
@@ -37,12 +44,16 @@ export function toOp(state: TasksState, ext: ExternalOp): Op | null {
   if (!task || task.deletedAt !== null) return null;
   if (ext.kind === 'complete') {
     if (task.done) return null; // already applied
+    // A repeating task already advanced past this occurrence: already applied.
+    if (task.repeat && ext.dueAt !== undefined && task.dueAt !== ext.dueAt) return null;
     return check(state, ext.taskId, ext.at).op;
   }
   // Snooze: due 15 minutes after the tap. Deterministic, so re-applying changes nothing.
   const dueAt = ext.at + SNOOZE_MS;
   if (task.dueAt === dueAt && task.notify) return null;
-  return editTask(state, ext.taskId, { dueAt, notify: true }, ext.at);
+  // A repeating task keeps its usual time for later occurrences (no 09:15 drift).
+  const repeat = task.repeat && task.dueAt !== null ? { repeat: pinTimeOfDay(task.repeat, task.dueAt) } : {};
+  return editTask(state, ext.taskId, { dueAt, notify: true, ...repeat }, ext.at);
 }
 
 /** Parses the stored queue, dropping anything malformed (it must never block the drain). */

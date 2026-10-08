@@ -31,7 +31,7 @@ import type { Row } from '@/lib/flatten';
 import { findTask } from '@/lib/taskMap';
 import type { Task } from '@/lib/types';
 import { haptics } from '@/services/haptics';
-import { LINGER_MS, type ToggleOutcome } from '@/store/createStore';
+import { ADVANCE_MS, LINGER_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
 
@@ -42,7 +42,7 @@ import { SwipeableRow } from './SwipeableRow';
 
 /** The haptic for each checkbox outcome (PLAN §9.18). */
 export function hapticFor(outcome: ToggleOutcome): void {
-  if (outcome === 'moved-to-completed' || outcome === 'parent-completed') haptics.success();
+  if (outcome === 'moved-to-completed' || outcome === 'parent-completed' || outcome === 'repeated') haptics.success();
   else haptics.check();
 }
 
@@ -60,8 +60,15 @@ export const TaskRow = memo(
     // Only rows with a due date subscribe to the clock (for the spoken "due …, overdue").
     const now = useMinuteIf(task?.dueAt != null);
     const lingering = useAppStore((s) => s.lingering.includes(row.id));
+    // A repeating task just checked: struck for a moment, then back with its next date (PLAN §10.5).
+    const advancing = useAppStore((s) => s.advancing.includes(row.id));
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
+    useEffect(() => {
+      if (!advancing) return;
+      const t = setTimeout(() => actions.releaseAdvancing(row.id), ADVANCE_MS);
+      return () => clearTimeout(t);
+    }, [advancing, actions, row.id]);
 
     // A just-completed top-level task: hold while the strike plays, fade, then leave ACTIVE.
     const opacity = useSharedValue(1);
@@ -174,7 +181,7 @@ export const TaskRow = memo(
               ) : (
                 <StrikeText
                   text={task.title}
-                  struck={task.done}
+                  struck={task.done || advancing}
                   color={isGroup ? colors.textBright : colors.text}
                   style={titleStyle}
                   onPress={() => actions.setEditing(task.id)}

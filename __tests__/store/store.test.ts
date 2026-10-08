@@ -457,3 +457,43 @@ describe('external ops queue (services/externalOps)', () => {
     expect(tk(store.getState().tasks, id)!.done).toBe(false);
   });
 });
+
+describe('recurring tasks (Phase 8)', () => {
+  it('checking a repeating task returns "repeated", advances it and archives a copy, with a NEXT toast', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.quickAdd('standup *daily @tomorrow');
+    const id = store.getState().tasks.children.root![0]!;
+    const due = tk(store.getState().tasks, id)!.dueAt!;
+    expect(s.toggleDone(id)).toBe('repeated');
+    const st = store.getState();
+    expect(tk(st.tasks, id)).toMatchObject({ done: false, dueAt: due + DAY });
+    expect(st.tasks.children.root).toHaveLength(2); // live task + archived copy
+    expect(st.advancing).toEqual([id]);
+    expect(st.toast!.message).toMatch(/^NEXT: /);
+    s.undo();
+    expect(store.getState().tasks.children.root).toHaveLength(1);
+    expect(tk(store.getState().tasks, id)!.dueAt).toBe(due);
+  });
+
+  it('setRepeat gives a task without a date its first occurrence, and stopping keeps the date', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'water plants');
+    s.setRepeat(id, { freq: 'day', interval: 2, from: 'schedule' });
+    const t = tk(store.getState().tasks, id)!;
+    expect(t.dueAt).toBe(new Date(2026, 9, 8, 9).getTime()); // tomorrow 09:00 (noon now)
+    expect(t.notify).toBe(true);
+    s.setRepeat(id, null);
+    expect(tk(store.getState().tasks, id)).toMatchObject({ repeat: null, dueAt: t.dueAt });
+  });
+
+  it('monthly repeats remember their day of the month', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'rent');
+    s.setDue(id, new Date(2026, 9, 31, 9).getTime(), true);
+    s.setRepeat(id, { freq: 'month', interval: 1, from: 'schedule' });
+    expect(tk(store.getState().tasks, id)!.repeat!.monthDay).toBe(31);
+  });
+});

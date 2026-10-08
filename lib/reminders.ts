@@ -84,5 +84,11 @@ export function reconcile(desired: readonly Reminder[], scheduled: readonly stri
   };
 }
 
+/** Parses the due time back out of a reminder identifier, or null. */
+export function dueAtOf(identifier: string): number | null {
+  const m = /^task:.+:(\d+)$/.exec(identifier);
+  return m ? Number(m[1]) : null;
+}
+
 /** How long SNOOZE pushes a reminder back (PLAN §9.8). */
 export const SNOOZE_MS = 15 * 60_000;

@@ -20,6 +20,7 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 
 import type { ExternalOp } from '@/lib/externalOps';
+import { dueAtOf } from '@/lib/reminders';
 import { appStore, flushPersistence, kv } from '@/store';
 
 import { appendExternalOp, drainExternalOps } from './externalOps';
@@ -30,7 +31,9 @@ export function externalOpFromResponse(response: Notifications.NotificationRespo
   const kind = response.actionIdentifier === ACTION_DONE ? 'complete' : response.actionIdentifier === ACTION_SNOOZE ? 'snooze' : null;
   const taskId = response.notification.request.content.data?.taskId;
   if (!kind || typeof taskId !== 'string') return null;
-  return { kind, taskId, at, source: 'notification' };
+  // The occurrence this notification was for (keeps repeating-task DONE idempotent).
+  const dueAt = dueAtOf(response.notification.request.identifier) ?? undefined;
+  return { kind, taskId, at, source: 'notification', dueAt };
 }
 
 /** Handles a DONE/SNOOZE response: queue, apply, save, tidy the tray, re-sync. */

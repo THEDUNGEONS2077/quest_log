@@ -12,9 +12,16 @@
  *   - Unchecking a task also unchecks every done ancestor (a done parent
  *     with an open child would be a contradiction).
  *   - Restore (from COMPLETED) unchecks the task *and* its whole subtree.
- *   - Repeating tasks (PLAN §9.9) hook in here in Phase 8.
+ *   - Repeating tasks (PLAN §9.9): if the checked task, or a parent it
+ *     would auto-complete, repeats, that task *advances* instead of staying
+ *     done. Its due date moves to the next occurrence and its subtree resets
+ *     to unchecked. A top-level repeating task also leaves a completed copy
+ *     on the COMPLETED tab (`repeatSourceId` set; marked ↻). The copy's IDs
+ *     are deterministic (`<id>~<old due>`), so applying the same completion
+ *     twice can never archive twice.
  */
 import { mergeChanges, type FieldChange, newTask, type Op, touchChanges } from './ops';
+import { nextOccurrence } from './recurrence';
 import { findTask } from './taskMap';
 import { ancestors, childIds, getTask, liveChildIds } from './tree';
 import { type ID, ROOT, type Task, type TasksState } from './types';
@@ -26,6 +33,13 @@ export interface CompleteResult {
   autoCompleted: ID[];
   /** The top-level task that became done (it moves to COMPLETED), if any. */
   completedTopLevel: ID | null;
+  /** A repeating task that advanced to its next occurrence instead of staying done. */
+  advanced: { id: ID; nextDue: number } | null;
+}
+
+/** ID of the archived copy of task `id` for the occurrence due at `dueAt`. */
+export function archiveId(id: ID, dueAt: number): ID {
+  return `${id}~${dueAt}`;
 }
 
 /**
@@ -73,13 +87,67 @@ export function check(state: TasksState, id: ID, at: number): CompleteResult {
     }
   }
 
+  // 3. Repeat: the lowest task in the completed chain (the task itself, then
+  // the parents it auto-completes) that has a repeat rule and a due date
+  // advances instead. Everything above it stays as it was.
+  const completedChain = [id, ...autoCompleted];
+  const pivot = completedChain.map((c) => getTask(state, c)).find((t) => t.repeat !== null && t.dueAt !== null && !t.done);
+  if (pivot) return advance(state, pivot, id, at, pivot.id === id ? [] : autoCompleted.slice(0, autoCompleted.indexOf(pivot.id)));
+
   // The top-level task of this chain moves to COMPLETED if it's now done.
   const chain = [id, ...ancestors(state, id)];
   const top = chain[chain.length - 1]!;
   const completedTopLevel = getTask(state, top).parentId === null && doneNow.has(top) && !getTask(state, top).done ? top : null;
 
   const op: Op = { type: 'update', changes: mergeChanges([...touchChanges(state, [id], at), ...changes]) };
-  return { op, autoCompleted, completedTopLevel };
+  return { op, autoCompleted, completedTopLevel, advanced: null };
+}
+
+/**
+ * Advances repeating task `r` (PLAN §9.9): its due date moves to the next
+ * future occurrence, and it and its live subtree reset to unchecked. A
+ * top-level `r` also gets a completed copy archived on COMPLETED.
+ * `checkedId` is the task the user actually checked (for updatedAt
+ * bubbling); `autoCompleted` are parents below `r` that completed on the way.
+ */
+function advance(state: TasksState, r: Task, checkedId: ID, at: number, autoCompleted: ID[]): CompleteResult {
+  const nextDue = nextOccurrence(r.repeat!, r.dueAt!, at, at);
+  const subtree = liveSubtree(state, r.id);
+
+  // The live task: next date, everything unchecked again.
+  const reset: FieldChange[] = subtree.filter((t) => t.done).map((t) => ({ id: t.id, fields: { done: false, doneAt: null } }));
+  const ops: Op[] = [
+    {
+      type: 'update',
+      changes: mergeChanges([...touchChanges(state, [checkedId], at), ...reset, { id: r.id, fields: { dueAt: nextDue } }]),
+    },
+  ];
+
+  // Top level: archive this occurrence as a completed copy (no repeat, no reminder).
+  if (r.parentId === null) {
+    const copyId = (orig: ID) => archiveId(orig, r.dueAt!);
+    const tasks: Task[] = subtree.map((t) => ({
+      ...t,
+      id: copyId(t.id),
+      parentId: t.id === r.id ? null : copyId(t.parentId!),
+      done: true,
+      doneAt: t.done && t.doneAt !== null ? t.doneAt : at,
+      notify: false,
+      notificationIds: [],
+      repeat: null,
+      repeatSourceId: t.id === r.id ? r.id : null,
+      collapsed: true,
+      createdAt: at,
+      updatedAt: at,
+    }));
+    const children: Record<ID, ID[]> = {};
+    for (const t of tasks.slice(1)) (children[t.parentId!] ??= []).push(t.id);
+    // Already archived (the same completion applied twice): don't insert again.
+    if (!findTask(state, tasks[0]!.id)) {
+      ops.push({ type: 'insert', parentId: null, index: childIds(state, null).length, tasks, children });
+    }
+  }
+  return { op: { type: 'batch', ops }, autoCompleted, completedTopLevel: null, advanced: { id: r.id, nextDue } };
 }
 
 /**

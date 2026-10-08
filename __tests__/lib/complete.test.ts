@@ -1,9 +1,9 @@
 /**
  * __tests__/lib/complete.test.ts: completion rules and COMPLETED actions (lib/complete.ts).
  */
-import { check, clearCompleted, runAgain, uncheck } from '@/lib/complete';
+import { archiveId, check, clearCompleted, runAgain, uncheck } from '@/lib/complete';
 import { flattenActive, flattenCompleted } from '@/lib/flatten';
-import { apply, type Op } from '@/lib/ops';
+import { apply, editTask, type Op } from '@/lib/ops';
 import type { TasksState } from '@/lib/types';
 
 import { build, outline, shape, tk } from '../helpers/tree';
@@ -127,5 +127,61 @@ describe('clearCompleted', () => {
   it('clears all completed tasks, and returns null when there is nothing to clear', () => {
     expect(clearCompleted(s, NOW, null)!.count).toBe(2);
     expect(clearCompleted(build([['open']]), NOW, null)).toBeNull();
+  });
+});
+
+describe('repeating tasks (PLAN §9.9)', () => {
+  const DAY = 86_400_000;
+  const due = new Date(2026, 9, 7, 9).getTime(); // Wed 09:00
+  const daily = { freq: 'day' as const, interval: 1, from: 'schedule' as const };
+
+  it('a top-level repeating task advances, resets its subtasks and archives a completed copy', () => {
+    const s = build([['standup', { dueAt: due, notify: true, repeat: daily }, [['notes', { done: true }], ['blockers']]]]);
+    const r = check(s, 'standup', due + 60_000);
+    const next = run(s, r.op);
+    expect(r.advanced).toEqual({ id: 'standup', nextDue: due + DAY });
+    expect(r.completedTopLevel).toBeNull();
+    // Live task: still open, next date, subtasks unchecked.
+    expect(tk(next, 'standup')).toMatchObject({ done: false, dueAt: due + DAY });
+    expect(tk(next, 'notes')!.done).toBe(false);
+    // Archived copy on COMPLETED, marked with its source, no repeat or reminder.
+    const copy = tk(next, archiveId('standup', due))!;
+    expect(copy).toMatchObject({ done: true, repeatSourceId: 'standup', repeat: null, notify: false, parentId: null });
+    expect(outline(flattenCompleted(next, new Set([copy.id])))).toEqual([
+      copy.id,
+      `  ${archiveId('notes', due)}`,
+      `  ${archiveId('blockers', due)}`,
+    ]);
+  });
+
+  it('never archives the same occurrence twice (deterministic copy IDs)', () => {
+    const s = build([['standup', { dueAt: due, repeat: daily }]]);
+    const once = run(s, check(s, 'standup', due).op);
+    // Replay of the same occurrence (its copy exists, the due date is back at `due`):
+    // the task advances again, but no second copy is inserted.
+    const replay = apply(once, editTask(once, 'standup', { dueAt: due }, due)).state;
+    expect(JSON.stringify(check(replay, 'standup', due).op)).not.toContain('"insert"');
+  });
+
+  it('a repeating subtask advances in place without archiving', () => {
+    const s = build([['home', [['water plants', { dueAt: due, repeat: daily }], ['other']]]]);
+    const r = check(s, 'water plants', due);
+    const next = run(s, r.op);
+    expect(tk(next, 'water plants')).toMatchObject({ done: false, dueAt: due + DAY });
+    expect(tk(next, archiveId('water plants', due))).toBeUndefined();
+  });
+
+  it('checking the last item of a repeating checklist group resets the whole group', () => {
+    const s = build([['weekly review', { dueAt: due, repeat: { ...daily, freq: 'week' } }, [['inbox', { done: true }], ['calendar']]]]);
+    const r = check(s, 'calendar', due);
+    const next = run(s, r.op);
+    expect(r.advanced!.id).toBe('weekly review');
+    expect(['weekly review', 'inbox', 'calendar'].map((id) => tk(next, id)!.done)).toEqual([false, false, false]);
+    expect(tk(next, 'weekly review')!.dueAt).toBe(due + 7 * DAY);
+  });
+
+  it('a repeat without a due date completes normally', () => {
+    const s = build([['x', { repeat: daily }]]);
+    expect(check(s, 'x', due).completedTopLevel).toBe('x');
   });
 });

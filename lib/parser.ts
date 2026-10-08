@@ -13,16 +13,20 @@
  *                            followed by a time: "@mon 9am"
  *   @5pm @9:30am @17:30      that time today, or tomorrow if it has passed
  *   @in 30m / 2h / 3d / 1w   relative to now ("@in2h" works too)
+ *   *daily *weekdays *weekly *monthly *yearly
+ *   *mon,thu  *every 2w  *every 3d  *every 2mo   repeat rule (PLAN §9.9);
+ *                            without an @date, the first occurrence uses the
+ *                            default time
  *   //                       everything after it becomes notes
  *   # at the very start      create as a group (ready for children)
  *   \word                    keep a word literally (\!!! stays "!!!")
  *
- * Unrecognized @words stay in the title as typed. `now` and the default
- * time are passed in, so results are deterministic and testable. Repeat
- * shorthand (*daily, *mon,thu…) joins in Phase 8 with recurring tasks.
+ * Unrecognized @words and *words stay in the title as typed. `now` and the
+ * default time are passed in, so results are deterministic and testable.
  */
 import { addDays, atTimeOfDay, formatDue } from './dates';
-import type { Priority } from './types';
+import { PRESETS, repeatLabel } from './recurrence';
+import type { Priority, RepeatRule } from './types';
 
 export interface ParseOptions {
   now: number;
@@ -32,7 +36,7 @@ export interface ParseOptions {
 
 /** One recognized token, for the live chips under the input. */
 export interface ParsedChip {
-  kind: 'priority' | 'due' | 'notes' | 'group';
+  kind: 'priority' | 'due' | 'repeat' | 'notes' | 'group';
   /** Display text, e.g. "!!! HIGH", "FRI 09:00", "NOTE". */
   label: string;
 }
@@ -42,6 +46,7 @@ export interface ParseResult {
   title: string;
   priority?: Priority;
   dueAt?: number;
+  repeat?: RepeatRule;
   notes?: string;
   /** `#` prefix: create as a group. */
   group: boolean;
@@ -72,6 +77,33 @@ const WEEKDAYS: Record<string, number> = {
 const TIME = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)?$/i;
 // 30m · 2h · 3d · 1w (also "30min", "2hrs", "3days", "1week")
 const RELATIVE = /^(\d+)\s*(m|min|mins|h|hr|hrs|d|day|days|w|wk|week|weeks)$/i;
+
+/**
+ * Parses a repeat token (without the `*`); `next` may complete "*every 2w"
+ * written as two words. Returns the rule and how many extra words it used.
+ */
+function parseRepeat(word: string, next: string | undefined): { rule: RepeatRule; used: number } | null {
+  const w = word.toLowerCase();
+  if (w in PRESETS) return { rule: { ...PRESETS[w as keyof typeof PRESETS] }, used: 0 };
+  // *mon,thu: chosen weekdays.
+  const days = w.split(',').map((d) => WEEKDAYS[d]);
+  if (days.length && days.every((d) => d !== undefined)) {
+    return {
+      rule: { freq: 'week', interval: 1, weekdays: [...new Set(days as number[])].sort((a, b) => a - b), from: 'schedule' },
+      used: 0,
+    };
+  }
+  // *every 2w / *every3d / *every 2mo
+  if (w === 'every' || w.startsWith('every')) {
+    const spec = w === 'every' ? next?.toLowerCase() : w.slice(5);
+    const m = spec ? /^(\d+)\s*(d|day|days|w|wk|week|weeks|mo|month|months|y|yr|year|years)$/.exec(spec) : null;
+    if (!m) return null;
+    const unit = m[2]!;
+    const freq = unit.startsWith('d') ? 'day' : unit.startsWith('w') ? 'week' : unit.startsWith('m') ? 'month' : 'year';
+    return { rule: { freq, interval: Math.max(1, Number(m[1])), from: 'schedule' }, used: w === 'every' ? 1 : 0 };
+  }
+  return null;
+}
 
 /** Parses "5pm" / "17:30" into minutes after midnight, or null. Bare numbers need am/pm or a colon. */
 export function parseTime(text: string): number | null {
@@ -187,6 +219,14 @@ export function parse(input: string, opts: ParseOptions): ParseResult {
       result.priority = w.length as Priority;
       continue;
     }
+    if (w.startsWith('*') && w.length > 1) {
+      const rep = parseRepeat(w.slice(1), words[i + 1]);
+      if (rep) {
+        result.repeat = rep.rule;
+        i += rep.used;
+        continue;
+      }
+    }
     if (w.startsWith('@') && w.length > 1) {
       const date = resolveDate(w.slice(1), words[i + 1], opts);
       if (date) {
@@ -201,6 +241,7 @@ export function parse(input: string, opts: ParseOptions): ParseResult {
   if (result.priority)
     result.chips.unshift({ kind: 'priority', label: `${'!'.repeat(result.priority)} ${PRIORITY_LABEL[result.priority]}` });
   if (result.dueAt !== undefined) result.chips.push({ kind: 'due', label: formatDue(result.dueAt, opts.now) });
+  if (result.repeat) result.chips.push({ kind: 'repeat', label: repeatLabel(result.repeat) });
   result.title = kept.join(' ');
   return result;
 }

@@ -2,6 +2,21 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.7.0 (build 11)
+
+Repeating tasks.
+
+- **Make any task repeat:** use **↻ REPEAT…** in the date sheet or the long-press menu.
+  - Choose daily, weekdays, weekly (pick the days), monthly, yearly, or every N days, weeks, months or years.
+  - Choose whether the next date counts **from the schedule** or **after you finish**.
+- **Shorthand:** `*daily` `*weekdays` `*weekly` `*monthly` `*yearly` `*mon,thu` `*every 2w`. For example: `standup *weekdays @9am`.
+- **When you check off a repeating task,** the line draws through it and then it springs back with its **next date**. A message shows when the next one is due.
+  - Its subtasks reset, so a repeating group works as a reusable checklist.
+  - A completed copy is kept on the **COMPLETED** tab, marked **↻**.
+- **Overdue repeating tasks skip ahead** to the next future date. No pile-up of missed ones.
+- **Monthly on the 31st** falls on the last day of shorter months, then returns to the 31st.
+- DONE and SNOOZE on a repeating task's notification work as expected. Snoozing doesn't shift future reminders.
+
 ## 0.6.2 (build 10)
 
 - Every main (top-level) task now has a divider line above it, not only groups, so tasks are easier to tell apart at a glance.

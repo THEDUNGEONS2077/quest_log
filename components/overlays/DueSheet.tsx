@@ -7,6 +7,7 @@
  *   TOMORROW 09:00 NEXT MON 09:00
  *   CUSTOM…
  *   ◔ NOTIFY                [ ON ]
+ *   ↻ REPEAT…
  *   ✕ CLEAR DATE
  *
  * Layer: UI. Opened from the editing toolbar (◔ DUE), the long-press menu,
@@ -26,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMinute } from '@/components/common/useMinute';
 import { addDays, atTimeOfDay, duePresets, formatDue, startOfDay } from '@/lib/dates';
+import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
 import { useActions, useAppStore } from '@/store/react';
@@ -134,6 +136,16 @@ function DueSheetBody({ id }: { id: string }) {
               </Text>
             </Pressable>
           )}
+
+          {/* Repeat: its own sheet (PLAN §9.9). */}
+          <Option
+            label={`${glyphs.repeat.glyph} ${task.repeat ? `REPEAT: ${repeatLabel(task.repeat)}` : 'REPEAT…'}`}
+            onPress={() => {
+              close();
+              actions.openRepeatSheet(id);
+            }}
+            wide
+          />
 
           {task.dueAt !== null && (
             <Option

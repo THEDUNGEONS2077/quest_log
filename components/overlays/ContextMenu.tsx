@@ -9,17 +9,19 @@
  *   → Indent          ← Outdent
  *   ≡ Notes
  *   ◔ Due / remind…
+ *   ↻ Repeat…
  *   ⊞ Duplicate
  *   ⎕ Copy as text
  *   ✕ Delete
  *
  * Layer: UI. Everything here is also reachable without editing the task,
- * so structure and details can be changed from the list directly. Repeat,
- * zoom, select and move join in Phases 8–10.
+ * so structure and details can be changed from the list directly. Zoom,
+ * select and move join in Phases 9–10.
  */
 import * as Clipboard from 'expo-clipboard';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
 import type { Priority } from '@/lib/types';
 import { haptics } from '@/services/haptics';
@@ -47,6 +49,11 @@ export function ContextMenu({ id, onClose }: Props) {
       glyph: glyphs.notify.glyph,
       label: task.dueAt !== null ? 'Change due date…' : 'Due / remind…',
       onPress: () => actions.openDueSheet(id),
+    },
+    {
+      glyph: glyphs.repeat.glyph,
+      label: task.repeat ? `Repeat: ${repeatLabel(task.repeat).toLowerCase()}` : 'Repeat…',
+      onPress: () => actions.openRepeatSheet(id),
     },
     { glyph: glyphs.duplicate.glyph, label: 'Duplicate', onPress: () => actions.duplicateTask(id) },
     {
