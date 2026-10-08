@@ -61,6 +61,7 @@ export const glyphs = {
   copy: g('⎕', '⎘'),
   moveTo: g('↦'),
   done: g('✓'),
+  help: g('?'),
 
   // --- Terminal chrome ---
   cursor: g('█'),

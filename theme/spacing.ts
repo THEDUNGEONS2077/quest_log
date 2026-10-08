@@ -23,6 +23,8 @@ export const size = {
   rowMinHeight: 52,
   /** Minimum tap target (width and height) for anything tappable. */
   hitTarget: 44,
+  /** Height of the editing toolbar's buttons (EditToolbar), excluding the safe-area inset. */
+  toolbarHeight: 56,
   /** Max content width, so split-screen and large phones stay readable. */
   maxContentWidth: 640,
 } as const;

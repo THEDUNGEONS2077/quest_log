@@ -2,6 +2,15 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.5.1 (build 7)
+
+From your feedback on 0.5.0:
+
+- **Editing stays in view.** The task you're typing in (including a new subtask) sits right above the toolbar and keyboard, and is scrolled into view if it was off-screen.
+- **User guide.** Tap `?` at the top right for a quick reference to gestures, the toolbar and shorthand.
+- **The keyboard closes after adding a task** from the bottom bar.
+- **The ▸ / ▾ caret is 15% bigger.**
+
 ## 0.5.0 (build 6)
 
 Details, shorthand and a task menu.

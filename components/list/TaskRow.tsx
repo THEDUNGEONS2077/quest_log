@@ -122,7 +122,7 @@ export const TaskRow = memo(
               accessibilityElementsHidden={!row.hasChildren}
             >
               {row.hasChildren && (
-                <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                <Text style={[type.caretGlyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
                   {task.collapsed ? glyphs.collapsed.glyph : glyphs.expanded.glyph}
                 </Text>
               )}

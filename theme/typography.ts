@@ -51,6 +51,8 @@ export const type = {
    * so rows don't get taller and glyphs stay aligned with the title.
    */
   glyph: { fontFamily: fonts.regular, fontSize: 20, lineHeight: 24 },
+  /** The ▸ / ▾ collapse caret: another 15% on top of `glyph` (20 → 23, user request 2026-10-08). */
+  caretGlyph: { fontFamily: fonts.regular, fontSize: 23, lineHeight: 24 },
   /** Icon glyphs next to meta text (≡ ◔ ↻ !): 20% larger than meta (13 → 16), same line height. */
   metaGlyph: { fontFamily: fonts.medium, fontSize: 16, lineHeight: 18 },
 } as const satisfies Record<string, Role>;

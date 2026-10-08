@@ -407,6 +407,8 @@ Font sizes respect the OS text-size setting via `allowFontScaling`, clamped with
 
 All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Phase 15.
 
+> **Change (2026-10-08):** the ▸/▾ caret is another 15% larger (`type.caretGlyph`, 23 pt).
+
 > **Change (2026-10-07):** icon glyphs render 20% larger than the text beside them (`type.glyph` 20 pt beside 17 pt body; `type.metaGlyph` 16 pt beside 13 pt meta), at the same line height. The `[ ]` checkbox is drawn with tighter letter spacing.
 
 > **Phase 1 finding:** JetBrains Mono v2.304 lacks ⏰ ↻ ⌕ ⚙ ↶ ⇤ ⤢ ☐ ⧉ ⎘ ↳. In-font substitutes are used where a close match exists (for example ⏰ → ◔, ↶ → ↩, ☐ → □). `theme/glyphs.ts` is the source of truth, and the Phase 1 theme check screen shows each substitute beside the planned glyph. **Confirmed on device (Galaxy S25 Ultra, Android 16, 2026-10-07):** all substitutes are approved, and ↻ through the system fallback font looks fine.
@@ -417,7 +419,7 @@ All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Ph
 
 ### 9.1 Screen layout and tabs
 
-- **Header:** `> quest_log` with search and settings, plus a meta line: `12 ACTIVE · 4 DONE TODAY · 1 OVERDUE`.
+- **Header:** `> quest_log` with `?` (user guide, added 2026-10-08), search and settings, plus a meta line: `12 ACTIVE · 4 DONE TODAY · 1 OVERDUE`.
 - **Tabs:** a segmented control under the header, `[ ACTIVE QUESTS · 12 ]  [ COMPLETED QUESTS · 34 ]`.
   - Switching is by tap only. There is no horizontal pager swipe, because it would conflict with row swipes.
   - Each tab keeps its own scroll position, search, and filter.
@@ -457,7 +459,7 @@ All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Ph
 
 **Editing toolbar** (pinned above the keyboard while editing, in place of the quick-add bar): `← OUT` · `→ IN` · `+ SUB` (new empty subtask, edited next) · `↩ UNDO` · `✓ DONE`. Phase 6 adds priority, notes and due date to it.
 
-New tasks come from the quick-add bar (Enter there keeps the keyboard open for rapid entry), from `+ SUB`, or from paste.
+New tasks come from the quick-add bar, from `+ SUB`, or from paste. **Change (2026-10-08):** Enter in the quick-add bar adds the task and **closes the keyboard** (user request); it no longer stays open for rapid entry. While editing, the list keeps the edited title just above the editing toolbar.
 
 **Pasting and limits:**
 - **Paste multiline text** to create one task per line. Leading spaces, tabs, `-`, `*`, or `[ ]` set nesting and done state. A toast reads `PASTED 7 TASKS · UNDO`.

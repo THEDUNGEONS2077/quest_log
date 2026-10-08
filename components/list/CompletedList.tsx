@@ -144,7 +144,7 @@ const CompletedRow = memo(
               accessibilityLabel={expanded ? 'Collapse' : 'Expand'}
             >
               {row.hasChildren && (
-                <Text style={[type.glyph, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                <Text style={[type.caretGlyph, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
                   {expanded ? glyphs.expanded.glyph : glyphs.collapsed.glyph}
                 </Text>
               )}

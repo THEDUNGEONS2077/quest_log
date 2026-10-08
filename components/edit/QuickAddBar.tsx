@@ -4,8 +4,8 @@
  *
  * Layer: UI. Pinned above the keyboard by KeyboardStickyView.
  *   - Idle, it reads `> new task█`.
- *   - Enter adds the task at the end of the current view and keeps the
- *     keyboard open for rapid entry. Enter on empty text closes it.
+ *   - Enter adds the task at the end of the current view, then closes the
+ *     keyboard (user request 2026-10-08). Enter on empty text closes it too.
  *   - Pasting several lines adds one task per line, nested by indent.
  *   - Shorthand (!!! @fri // notes, #Group) shows as live chips above the
  *     field and becomes task fields on Enter (lib/parser.ts).
@@ -56,7 +56,8 @@ export function QuickAddBar({ onHeight }: Props) {
       return;
     }
     actions.quickAdd(title);
-    setText(''); // keyboard stays open for the next task
+    setText('');
+    input.current?.blur(); // done: the keyboard goes away after each added task
   };
 
   return (

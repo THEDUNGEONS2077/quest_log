@@ -47,7 +47,7 @@ Status markers:
 
 | Path | Purpose | Does **not** contain |
 |---|---|---|
-| `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
+| `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list), `help.tsx` (user guide, from the `?` button; update it with every new gesture or shorthand), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
 | `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides` *(built)*; drag layer *(planned, Phase 9)* | Store mutations beyond calling actions |
 | `components/edit/` | `InlineEditor` (+ `useEditorFocus`), `NotesField` (editor and linkified view), `ParsedChips` (shorthand preview and clearable field chips), `QuickAddBar`, `EditToolbar` (OUT/IN/SUB/PRI/NOTE/UNDO/DONE) *(built)* | Parsing and key rules (those are `lib/`) |
 | `components/overlays/` | `ActionSheet`, `ContextMenu` (long-press on ACTIVE rows, with a priority selector), `Toast` *(built)*; date/repeat sheets, boot sequence *(planned)* | |

@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
   },
   // Equal-width buttons, each at least the 44 pt tap target in both directions.
-  button: { flex: 1, minHeight: size.hitTarget + space.md, alignItems: 'center', justifyContent: 'center', paddingVertical: space.xs },
+  button: { flex: 1, minHeight: size.toolbarHeight, alignItems: 'center', justifyContent: 'center', paddingVertical: space.xs },
   pressed: { backgroundColor: colors.surface },
   glyph: { color: colors.accent, ...platformText },
   label: { color: colors.text, ...platformText },

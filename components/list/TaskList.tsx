@@ -6,12 +6,15 @@
  * Rows come from the memoized `activeRows` selector, which recomputes only
  * on structural changes, never on keystrokes.
  *
- * Keyboard: the scroll view is keyboard-aware, so a row that starts
- * editing is scrolled above the keyboard and the quick-add bar. Dragging
- * the list a meaningful distance ends editing (PLAN §9.3).
+ * Keyboard: the scroll view is keyboard-aware, and keeps the edited title
+ * just above the editing toolbar, which rides on the keyboard (with room for
+ * the chips row under the title). A row that starts editing off-screen (a new
+ * subtask at the end of a long group) is scrolled into view first, so its
+ * editor can mount and take focus. Dragging the list a meaningful distance
+ * ends editing (PLAN §9.3).
  */
-import { FlashList } from '@shopify/flash-list';
-import { useCallback, useRef } from 'react';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { type ComponentProps, useCallback, useEffect, useRef } from 'react';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, StyleSheet, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 
@@ -24,6 +27,17 @@ import { TaskRow } from './TaskRow';
 /** Dragging the list this far (pt) while editing closes the keyboard. */
 const DISMISS_DRAG_DISTANCE = size.rowMinHeight * 3;
 
+/**
+ * Gap kept between the keyboard and the edited title's caret: the toolbar
+ * (which sits on the keyboard) plus one chips row and a margin.
+ */
+const CARET_CLEARANCE = size.toolbarHeight + size.hitTarget + space.lg;
+
+/** The keyboard-aware scroll view with this list's caret clearance. */
+function ScrollView(props: ComponentProps<typeof KeyboardAwareScrollView>) {
+  return <KeyboardAwareScrollView {...props} bottomOffset={CARET_CLEARANCE} />;
+}
+
 interface Props {
   /** Space reserved at the bottom for the quick-add bar. */
   bottomInset: number;
@@ -32,6 +46,20 @@ interface Props {
 export function TaskList({ bottomInset }: Props) {
   const selectors = useSelectors();
   const rows = useAppStore((s) => selectors.activeRows(s));
+  const editingId = useAppStore((s) => s.editingId);
+  const list = useRef<FlashListRef<Row>>(null);
+  // Index range currently on screen, from FlashList's viewability callback.
+  const visible = useRef({ first: 0, last: -1 });
+
+  // When editing starts on a row that isn't on screen, scroll it into view
+  // (FlashList only mounts visible rows, so its editor couldn't otherwise focus).
+  useEffect(() => {
+    if (!editingId) return;
+    const index = rows.findIndex((r) => r.id === editingId);
+    if (index < 0) return;
+    const { first, last } = visible.current;
+    if (index < first || index > last) list.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+  }, [editingId, rows]);
 
   // Track the drag start so only a deliberate scroll ends editing, not a nudge.
   const dragStartY = useRef<number | null>(null);
@@ -50,12 +78,17 @@ export function TaskList({ bottomInset }: Props) {
 
   return (
     <FlashList
+      ref={list}
       data={rows}
       renderItem={renderItem}
       keyExtractor={(r) => r.id}
       // Separate recycling pools: group headers and plain rows differ in layout.
       getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
-      renderScrollComponent={KeyboardAwareScrollView}
+      renderScrollComponent={ScrollView}
+      onViewableItemsChanged={({ viewableItems }) => {
+        const indices = viewableItems.map((v) => v.index ?? 0);
+        visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };
+      }}
       // Taps on rows work while the keyboard is open; taps on empty space dismiss it.
       keyboardShouldPersistTaps="handled"
       onScrollBeginDrag={onScrollBeginDrag}
