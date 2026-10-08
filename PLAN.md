@@ -366,7 +366,7 @@ Only one effect is allowed: a **soft focus glow**. This is a 0–6 px green-brig
 
 ### 8.2 Typography (JetBrains Mono)
 
-> **Change (2026-10-08):** subtask titles are 15/22 (between groups and top-level tasks), on ACTIVE and COMPLETED alike (`components/list/titleStyle.ts`). Group titles are 20% smaller than body (14/20, uppercase bold). Row details (priority, notes, due, repeat, progress) sit on a line *under* the title instead of beside it, so titles keep the full width.
+> **Change (2026-10-08):** *every* main (top-level) task uses the caps title style (14/20 uppercase bold, bright), with or without subtasks. Subtask titles are 15/22 (between groups and top-level tasks), on ACTIVE and COMPLETED alike (`components/list/titleStyle.ts`). Group titles are 20% smaller than body (14/20, uppercase bold). Row details (priority, notes, due, repeat, progress) sit on a line *under* the title instead of beside it, so titles keep the full width.
 
 > **Change (2026-10-07):** one size step larger for readability, after the device test: display 22/30, tab 14/20, group 17/24, body 17/24, meta 13/18, notes 15/22. Indent goes from 20 to 24 pt, and the minimum row height from 48 to 52 pt.
 
@@ -667,6 +667,12 @@ New tasks come from the quick-add bar, from `+ SUB`, from the `+` on a group hea
 | `↻` | Repeating |
 
 - **Clearing** restores the previous scroll position.
+
+> **Implementation notes (Phase 10, 2026-10-08):**
+> - The filter chips appear with search (the `/` button) instead of staying on screen permanently, to save vertical space.
+> - Zoom is reached from the hold menu ("Zoom into") rather than by double-tapping the caret, since a double tap would also toggle collapse twice.
+> - Trash is reachable from a TRASH button on the COMPLETED tab (and from Settings in Phase 13).
+> - The multi-select actions bar sits at the bottom of the screen, within thumb reach.
 
 ### 9.12 Priority
 

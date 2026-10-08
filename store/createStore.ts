@@ -23,6 +23,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import * as complete from '@/lib/complete';
 import { formatDue } from '@/lib/dates';
 import * as copy from '@/lib/copy';
+import * as bulk from '@/lib/bulk';
 import * as dnd from '@/lib/dnd';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
@@ -32,6 +33,7 @@ import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { findTask } from '@/lib/taskMap';
 import { ancestors, childIds, getTask, liveChildIds } from '@/lib/tree';
+import type { Filter } from '@/lib/search';
 import type { ID, Priority, RepeatRule, TaskFields, TasksState } from '@/lib/types';
 
 import { EMPTY_HISTORY, type History, record } from './history';
@@ -77,6 +79,19 @@ export const ADVANCE_MS = 500;
 /** How long a just-checked top-level task stays on ACTIVE: strike (200 ms) + hold (500 ms). */
 export const LINGER_MS = 700;
 
+/** `dueSheetFor` value meaning "the whole multi-select selection" (PLAN §9.14 DUE). */
+export const SELECTION = '*selection*';
+
+/** One tab's search state (PLAN §9.11: each tab keeps its own). */
+export interface SearchState {
+  open: boolean;
+  query: string;
+  /** Filter chip (ACTIVE only). */
+  filter: Filter;
+}
+
+const NO_SEARCH: SearchState = { open: false, query: '', filter: 'all' };
+
 /** Options for dispatch. */
 export interface DispatchOptions {
   /** Merge with the previous history entry if it has the same key (typing). */
@@ -115,6 +130,12 @@ export interface AppStore {
   draggingId: ID | null;
   /** The task whose long-press menu is open, or null. Not persisted. */
   menuFor: ID | null;
+  /** Search and filter per tab. Not persisted. */
+  search: Record<Tab, SearchState>;
+  /** Multi-select (PLAN §9.14): the selected task IDs, or null when not selecting. Not persisted. */
+  selection: ID[] | null;
+  /** Tasks the Move to… picker is moving, or null when it's closed. Not persisted. */
+  movePickerFor: ID[] | null;
   /**
    * Increments whenever editing starts on a row. Part of the typing
    * coalesce key, so each editing session is its own undo step.
@@ -258,6 +279,38 @@ export interface AppStore {
   closeMenu(): void;
   /** Accessibility "Move up" / "Move down": swap with the neighbouring sibling. */
   moveTaskBy(id: ID, delta: -1 | 1): void;
+
+  // --- Navigation and power features (Phase 10) ---
+  /** Zoom out one level (to the zoom root's parent, or the whole list). */
+  zoomOut(): void;
+  /** Opens/closes search on a tab, or changes its query or filter. */
+  setSearch(tab: Tab, patch: Partial<SearchState>): void;
+  /** Closes search on a tab and clears it. */
+  closeSearch(tab: Tab): void;
+  /** Starts multi-select with one task selected. */
+  startSelection(id: ID): void;
+  /** Adds or removes a task from the selection (ends select mode when empty). */
+  toggleSelected(id: ID): void;
+  clearSelection(): void;
+  /** Bulk DONE / PRI / DEL / GROUP on the selection; each is one undo step. */
+  completeSelection(): void;
+  setSelectionPriority(priority: Priority): void;
+  /** Bulk PRI: the next priority after the first selected task's, applied to all. */
+  cycleSelectionPriority(): void;
+  /** Bulk DUE: the same date (and notify) on every selected root. */
+  setDueMany(ids: ID[], dueAt: number | null, notify: boolean): void;
+  deleteSelection(): void;
+  groupSelection(): void;
+  /** Opens the Move to… picker for these tasks. */
+  openMovePicker(ids: ID[]): void;
+  closeMovePicker(): void;
+  /** Moves tasks (with their subtrees) to the end of `parentId` (null = top level). */
+  moveTo(ids: ID[], parentId: ID | null): void;
+  /** Sort a parent's subtasks once (PLAN §9.12). */
+  sortSubtasks(parentId: ID, key: bulk.SortKey): void;
+  /** Trash: restore to the original place, or delete permanently. */
+  restoreFromTrash(id: ID): void;
+  purgeFromTrash(ids: ID[]): void;
   toggleCompletedExpanded(id: ID): void;
 
   // --- Settings ---
@@ -320,6 +373,9 @@ export function createAppStore(deps: StoreDeps) {
       highlightId: null,
       draggingId: null,
       menuFor: null,
+      search: { active: NO_SEARCH, completed: NO_SEARCH },
+      selection: null,
+      movePickerFor: null,
       editSession: 0,
       settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
       lingering: [],
@@ -647,6 +703,108 @@ export function createAppStore(deps: StoreDeps) {
       clearHighlight: () => set({ highlightId: null }),
 
       setDragging: (draggingId) => set({ draggingId }),
+
+      zoomOut() {
+        const root = get().ui.zoomRootId;
+        if (root === null) return;
+        const parent = findTask(get().tasks, root)?.parentId ?? null;
+        get().setZoom(parent);
+      },
+
+      setSearch(tab, patch) {
+        set({ search: { ...get().search, [tab]: { ...get().search[tab], ...patch } } });
+      },
+
+      closeSearch(tab) {
+        set({ search: { ...get().search, [tab]: NO_SEARCH } });
+      },
+
+      startSelection(id) {
+        get().setEditing(null);
+        set({ selection: [id], menuFor: null });
+      },
+
+      toggleSelected(id) {
+        const sel = get().selection ?? [];
+        const next = sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
+        set({ selection: next.length ? next : null });
+      },
+
+      clearSelection: () => set({ selection: null }),
+
+      completeSelection() {
+        const op = bulk.completeMany(get().tasks, get().selection ?? [], now());
+        if (op) get().dispatch(op);
+        const n = get().selection?.length ?? 0;
+        set({ selection: null });
+        if (op) get().showToast(`COMPLETED ${n}`, true);
+      },
+
+      setSelectionPriority(priority) {
+        const op = bulk.editMany(get().tasks, get().selection ?? [], { priority }, now());
+        if (op) get().dispatch(op);
+      },
+
+      cycleSelectionPriority() {
+        const roots = bulk.selectionRoots(get().tasks, get().selection ?? []);
+        const first = roots[0] ? findTask(get().tasks, roots[0]) : undefined;
+        if (first) get().setSelectionPriority(((first.priority + 1) % 4) as Priority);
+      },
+
+      setDueMany(ids, dueAt, notify) {
+        const op = bulk.editMany(get().tasks, ids, { dueAt, notify: dueAt === null ? false : notify }, now());
+        if (op) get().dispatch(op);
+      },
+
+      deleteSelection() {
+        const n = get().selection?.length ?? 0;
+        const op = bulk.deleteMany(get().tasks, get().selection ?? [], now());
+        set({ selection: null });
+        if (op) {
+          get().dispatch(op);
+          get().showToast(`DELETED ${n}`, true);
+        }
+      },
+
+      groupSelection() {
+        const r = bulk.groupMany(get().tasks, get().selection ?? [], newId(), now());
+        set({ selection: null });
+        if (!r) return;
+        get().dispatch(r.op);
+        // Name the new group right away.
+        get().setEditing(r.groupId);
+      },
+
+      openMovePicker: (ids) => set({ movePickerFor: ids, menuFor: null }),
+      closeMovePicker: () => set({ movePickerFor: null }),
+
+      moveTo(ids, parentId) {
+        const op = bulk.moveManyTo(get().tasks, ids, parentId, now());
+        set({ movePickerFor: null, selection: null });
+        if (!op) return;
+        get().dispatch(op);
+        get().showToast(ids.length > 1 ? `MOVED ${ids.length}` : 'MOVED', true);
+      },
+
+      sortSubtasks(parentId, key) {
+        const op = bulk.sortChildren(get().tasks, parentId, key, now());
+        if (!op) {
+          get().showToast('ALREADY IN ORDER', false);
+          return;
+        }
+        get().dispatch(op);
+        get().showToast('SORTED', true);
+      },
+
+      restoreFromTrash(id) {
+        get().dispatch(ops.restore(get().tasks, id, now()));
+        get().showToast('RESTORED', true);
+      },
+
+      purgeFromTrash(ids) {
+        const op = bulk.purgeMany(get().tasks, ids);
+        if (op) get().dispatch(op);
+      },
       openMenu: (menuFor) => set({ menuFor }),
       closeMenu: () => set({ menuFor: null }),
 

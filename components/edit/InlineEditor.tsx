@@ -135,7 +135,7 @@ export function InlineEditor({ id, title, variant }: Props) {
 
 const styles = StyleSheet.create({
   // No padding or margins: the editor must line up exactly with the Text it replaces.
-  // Group titles are drawn bright, as in the list.
+  // Main-task (top-level) titles are drawn bright, as in the list.
   group: { color: colors.textBright },
   input: { flex: 1, color: colors.text, padding: 0, margin: 0, textAlignVertical: 'top', ...platformText },
 });

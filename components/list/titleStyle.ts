@@ -4,9 +4,11 @@
  * looks the same in every place (user request 2026-10-08).
  *
  * Layer: UI.
- *   group    a top-level task with subtasks: 14 pt uppercase bold
- *   subtask  any nested task: 15 pt
- *   body     a top-level task without subtasks: 17 pt
+ *   group    every top-level task, with or without subtasks: 14 pt
+ *            uppercase bold, bright (user request 2026-10-08: all main
+ *            tasks in caps like group titles)
+ *   subtask  any nested task: 15 pt, mixed case
+ *   body     plain 17 pt (kept for inputs such as the quick-add bar)
  * Smaller variants are nudged down so their first line stays aligned with
  * the 24 pt-tall checkbox and caret.
  */
@@ -17,9 +19,8 @@ import { type } from '@/theme';
 export type TitleVariant = 'group' | 'subtask' | 'body';
 
 /** The variant for a row at `depth` with or without children. */
-export function titleVariant(depth: number, hasChildren: boolean): TitleVariant {
-  if (depth === 0) return hasChildren ? 'group' : 'body';
-  return 'subtask';
+export function titleVariant(depth: number, _hasChildren: boolean): TitleVariant {
+  return depth === 0 ? 'group' : 'subtask';
 }
 
 /** Half the difference in line height, to center a smaller line on a body-height line. */

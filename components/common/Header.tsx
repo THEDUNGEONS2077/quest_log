@@ -4,14 +4,14 @@
  *   > quest_log
  *   12 ACTIVE · 4 DONE TODAY · 1 OVERDUE
  *
- * Layer: UI. Top right: `?` opens the user guide (app/help.tsx). Search and
- * settings join it in Phases 10 and 13. Long-pressing the title opens the
+ * Layer: UI. Top right: `/` opens search on the current tab, `?` opens the
+ * user guide (app/help.tsx). Settings joins them in Phase 13. Long-pressing the title opens the
  * developer screen (theme check and test data), a deliberately hidden gesture.
  */
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { useAppStore, useSelectors } from '@/store/react';
+import { useActions, useAppStore, useSelectors } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { useMinute } from './useMinute';
@@ -21,6 +21,8 @@ export function Header() {
   const now = useMinute();
   // Counts are memoized per structural change and per minute (store/selectors.ts).
   const counts = useAppStore((s) => selectors.counts(s, now));
+  const tab = useAppStore((s) => s.ui.tab);
+  const actions = useActions();
 
   const meta = [`${counts.active} ACTIVE`, `${counts.doneToday} DONE TODAY`, ...(counts.overdue ? [`${counts.overdue} OVERDUE`] : [])].join(
     ' · ',
@@ -34,17 +36,29 @@ export function Header() {
             {`${glyphs.prompt.glyph} quest_log`}
           </Text>
         </Pressable>
-        {/* Top right: the user guide. */}
-        <Pressable
-          onPress={() => router.push('/help')}
-          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="User guide"
-        >
-          <Text style={[type.glyph, styles.icon]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {glyphs.help.glyph}
-          </Text>
-        </Pressable>
+        {/* Top right: search (this tab) and the user guide. */}
+        <View style={styles.icons}>
+          <Pressable
+            onPress={() => actions.setSearch(tab, { open: true })}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={tab === 'active' ? 'Search and filter tasks' : 'Search completed tasks'}
+          >
+            <Text style={[type.glyph, styles.icon]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {glyphs.search.glyph}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/help')}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="User guide"
+          >
+            <Text style={[type.glyph, styles.icon]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {glyphs.help.glyph}
+            </Text>
+          </Pressable>
+        </View>
       </View>
       <Text style={[type.meta, styles.meta]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {meta}
@@ -55,6 +69,7 @@ export function Header() {
 
 const styles = StyleSheet.create({
   header: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm },
+  icons: { flexDirection: 'row', gap: space.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   title: { color: colors.accent, ...platformText },
   iconButton: {

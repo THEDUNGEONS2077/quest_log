@@ -10,8 +10,11 @@
  */
 import { addDays, startOfDay } from '@/lib/dates';
 import { flattenActive, flattenCompleted, type Row } from '@/lib/flatten';
+import { matcher, searchActive, searchCompleted } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
 import { ROOT, type TasksState } from '@/lib/types';
+
+import type { Filter } from '@/lib/search';
 
 import type { UiState } from './uiState';
 
@@ -31,6 +34,8 @@ export interface Counts {
 interface SelectorInput {
   tasks: TasksState;
   ui: UiState;
+  /** Per-tab search (optional so older callers and tests still work). */
+  search?: Record<'active' | 'completed', { query: string; filter: Filter }>;
   /** Just-checked top-level tasks still shown on ACTIVE (see AppStore.lingering). */
   lingering?: readonly string[];
 }
@@ -62,19 +67,33 @@ export function makeSelectors() {
   let completedTasks: TasksState;
   const completed = memoLast((_version: number, expanded: readonly string[]) => flattenCompleted(completedTasks, new Set(expanded)));
 
+  // Search results, memoized on the tree version and the search inputs.
+  // (Titles aren't structural, but a search re-runs when the query changes.)
+  const found = memoLast((_v: number, zoom: string | null, query: string, filter: Filter, minute: number) =>
+    searchActive(activeTasks, matcher(query, filter, minute * 60_000)!, zoom),
+  );
+  const foundCompleted = memoLast((_v: number, query: string) => searchCompleted(completedTasks, matcher(query, 'all', 0)!));
+
   let countTasks: TasksState;
   // `minute` (not `now`) is the key, so counts refresh at most once a minute.
   const counts = memoLast((_version: number, minute: number): Counts => computeCounts(countTasks, minute * 60_000));
 
   return {
-    /** Rows for the ACTIVE tab (respects zoom). */
+    /** Rows for the ACTIVE tab (respects zoom; search/filter results when searching). */
     activeRows(s: SelectorInput): Row[] {
       activeTasks = s.tasks;
+      const q = s.search?.active;
+      if (q && (q.query.trim() || q.filter !== 'all')) {
+        // Overdue depends on the time: results refresh at most once a minute.
+        return found(s.tasks.structureVersion, s.ui.zoomRootId, q.query, q.filter, Math.floor(Date.now() / 60_000));
+      }
       return active(s.tasks.structureVersion, s.ui.zoomRootId, s.lingering ?? NO_LINGERING);
     },
-    /** Rows for the COMPLETED tab. */
+    /** Rows for the COMPLETED tab (search results when searching). */
     completedRows(s: SelectorInput): Row[] {
       completedTasks = s.tasks;
+      const q = s.search?.completed;
+      if (q && q.query.trim()) return foundCompleted(s.tasks.structureVersion, q.query);
       return completed(s.tasks.structureVersion, s.ui.completedExpanded);
     },
     /** Header and tab counts at time `now`. */

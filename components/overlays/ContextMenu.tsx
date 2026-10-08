@@ -28,6 +28,10 @@ import { haptics } from '@/services/haptics';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
+import { useState } from 'react';
+
+import type { SortKey } from '@/lib/bulk';
+
 import { ActionSheet, type SheetAction } from './ActionSheet';
 
 interface Props {
@@ -37,8 +41,27 @@ interface Props {
 
 export function ContextMenu({ id, onClose }: Props) {
   const task = useAppStore((s) => findTask(s.tasks, id));
+  const hasChildren = useAppStore((s) => (s.tasks.children[id]?.length ?? 0) > 0);
   const actions = useActions();
+  // "Sort subtasks…" opens a second, small sheet.
+  const [sorting, setSorting] = useState(false);
   if (!task) return null;
+
+  if (sorting) {
+    const sort = (key: SortKey) => () => actions.sortSubtasks(id, key);
+    return (
+      <ActionSheet
+        visible
+        title={`Sort subtasks of ${task.title || 'task'}`}
+        onClose={onClose}
+        actions={[
+          { glyph: glyphs.priority.glyph, label: 'By priority (high first)', onPress: sort('priority') },
+          { glyph: glyphs.notify.glyph, label: 'By due date (soonest first)', onPress: sort('due') },
+          { glyph: 'A', label: 'A–Z', onPress: sort('alpha') },
+        ]}
+      />
+    );
+  }
 
   const items: SheetAction[] = [
     { glyph: glyphs.add.glyph, label: 'Add subtask', onPress: () => actions.addSubtask(id) },
@@ -55,6 +78,10 @@ export function ContextMenu({ id, onClose }: Props) {
       label: task.repeat ? `Repeat: ${repeatLabel(task.repeat).toLowerCase()}` : 'Repeat…',
       onPress: () => actions.openRepeatSheet(id),
     },
+    ...(hasChildren ? [{ glyph: glyphs.zoom.glyph, label: 'Zoom into', onPress: () => actions.setZoom(id) }] : []),
+    { glyph: glyphs.select.glyph, label: 'Select (several tasks)', onPress: () => actions.startSelection(id) },
+    { glyph: glyphs.moveTo.glyph, label: 'Move to…', onPress: () => actions.openMovePicker([id]) },
+    ...(hasChildren ? [{ glyph: glyphs.priority.glyph, label: 'Sort subtasks…', onPress: () => setSorting(true), keepOpen: true }] : []),
     { glyph: glyphs.duplicate.glyph, label: 'Duplicate', onPress: () => actions.duplicateTask(id) },
     {
       glyph: glyphs.copy.glyph,

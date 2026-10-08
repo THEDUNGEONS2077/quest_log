@@ -138,14 +138,14 @@ describe('TaskRow', () => {
     expect(store.getState().dueSheetFor).toBe('b');
   });
 
-  it('titles use the group / subtask / top-level sizes', async () => {
+  it('every main task uses the caps title style', async () => {
     await setup();
     const size = (text: string) =>
       (screen.getByText(text).props.style as object[])
         .flat(Infinity)
         .reduce((a: Record<string, unknown>, b) => ({ ...a, ...(b as object) }), {}).fontSize;
     expect(size('g')).toBe(14); // group
-    expect(size('a')).toBe(17); // top-level task
+    expect(size('a')).toBe(14); // top-level task without subtasks: caps too
   });
 
   it('Move up / Move down screen-reader actions reorder without dragging', async () => {
@@ -161,5 +161,13 @@ describe('TaskRow', () => {
     const { store } = await setup();
     await act(() => store.getState().openMenu('a'));
     expect(screen.getByText('Add subtask')).toBeTruthy();
+  });
+
+  it('in select mode, tapping a title selects it instead of editing', async () => {
+    const { store } = await setup();
+    await act(() => store.getState().startSelection('a'));
+    await fireEvent.press(screen.getByText('b'));
+    expect(store.getState().selection).toEqual(['a', 'b']);
+    expect(store.getState().editingId).toBeNull();
   });
 });

@@ -7,9 +7,9 @@
  *     so typing in one row never re-renders another,
  *   - renders a plain <Text> title; only the editing row mounts InlineEditor.
  *
- * Every top-level task has a divider line above it. A top-level task with
- * children also renders as a **group header**: uppercase `group` type in
- * textBright.
+ * Every top-level task has a divider line above it and an uppercase,
+ * bright title (titleStyle.ts). One with subtasks is a **group**: it also
+ * gets the `+` (add subtask) button and the [done/total] count.
  *
  * Completion (Phase 5): the checkbox and swipe-right check the task (with
  * cascade and auto-complete rules in lib/complete.ts); swipe-left deletes.
@@ -28,6 +28,7 @@ import { TaskChips } from '@/components/edit/ParsedChips';
 import { ContextMenu } from '@/components/overlays/ContextMenu';
 import { formatDue, isOverdue } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
+import { matchRange, type FoundRow } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
 import { isInSubtree } from '@/lib/tree';
 import type { Task } from '@/lib/types';
@@ -63,6 +64,12 @@ export const TaskRow = memo(
     // Dimmed while it (or an ancestor) is being dragged: the subtree travels with the lifted row.
     const dimmed = useAppStore((s) => s.draggingId !== null && isInSubtree(s.tasks, row.id, s.draggingId));
     const dragGesture = useRowDragGesture(row.id);
+    // Multi-select (PLAN §9.14): selecting a parent includes its subtree.
+    const selecting = useAppStore((s) => s.selection !== null);
+    const selected = useAppStore((s) => !!s.selection?.some((sel) => isInSubtree(s.tasks, row.id, sel)));
+    // Search: the query to highlight, and whether this row is only shown as context for a match.
+    const query = useAppStore((s) => (s.search.active.open ? s.search.active.query : ''));
+    const context = 'context' in row && (row as FoundRow).context;
     // Only rows with a due date subscribe to the clock (for the spoken "due …, overdue").
     const now = useMinuteIf(task?.dueAt != null);
     const lingering = useAppStore((s) => s.lingering.includes(row.id));
@@ -91,7 +98,9 @@ export const TaskRow = memo(
 
     if (!task) return null; // removed between flatten and render
 
-    const toggle = () => hapticFor(actions.toggleDone(task.id));
+    const toggle = () => (selecting ? actions.toggleSelected(task.id) : hapticFor(actions.toggleDone(task.id)));
+    /** A tap on the title: edit it, or (while selecting) select it. */
+    const tapTitle = () => (selecting ? actions.toggleSelected(task.id) : actions.setEditing(task.id));
     const remove = () => {
       haptics.delete();
       actions.deleteTask(task.id);
@@ -123,11 +132,11 @@ export const TaskRow = memo(
     const titleStyle = titleStyles[variant];
 
     return (
-      <Animated.View style={[fadeStyle, dimmed && styles.dimmed]}>
+      <Animated.View style={[fadeStyle, (dimmed || context) && styles.dimmed]}>
         <SwipeableRow
           // Long-press (and hold still) to drag or open the menu: PLAN §9.10.
           drag={dragGesture}
-          enabled={swipeOn && !editing}
+          enabled={swipeOn && !editing && !selecting}
           right={{ label: `${glyphs.checkboxOn.glyph} ${task.done ? 'UNDO' : 'DONE'}`, onCommit: toggle }}
           left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
         >
@@ -137,6 +146,7 @@ export const TaskRow = memo(
               { paddingLeft: space.lg + visualDepth * size.indent },
               row.depth === 0 && styles.topLevel,
               editing && styles.editing,
+              selected && styles.selected,
             ]}
             accessible={!editing}
             accessibilityLabel={rowLabel(task, row, now)}
@@ -190,9 +200,10 @@ export const TaskRow = memo(
                 <StrikeText
                   text={task.title}
                   struck={task.done || advancing}
-                  color={isGroup ? colors.textBright : colors.text}
+                  color={row.depth === 0 ? colors.textBright : colors.text}
                   style={titleStyle}
-                  onPress={() => actions.setEditing(task.id)}
+                  onPress={tapTitle}
+                  highlight={query ? matchRange(task.title, query) : null}
                 />
               )}
               {/* Details sit on their own line under the title, so the title keeps
@@ -362,7 +373,10 @@ const styles = StyleSheet.create({
   },
   // Every top-level task is separated from the one above it, group or not
   // (user request 2026-10-08). Groups additionally use the uppercase `group` type.
-  dimmed: { opacity: 0.3 },
+  // Dragged subtrees and search-context rows: still legible, clearly secondary.
+  dimmed: { opacity: 0.4 },
+  // Selected in multi-select: raised background and an accent bar on the left.
+  selected: { backgroundColor: colors.surfaceRaised, borderLeftWidth: shape.dropIndicator, borderLeftColor: colors.accent },
   topLevel: { borderTopWidth: shape.hairline, borderTopColor: colors.line, marginTop: space.sm },
   editing: { backgroundColor: colors.surface },
   caret: { width: size.indent, alignItems: 'center' },

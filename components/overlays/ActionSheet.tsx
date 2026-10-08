@@ -14,7 +14,7 @@
  * outside or pressing back closes it.
  */
 import type { ReactNode } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
@@ -23,6 +23,8 @@ export interface SheetAction {
   glyph: string;
   label: string;
   onPress: () => void;
+  /** Leave the sheet open (the action shows a follow-up sheet, e.g. sort options). */
+  keepOpen?: boolean;
 }
 
 interface Props {
@@ -35,37 +37,47 @@ interface Props {
   children?: ReactNode;
 }
 
+/** The sheet never covers more than this share of the screen; longer menus scroll. */
+const MAX_HEIGHT_SHARE = 0.85;
+
 export function ActionSheet({ visible, title, actions, onClose, children }: Props) {
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       {/* Backdrop: tap outside the sheet to close. */}
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close menu">
-        <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.sm }]} onPress={() => {}} accessible={false}>
+        <Pressable
+          style={[styles.sheet, { paddingBottom: insets.bottom + space.sm, maxHeight: height * MAX_HEIGHT_SHARE }]}
+          onPress={() => {}}
+          accessible={false}
+        >
           <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             {`${glyphs.prompt.glyph} ${title}`}
           </Text>
           <View style={styles.divider} />
-          {children}
-          {actions.map((a) => (
-            <Pressable
-              key={a.label}
-              style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-              onPress={() => {
-                onClose();
-                a.onPress();
-              }}
-              accessibilityRole="button"
-              accessibilityLabel={a.label}
-            >
-              <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                {a.glyph}
-              </Text>
-              <Text style={[type.body, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                {a.label}
-              </Text>
-            </Pressable>
-          ))}
+          <ScrollView bounces={false}>
+            {children}
+            {actions.map((a) => (
+              <Pressable
+                key={a.label}
+                style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+                onPress={() => {
+                  if (!a.keepOpen) onClose();
+                  a.onPress();
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={a.label}
+              >
+                <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  {a.glyph}
+                </Text>
+                <Text style={[type.body, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  {a.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </Pressable>
       </Pressable>
     </Modal>

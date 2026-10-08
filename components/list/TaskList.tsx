@@ -56,7 +56,10 @@ export function TaskList({ bottomInset }: Props) {
     rowsRef.current = rows;
   }, [rows]);
   const dragging = useAppStore((s) => s.draggingId !== null);
-  const drag = useDragController({ store, list, container, rows: rowsRef, enabled: editingId === null });
+  // Drag is off while editing, selecting, or searching/filtering (results aren't the real order).
+  const searching = useAppStore((s) => s.search.active.query.trim() !== '' || s.search.active.filter !== 'all');
+  const selecting = useAppStore((s) => s.selection !== null);
+  const drag = useDragController({ store, list, container, rows: rowsRef, enabled: editingId === null && !selecting && !searching });
   // The keyboard finished opening: re-check the edited row against its final position.
   useEffect(() => {
     if (keyboardHeight > 0 && editingId) keepInView.ensure();

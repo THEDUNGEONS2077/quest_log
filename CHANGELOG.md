@@ -2,6 +2,21 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.9.0 (build 15)
+
+Finding, focusing and organizing.
+
+- **All main tasks are in caps,** like group titles, whether or not they have subtasks.
+- **A rewritten user guide** (`?`): plain-language sections that open with a tap, starting with **START HERE**.
+- **Search** (`/` at the top right) searches titles and notes on the tab you're on. Capitals and accents don't matter. Results show the groups they're in, dimmed, and the matched text is highlighted.
+- **Filters** (with search on ACTIVE): **!!!** high priority · **DUE** · **OVERDUE** · **↻** repeating.
+- **Zoom into a group** (hold → Zoom into) to see only that group. The path at the top (`← ALL / WORK / …`) takes you back up, and so does the back button.
+- **Select several tasks** (hold → Select, then tap more). The bar at the bottom offers **DONE · PRI · DUE · MOVE · GROUP · DEL**.
+- **Move to…** (hold menu) sends a task to any group from a searchable list.
+- **Sort subtasks…** (hold menu) orders a group by priority, due date or A–Z, once.
+- **Trash** (on the COMPLETED tab): deleted tasks are kept for 7 days. Restore them to where they were, or delete them for good.
+- **Back button** steps out of selection, then search, then zoom, before leaving the app.
+
 ## 0.8.0 (build 14)
 
 Drag-and-drop.

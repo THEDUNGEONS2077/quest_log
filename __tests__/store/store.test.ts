@@ -497,3 +497,103 @@ describe('recurring tasks (Phase 8)', () => {
     expect(tk(store.getState().tasks, id)!.repeat!.monthDay).toBe(31);
   });
 });
+
+describe('navigation and power features (Phase 10)', () => {
+  /** A store with: work [ship, notes [draft]], home [bank]. */
+  function tree() {
+    const kv = createMemoryKV();
+    saveTasks(
+      kv,
+      build([
+        ['work', [['ship'], ['notes', [['draft']]]]],
+        ['home', [['bank']]],
+      ]),
+    );
+    return makeStore(kv).store;
+  }
+
+  it('zoomOut climbs one level at a time', () => {
+    const store = tree();
+    store.getState().setZoom('notes');
+    store.getState().zoomOut();
+    expect(store.getState().ui.zoomRootId).toBe('work');
+    store.getState().zoomOut();
+    expect(store.getState().ui.zoomRootId).toBeNull();
+  });
+
+  it('search filters the ACTIVE rows; closing restores the full list', () => {
+    const store = tree();
+    const sel = makeSelectors();
+    store.getState().setSearch('active', { open: true, query: 'draft' });
+    expect(sel.activeRows(store.getState()).map((r) => r.id)).toEqual(['work', 'notes', 'draft']);
+    store.getState().closeSearch('active');
+    expect(sel.activeRows(store.getState())).toHaveLength(6);
+  });
+
+  it('selection: toggle, bulk DONE as one undo step, and select mode ends', () => {
+    const store = tree();
+    const s = store.getState();
+    s.startSelection('ship');
+    s.toggleSelected('bank');
+    s.completeSelection();
+    expect([tk(store.getState().tasks, 'ship')!.done, tk(store.getState().tasks, 'bank')!.done]).toEqual([true, true]);
+    expect(store.getState().selection).toBeNull();
+    s.undo();
+    expect(tk(store.getState().tasks, 'ship')!.done).toBe(false);
+  });
+
+  it('toggling off the last selected task ends select mode', () => {
+    const store = tree();
+    store.getState().startSelection('ship');
+    store.getState().toggleSelected('ship');
+    expect(store.getState().selection).toBeNull();
+  });
+
+  it('PRI on a selection cycles from the first task’s priority', () => {
+    const store = tree();
+    const s = store.getState();
+    s.startSelection('ship');
+    s.toggleSelected('bank');
+    s.cycleSelectionPriority();
+    s.cycleSelectionPriority();
+    expect([tk(store.getState().tasks, 'ship')!.priority, tk(store.getState().tasks, 'bank')!.priority]).toEqual([2, 2]);
+  });
+
+  it('GROUP wraps the selection and starts naming the group', () => {
+    const store = tree();
+    const s = store.getState();
+    s.startSelection('ship');
+    s.toggleSelected('notes');
+    s.groupSelection();
+    const g = store.getState().editingId!;
+    expect(store.getState().tasks.children[g]).toEqual(['ship', 'notes']);
+  });
+
+  it('Move to… moves to the end of the destination', () => {
+    const store = tree();
+    store.getState().openMovePicker(['bank']);
+    store.getState().moveTo(['bank'], 'notes');
+    expect(store.getState().tasks.children.notes).toEqual(['draft', 'bank']);
+    expect(store.getState().movePickerFor).toBeNull();
+  });
+
+  it('Trash: delete, restore to the same place, or purge for good', () => {
+    const store = tree();
+    const s = store.getState();
+    s.deleteTask('ship');
+    s.restoreFromTrash('ship');
+    expect(store.getState().tasks.children.work).toEqual(['ship', 'notes']);
+    expect(tk(store.getState().tasks, 'ship')!.deletedAt).toBeNull();
+    s.deleteTask('ship');
+    s.purgeFromTrash(['ship']);
+    expect(tk(store.getState().tasks, 'ship')).toBeUndefined();
+  });
+
+  it('sort subtasks A–Z', () => {
+    const kv = createMemoryKV();
+    saveTasks(kv, build([['p', [['b'], ['a']]]]));
+    const store = makeStore(kv).store;
+    store.getState().sortSubtasks('p', 'alpha');
+    expect(store.getState().tasks.children.p).toEqual(['a', 'b']);
+  });
+});

@@ -13,7 +13,7 @@
  * with no animation.
  */
 import { useEffect, useRef, useState } from 'react';
-import { type NativeSyntheticEvent, StyleSheet, type TextLayoutEventData, type TextStyle, View } from 'react-native';
+import { type NativeSyntheticEvent, StyleSheet, Text, type TextLayoutEventData, type TextStyle, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { colors, duration, easing, maxFontSizeMultiplier, platformText, shape } from '@/theme';
@@ -26,6 +26,8 @@ interface Props {
   style: TextStyle | TextStyle[];
   onPress?: () => void;
   onLongPress?: () => void;
+  /** Characters to highlight in accent (a search match), as [start, end). */
+  highlight?: { start: number; end: number } | null;
 }
 
 /** One measured text line: where to draw its strike segment. */
@@ -36,7 +38,7 @@ interface Line {
   height: number;
 }
 
-export function StrikeText({ text, struck, color, style, onPress, onLongPress }: Props) {
+export function StrikeText({ text, struck, color, style, onPress, onLongPress, highlight }: Props) {
   // 0 = plain, 1 = fully struck. Starts at the final state: mounting isn't a change.
   const progress = useSharedValue(struck ? 1 : 0);
   const mounted = useRef(false);
@@ -68,7 +70,15 @@ export function StrikeText({ text, struck, color, style, onPress, onLongPress }:
         suppressHighlighting
         maxFontSizeMultiplier={maxFontSizeMultiplier}
       >
-        {text}
+        {highlight ? (
+          <>
+            {[...text].slice(0, highlight.start).join('')}
+            <Text style={styles.match}>{[...text].slice(highlight.start, highlight.end).join('')}</Text>
+            {[...text].slice(highlight.end).join('')}
+          </>
+        ) : (
+          text
+        )}
       </Animated.Text>
       {/* One segment per wrapped line, drawn through the middle of the line. */}
       {lines.map((line, i) => (
@@ -90,5 +100,6 @@ function StrikeSegment({ line, progress }: { line: Line; progress: ReturnType<ty
 
 const styles = StyleSheet.create({
   text: { ...platformText },
+  match: { color: colors.accent, textDecorationLine: 'underline' },
   segment: { position: 'absolute', height: shape.strike, backgroundColor: colors.accent },
 });

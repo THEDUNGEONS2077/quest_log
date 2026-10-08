@@ -30,6 +30,7 @@ import { addDays, atTimeOfDay, duePresets, formatDue, startOfDay } from '@/lib/d
 import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
+import { SELECTION } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
@@ -40,7 +41,11 @@ export function DueSheet() {
 }
 
 function DueSheetBody({ id }: { id: string }) {
-  const task = useAppStore((s) => findTask(s.tasks, id));
+  // Opened from multi-select (PLAN §9.14 DUE): the date applies to every selected task.
+  const forSelection = id === SELECTION;
+  const selection = useAppStore((s) => s.selection);
+  const targetId = forSelection ? (selection?.[0] ?? '') : id;
+  const task = useAppStore((s) => findTask(s.tasks, targetId));
   const notifyDefault = useAppStore((s) => s.settings.notifyByDefault);
   const defaultTime = useAppStore((s) => s.settings.defaultTimeMinutes);
   const actions = useActions();
@@ -59,8 +64,15 @@ function DueSheetBody({ id }: { id: string }) {
   if (!task) return null;
 
   const close = () => actions.closeDueSheet();
+  /** Applies a date (or null to clear) to the task, or to the whole selection. */
+  const apply = (when: number | null, notifyOn: boolean) => {
+    if (forSelection) {
+      actions.setDueMany(selection ?? [], when, notifyOn);
+      actions.clearSelection();
+    } else actions.setDue(id, when, notifyOn);
+  };
   const choose = (when: number) => {
-    actions.setDue(id, when, notify);
+    apply(when, notify);
     close();
   };
 
@@ -97,7 +109,7 @@ function DueSheetBody({ id }: { id: string }) {
       <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close">
         <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]} onPress={() => {}} accessible={false}>
           <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {`${glyphs.prompt.glyph} ${task.title || 'Untitled task'}`}
+            {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : task.title || 'Untitled task'}`}
           </Text>
           {task.dueAt !== null && (
             <Text style={[type.meta, styles.current]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
@@ -137,21 +149,23 @@ function DueSheetBody({ id }: { id: string }) {
             </Pressable>
           )}
 
-          {/* Repeat: its own sheet (PLAN §9.9). */}
-          <Option
-            label={`${glyphs.repeat.glyph} ${task.repeat ? `REPEAT: ${repeatLabel(task.repeat)}` : 'REPEAT…'}`}
-            onPress={() => {
-              close();
-              actions.openRepeatSheet(id);
-            }}
-            wide
-          />
+          {/* Repeat: its own sheet (PLAN §9.9). One task at a time. */}
+          {!forSelection && (
+            <Option
+              label={`${glyphs.repeat.glyph} ${task.repeat ? `REPEAT: ${repeatLabel(task.repeat)}` : 'REPEAT…'}`}
+              onPress={() => {
+                close();
+                actions.openRepeatSheet(id);
+              }}
+              wide
+            />
+          )}
 
-          {task.dueAt !== null && (
+          {(task.dueAt !== null || forSelection) && (
             <Option
               label={`${glyphs.delete.glyph} CLEAR DATE`}
               onPress={() => {
-                actions.setDue(id, null, false);
+                apply(null, false);
                 close();
               }}
               wide

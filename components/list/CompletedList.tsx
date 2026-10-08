@@ -16,11 +16,13 @@
  *   CLEAR…          → older than 7 days / 30 days / all (to Trash, undoable)
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { router } from 'expo-router';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatRelative } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
+import type { FoundRow } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
 import { haptics } from '@/services/haptics';
 import { useActions, useAppStore, useSelectors } from '@/store/react';
@@ -71,7 +73,7 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
           keyExtractor={(r) => r.id}
           getItemType={(r) => (r.depth === 0 ? 'top' : 'sub')}
           keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={rows.length ? ClearButton : null}
+          ListHeaderComponent={<ListHeader hasRows={rows.length > 0} />}
           ListEmptyComponent={Empty}
           contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
         />
@@ -81,7 +83,8 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
 }
 
 /** "CLEAR…" at the top right: choose how much to move to Trash. */
-function ClearButton() {
+/** Header row: TRASH (always) and CLEAR… (when there's something to clear). */
+function ListHeader({ hasRows }: { hasRows: boolean }) {
   const actions = useActions();
   const [open, setOpen] = useState(false);
   const options: SheetAction[] = [
@@ -91,11 +94,18 @@ function ClearButton() {
   ];
   return (
     <View style={styles.clearRow}>
-      <Pressable onPress={() => setOpen(true)} style={styles.clear} accessibilityRole="button" accessibilityLabel="Clear completed tasks">
+      <Pressable onPress={() => router.push('/trash')} style={styles.clear} accessibilityRole="button" accessibilityLabel="Open Trash">
         <Text style={[type.meta, styles.clearText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          CLEAR…
+          {`${glyphs.delete.glyph} TRASH`}
         </Text>
       </Pressable>
+      {hasRows && (
+        <Pressable onPress={() => setOpen(true)} style={styles.clear} accessibilityRole="button" accessibilityLabel="Clear completed tasks">
+          <Text style={[type.meta, styles.clearText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            CLEAR…
+          </Text>
+        </Pressable>
+      )}
       <ActionSheet visible={open} title="Clear completed" actions={options} onClose={() => setOpen(false)} />
     </View>
   );
@@ -140,99 +150,103 @@ const CompletedRow = memo(
       else if (e.nativeEvent.actionName === 'menu') setMenu(true);
     };
     const visualDepth = Math.min(row.depth, size.maxVisualDepth);
+    // Search results: an ancestor shown only for context is drawn dimmed.
+    const context = 'context' in row && (row as FoundRow).context;
     const variant = titleVariant(row.depth, row.hasChildren);
 
     return (
       <>
-        <SwipeableRow
-          enabled={swipeOn && !editing}
-          right={{ label: `${glyphs.undo.glyph} RESTORE`, onCommit: restore }}
-          left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
-        >
-          <Pressable
-            onLongPress={() => setMenu(true)}
-            delayLongPress={400}
-            style={[
-              styles.row,
-              { paddingLeft: space.lg + visualDepth * size.indent },
-              row.depth === 0 && styles.topLevel,
-              editing && styles.editing,
-            ]}
-            accessible={!editing}
-            accessibilityLabel={`${task.title || 'Untitled task'}, completed`}
-            accessibilityActions={[
-              { name: 'restore', label: 'Restore' },
-              { name: 'delete', label: 'Delete' },
-              { name: 'menu', label: 'More actions' },
-            ]}
-            onAccessibilityAction={onAccessibilityAction}
+        <View style={context && styles.context}>
+          <SwipeableRow
+            enabled={swipeOn && !editing}
+            right={{ label: `${glyphs.undo.glyph} RESTORE`, onCommit: restore }}
+            left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
           >
-            <HighlightFlash rowId={row.id} />
-            <NestingGuides levels={visualDepth} />
-            {/* Caret: subtrees are collapsed by default on this tab. */}
             <Pressable
-              style={styles.caret}
-              hitSlop={HIT_SLOP}
-              disabled={!row.hasChildren}
-              onPress={() => actions.toggleCompletedExpanded(task.id)}
-              accessibilityLabel={expanded ? 'Collapse' : 'Expand'}
+              onLongPress={() => setMenu(true)}
+              delayLongPress={400}
+              style={[
+                styles.row,
+                { paddingLeft: space.lg + visualDepth * size.indent },
+                row.depth === 0 && styles.topLevel,
+                editing && styles.editing,
+              ]}
+              accessible={!editing}
+              accessibilityLabel={`${task.title || 'Untitled task'}, completed`}
+              accessibilityActions={[
+                { name: 'restore', label: 'Restore' },
+                { name: 'delete', label: 'Delete' },
+                { name: 'menu', label: 'More actions' },
+              ]}
+              onAccessibilityAction={onAccessibilityAction}
             >
-              {row.hasChildren && (
-                <Text style={[type.caretGlyph, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                  {expanded ? glyphs.expanded.glyph : glyphs.collapsed.glyph}
+              <HighlightFlash rowId={row.id} />
+              <NestingGuides levels={visualDepth} />
+              {/* Caret: subtrees are collapsed by default on this tab. */}
+              <Pressable
+                style={styles.caret}
+                hitSlop={HIT_SLOP}
+                disabled={!row.hasChildren}
+                onPress={() => actions.toggleCompletedExpanded(task.id)}
+                accessibilityLabel={expanded ? 'Collapse' : 'Expand'}
+              >
+                {row.hasChildren && (
+                  <Text style={[type.caretGlyph, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                    {expanded ? glyphs.expanded.glyph : glyphs.collapsed.glyph}
+                  </Text>
+                )}
+              </Pressable>
+              <Pressable
+                style={styles.checkbox}
+                hitSlop={HIT_SLOP}
+                onPress={restore}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: true }}
+              >
+                <Text style={[type.glyph, styles.dim, styles.checkboxText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  {glyphs.checkboxOn.glyph}
                 </Text>
-              )}
+              </Pressable>
+              {/* No strikethrough here: a full screen of them is noise (PLAN §9.6). */}
+              <View style={styles.title}>
+                {field === 'title' ? (
+                  <InlineEditor id={task.id} title={task.title} variant={variant} />
+                ) : (
+                  <Text
+                    style={[titleStyles[variant], styles.dim]}
+                    onPress={() => actions.setEditing(task.id)}
+                    onLongPress={() => setMenu(true)}
+                    suppressHighlighting
+                    maxFontSizeMultiplier={maxFontSizeMultiplier}
+                  >
+                    {task.title}
+                  </Text>
+                )}
+                {/* Details under the title, as on ACTIVE: ↻ for an archived repeat, and when it was last changed. */}
+                {!editing && (task.repeatSourceId !== null || row.depth === 0) && (
+                  <View style={styles.details}>
+                    {task.repeatSourceId !== null && (
+                      <Text
+                        style={[type.metaGlyph, styles.dim]}
+                        accessibilityLabel="repeat occurrence"
+                        maxFontSizeMultiplier={maxFontSizeMultiplier}
+                      >
+                        {glyphs.repeat.glyph}
+                      </Text>
+                    )}
+                    {row.depth === 0 && <Modified at={task.updatedAt} />}
+                  </View>
+                )}
+                {/* Notes can still be added or fixed after the fact. */}
+                {field === 'notes' ? (
+                  <NotesEditor id={task.id} notes={task.notes} />
+                ) : (
+                  editing && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
+                )}
+              </View>
             </Pressable>
-            <Pressable
-              style={styles.checkbox}
-              hitSlop={HIT_SLOP}
-              onPress={restore}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: true }}
-            >
-              <Text style={[type.glyph, styles.dim, styles.checkboxText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                {glyphs.checkboxOn.glyph}
-              </Text>
-            </Pressable>
-            {/* No strikethrough here: a full screen of them is noise (PLAN §9.6). */}
-            <View style={styles.title}>
-              {field === 'title' ? (
-                <InlineEditor id={task.id} title={task.title} variant={variant} />
-              ) : (
-                <Text
-                  style={[titleStyles[variant], styles.dim]}
-                  onPress={() => actions.setEditing(task.id)}
-                  onLongPress={() => setMenu(true)}
-                  suppressHighlighting
-                  maxFontSizeMultiplier={maxFontSizeMultiplier}
-                >
-                  {task.title}
-                </Text>
-              )}
-              {/* Details under the title, as on ACTIVE: ↻ for an archived repeat, and when it was last changed. */}
-              {!editing && (task.repeatSourceId !== null || row.depth === 0) && (
-                <View style={styles.details}>
-                  {task.repeatSourceId !== null && (
-                    <Text
-                      style={[type.metaGlyph, styles.dim]}
-                      accessibilityLabel="repeat occurrence"
-                      maxFontSizeMultiplier={maxFontSizeMultiplier}
-                    >
-                      {glyphs.repeat.glyph}
-                    </Text>
-                  )}
-                  {row.depth === 0 && <Modified at={task.updatedAt} />}
-                </View>
-              )}
-              {/* Notes can still be added or fixed after the fact. */}
-              {field === 'notes' ? (
-                <NotesEditor id={task.id} notes={task.notes} />
-              ) : (
-                editing && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
-              )}
-            </View>
-          </Pressable>
-        </SwipeableRow>
+          </SwipeableRow>
+        </View>
         {menu && <ActionSheet visible title={task.title || 'Untitled task'} actions={menuActions} onClose={() => setMenu(false)} />}
       </>
     );
@@ -270,8 +284,9 @@ const styles = StyleSheet.create({
   checkboxText: { letterSpacing: shape.checkboxTracking },
   title: { flex: 1, minWidth: 0 },
   dim: { color: colors.textDim, ...platformText },
+  context: { opacity: 0.4 },
   details: { flexDirection: 'row', alignItems: 'center', columnGap: space.md, marginTop: space.xs },
-  clearRow: { alignItems: 'flex-end', paddingHorizontal: space.lg },
+  clearRow: { flexDirection: 'row', justifyContent: 'flex-end', gap: space.sm, paddingHorizontal: space.lg },
   clear: {
     minHeight: size.hitTarget,
     justifyContent: 'center',
