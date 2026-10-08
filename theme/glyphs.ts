@@ -63,6 +63,13 @@ export const glyphs = {
   done: g('✓'),
   help: g('?'),
 
+  // --- Data (Settings) ---
+  /** Save a backup: down into storage. */
+  save: g('↧'),
+  /** Import a backup: up out of a file. */
+  load: g('↥'),
+  share: g('⇧'),
+
   // --- Terminal chrome ---
   cursor: g('█'),
   prompt: g('>'),

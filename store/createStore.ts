@@ -23,6 +23,8 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import * as complete from '@/lib/complete';
 import { formatDue } from '@/lib/dates';
 import * as copy from '@/lib/copy';
+import * as backup from '@/lib/backup';
+import type { DocCounts } from '@/lib/backup';
 import * as bulk from '@/lib/bulk';
 import * as dnd from '@/lib/dnd';
 import * as ops from '@/lib/ops';
@@ -32,17 +34,19 @@ import { firstOccurrence } from '@/lib/recurrence';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { SAMPLE_OUTLINE } from '@/lib/sample';
-import { findTask } from '@/lib/taskMap';
-import { ancestors, childIds, getTask, liveChildIds } from '@/lib/tree';
+import { findTask, taskCount } from '@/lib/taskMap';
+import { ancestors, childIds, getTask, liveChildIds, toDocument } from '@/lib/tree';
 import type { Filter } from '@/lib/search';
-import type { ID, Priority, RepeatRule, TaskFields, TasksState } from '@/lib/types';
+import type { ID, Priority, RepeatRule, TaskFields, TasksDocument, TasksState } from '@/lib/types';
 
+import { readDocument } from './backup';
 import { EMPTY_HISTORY, type History, record } from './history';
 import { KEYS, type KV, RETIRED_KEYS } from './kv';
 import {
   createTasksSaver,
   createThrottledWriter,
   defaultTimers,
+  listDailySnapshots,
   loadJSON,
   loadTasks,
   type LoadResult,
@@ -234,6 +238,19 @@ export interface AppStore {
   showToast(message: string, undo?: boolean): void;
   /** Shows a first-run tip as a toast and records it as seen (each tip shows once). */
   showTip(tip: Tip): void;
+  // --- Data (Phase 13: backup, import, snapshots) ---
+  /** The whole tree as one document, Trash included (for Export). */
+  exportDocument(): TasksDocument;
+  /**
+   * Brings in a backup's tasks as one undo step: 'merge' adds only tasks the
+   * app doesn't have; 'replace' swaps the whole tree. Returns how many tasks
+   * were added (merge) or are now in the tree (replace).
+   */
+  importTasks(doc: TasksDocument, mode: 'merge' | 'replace'): number;
+  /** The daily safety snapshots, newest first, with what each holds. Unreadable ones are left out. */
+  listSnapshots(): { key: string; date: string; doc: TasksDocument; counts: DocCounts }[];
+  /** Replaces the tree with a daily snapshot (one undo step). False if it can't be read. */
+  restoreSnapshot(key: string): boolean;
   /** Records that "What's new" for this build has been shown (or skipped). */
   markWhatsNewSeen(build: number): void;
   /** Empty state → Load example tasks: adds the demo tree at the top level (one undo step). */
@@ -353,6 +370,14 @@ export function createAppStore(deps: StoreDeps) {
   const purge = purgeExpiredTrash(tasks, now());
   if (purge) tasks = ops.apply(tasks, purge).state;
 
+  // Launch auto-clear (setting "Auto-clear completed"): completed tasks older
+  // than 30 or 90 days move to Trash, where they stay restorable for 7 days.
+  const settings = loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS);
+  if (settings.autoClearCompleted !== 'off') {
+    const cleared = complete.clearCompleted(tasks, now(), settings.autoClearCompleted);
+    if (cleared) tasks = ops.apply(tasks, cleared.op).state;
+  }
+
   /** Task fields from parsed shorthand; a due date turns on its notification per the setting. */
   const shorthandFields = (r: ParseResult, existingDue: number | null = null): Partial<TaskFields> => {
     const { notifyByDefault, defaultTimeMinutes } = store.getState().settings;
@@ -397,7 +422,7 @@ export function createAppStore(deps: StoreDeps) {
       selection: null,
       movePickerFor: null,
       editSession: 0,
-      settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
+      settings,
       lingering: [],
       advancing: [],
       toast: null,
@@ -626,6 +651,49 @@ export function createAppStore(deps: StoreDeps) {
         if (onboarding.tipsSeen.includes(tip.id)) return;
         set({ onboarding: { ...onboarding, tipsSeen: [...onboarding.tipsSeen, tip.id] } });
         get().showToast(tip.message);
+      },
+
+      exportDocument: () => toDocument(get().tasks),
+
+      importTasks(doc, mode) {
+        // Leave modes that point at tasks which may be gone after this.
+        const s = get();
+        if (s.editingId !== null) s.setEditing(null);
+        if (s.selection) s.clearSelection();
+        set({ ui: { ...get().ui, zoomRootId: null }, menuFor: null });
+        if (mode === 'replace') {
+          const op = backup.replaceOp(get().tasks, doc);
+          if (op) get().dispatch(op);
+          get().showToast('REPLACED FROM BACKUP', true);
+          return taskCount(get().tasks);
+        }
+        const { op, added } = backup.mergeOp(get().tasks, doc);
+        if (op) get().dispatch(op);
+        get().showToast(added ? `ADDED ${added} TASK${added === 1 ? '' : 'S'}` : 'NOTHING NEW TO ADD', added > 0);
+        return added;
+      },
+
+      listSnapshots() {
+        const out: { key: string; date: string; doc: TasksDocument; counts: DocCounts }[] = [];
+        for (const key of listDailySnapshots(kv)) {
+          try {
+            const doc = readDocument(JSON.parse(kv.getString(key) ?? ''));
+            out.push({ key, date: key.slice(KEYS.snapshotPrefix.length), doc, counts: backup.countDocument(doc) });
+          } catch {
+            // Unreadable snapshot: not offered.
+          }
+        }
+        return out;
+      },
+
+      restoreSnapshot(key) {
+        const snap = get()
+          .listSnapshots()
+          .find((x) => x.key === key);
+        if (!snap) return false;
+        get().importTasks(snap.doc, 'replace');
+        get().showToast(`RESTORED ${snap.date}`, true);
+        return true;
       },
 
       markWhatsNewSeen(build) {

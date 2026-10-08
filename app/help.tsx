@@ -202,6 +202,22 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    title: 'SETTINGS & BACKUP',
+    intro: `${g.settings.glyph} at the top right opens Settings. Your tasks live only on this phone, so keep a backup.`,
+    lines: [
+      { key: 'Settings', what: 'Default reminder time, swipes, auto-clear of old completed tasks, boot screen, haptics, motion.' },
+      {
+        key: `${g.save.glyph} Save backup`,
+        what: 'Saves every task (Trash too) as a file in a folder you choose. Do this before uninstalling.',
+      },
+      {
+        key: `${g.load.glyph} Import`,
+        what: 'Shows what a backup holds, then Merge (add tasks you don’t have) or Replace (swap everything). UNDO works for both.',
+      },
+      { key: 'Snapshots', what: 'The app keeps a copy of your tasks from each of the last 3 days. Restore one if something goes wrong.' },
+    ],
+  },
+  {
     title: 'TIPS & UPDATES',
     intro: 'A few small extras that help you find your way.',
     lines: [

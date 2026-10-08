@@ -5,8 +5,9 @@
  *   12 ACTIVE · 4 DONE TODAY · 1 OVERDUE
  *
  * Layer: UI. Top right: `/` opens search on the current tab, `?` opens the
- * user guide (app/help.tsx). Settings joins them in Phase 13. Long-pressing the title opens the
- * developer screen (theme check and test data), a deliberately hidden gesture.
+ * user guide (app/help.tsx), ⊛ opens Settings (app/settings.tsx).
+ * Long-pressing the title opens the developer screen (theme check and test
+ * data), a deliberately hidden gesture.
  */
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -36,7 +37,7 @@ export function Header() {
             {`${glyphs.prompt.glyph} quest_log`}
           </Text>
         </Pressable>
-        {/* Top right: search (this tab) and the user guide. */}
+        {/* Top right: search (this tab), the user guide and settings. */}
         <View style={styles.icons}>
           <Pressable
             onPress={() => actions.setSearch(tab, { open: true })}
@@ -56,6 +57,16 @@ export function Header() {
           >
             <Text style={[type.glyph, styles.icon]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
               {glyphs.help.glyph}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/settings')}
+            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel="Settings"
+          >
+            <Text style={[type.glyph, styles.icon]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {glyphs.settings.glyph}
             </Text>
           </Pressable>
         </View>

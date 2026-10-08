@@ -47,15 +47,15 @@ Status markers:
 
 | Path | Purpose | Does **not** contain |
 |---|---|---|
-| `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list, back-button handling), `help.tsx` (collapsible user guide; update it with every new gesture or shorthand), `whats-new.tsx` (changelog after an update), `trash.tsx`, `task/[id].tsx` (deep link), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
+| `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list, back-button handling), `help.tsx` (collapsible user guide; update it with every new gesture or shorthand), `whats-new.tsx` (changelog after an update), `settings.tsx` (settings, backup, import, snapshot restore), `trash.tsx`, `task/[id].tsx` (deep link), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
 | `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides`, `drag` (controller, row gesture, overlay), `keepInView`, `titleStyle`, `HighlightFlash`, `Caret` (rotating ▸), `FocusGlow` *(built)* | Store mutations beyond calling actions |
 | `components/edit/` | `InlineEditor` (+ `useEditorFocus`), `NotesField` (editor and linkified view), `ParsedChips` (shorthand preview and clearable field chips), `QuickAddBar`, `EditToolbar` (OUT/IN/SUB/PRI/NOTE/UNDO/DONE) *(built)* | Parsing and key rules (those are `lib/`) |
 | `components/overlays/` | `ActionSheet` (scrolls when long), `ContextMenu`, `DueSheet` (single task or selection), `RepeatSheet`, `MovePicker`, `Toast` *(built)* | |
 | `components/common/` | `Header`, `Tabs`, `SearchBar` (+ filter chips), `Breadcrumb`, `useMinute`, `motion` (Reduce Motion: `MotionConfig`, `useReduceMotion`), `BlockCursor` (one shared blink value), `BootSequence` (`BootGate`, `useBooting`), `useOnboarding` (tips, What's new, first-launch focus) *(built)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
-| `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`), `onboarding` (first-run tips, last build seen) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many), `sample` (example tasks), `changelog` (CHANGELOG.md → What's new))* | Anything impure |
-| `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes); `quickActions` (app icon "New task"); `appInfo` (version, build). Planned: widget, backup)* | UI |
+| `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`), `onboarding` (first-run tips, last build seen), `backup` (reads backup files and snapshots: migrate → repair → validate, with plain-language errors) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many), `sample` (example tasks), `changelog` (CHANGELOG.md → What's new), `backup` (backup file format, counts, merge and replace ops))* | Anything impure |
+| `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes); `quickActions` (app icon "New task"); `appInfo` (version, build); `backup` (save to a chosen folder, share, pick a file; system pickers only, no storage permission))* | UI |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
 | `scripts/` | Dev tooling: font subset, icon generation, `seed.ts` (7,500-task perf data), `gen-changelog.mjs` (CHANGELOG.md → `assets/changelog.json`; a test fails when stale), release *(built: fonts, icon, seed, changelog)* | App code |
@@ -202,6 +202,17 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 5. Startup snapshots the data **before** running any migration.
 
 ---
+
+## 6a. Backup, import and restore *(built: `lib/backup.ts`, `store/backup.ts`, `services/backup.ts`)*
+
+- **File:** `{ format: "quest_log-backup", version: 1, exportedAt, app: { version, build }, tasks: TasksDocument }`. It holds the whole tree, Trash included. Settings aren't in it.
+- **Reading** a backup, or a daily snapshot, uses the startup pipeline: `migrate` → `repairDocument` → `assertValidDocument`. Every failure becomes a `BackupError` with a message for the user, and nothing in the app changes.
+- **Bringing tasks back is an op**, so it's one undo step:
+  - **replace** removes every top-level subtree and inserts the backup's. The `remove` inverses restore the old tree exactly.
+  - **merge** inserts only the subtrees whose root the app doesn't have (matched by ID), under the original parent if it exists, else at the top level. It's idempotent.
+  - Restoring a snapshot is a replace.
+- **Files** go through Android's own pickers (`Directory.pickDirectoryAsync`, `File.pickFileAsync`) or the share sheet. There's no storage permission, and the app only touches what the user picks.
+- **Auto-clear completed** runs at launch, next to the Trash purge. It isn't undoable, but it only moves tasks to Trash, where they stay restorable for 7 days.
 
 ## 6b. React bindings *(built: `store/react.tsx`)*
 

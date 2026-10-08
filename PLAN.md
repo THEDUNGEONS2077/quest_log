@@ -717,6 +717,18 @@ New tasks come from the quick-add bar, from `+ SUB`, from the `+` on a group hea
 
 ### 9.17 Settings
 
+> **As built (Phase 13, 2026-10-08):**
+> - Settings opens from ⊛ in the header. Every change saves immediately.
+> - **Data:**
+>   - **Save backup** writes to a folder the user picks. **Share backup** uses the share sheet.
+>   - **Import** previews the counts and the backup's date, then offers **Merge** (add only tasks you don't have, matched by ID) or **Replace**. Both are one undo step.
+>   - **Restore** lists the readable daily snapshots with their counts.
+>   - Backups are tasks only (Trash included). Settings aren't in them.
+> - **Notifications:** shows the permission state and opens Android's app settings. The exact-alarm status row was dropped: `USE_EXACT_ALARM` is granted at install, so there's nothing for the user to change.
+> - **Auto-clear** now actually runs at launch. Before Phase 13 the setting existed but did nothing.
+> - The default time uses the system time picker.
+> - `expo-document-picker` isn't needed: `expo-file-system` has its own file and folder pickers.
+
 | Section | Settings |
 |---|---|
 | **Behavior** | Notify by default when a date is set · Default time (09:00) · Swipe actions on/off · Auto-clear completed (Off / 30 / 90 days, default Off) |

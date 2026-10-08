@@ -39,3 +39,9 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 - Release APK 20.3 MB (budget 25). JS bundle 3,668,908 bytes = **3.50 MiB**, right at the 3.5 budget. Phase 11 added about 30 KB: the boot screen, block cursor, glow, caret, onboarding, the What's new screen, its changelog data (about 6 KB, capped at the latest 6 versions) and the expo-quick-actions JS.
 - **Budget raised to 4.0 MB**, with the user's standing OK. Why: Phase 12 (Android widget) and Phase 13 (settings, backup and import) add whole screens and native-module JS. The bundle is still mostly React Native, Expo Router and Reanimated. App code stays lean: every new module is used on device and there's no dead weight to cut.
 - Permissions unchanged (7, no INTERNET); expo-quick-actions adds none.
+
+### v0.12.0 (build 18), 2026-10-08: settings and backup (Phase 13)
+- The home screen widget (v0.11.0, build 17) was removed at the user's request, so its JS and native code are gone.
+- Release APK 20.4 MB (budget 25). JS bundle 3,737,996 bytes = 3.56 MiB (budget 4.0). The Settings screen, backup logic, expo-file-system and expo-sharing added about 70 KB over v0.10.0.
+- Import and restore build one op over the whole tree, a one-time cost on a user action (not on any hot path). Snapshot listing parses at most 3 snapshots, only when the restore list is opened.
+- Permissions unchanged: 7, with no INTERNET or storage permission. File access goes only through the system pickers, and every file provider is not exported.

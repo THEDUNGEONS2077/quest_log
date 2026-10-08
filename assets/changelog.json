@@ -1,5 +1,22 @@
 [
   {
+    "version": "0.12.0",
+    "build": 18,
+    "lines": [
+      "Settings and backup.",
+      "- **Settings** (⊛ at the top right):",
+      "  - **Behavior:** reminders on by default, default time, swipe actions, auto-clear of old completed tasks.",
+      "  - **Feel:** boot screen, haptics, reduce motion.",
+      "  - **Notifications:** whether reminders are allowed, with a shortcut to Android's settings.",
+      "- **Backups:**",
+      "  - **Save backup** puts every task (Trash too) in a file, in a folder you choose. **Share backup** sends it to any app you like.",
+      "  - **Import** shows what a backup holds, then lets you **Merge** (add tasks you don't have) or **Replace** everything. **UNDO** works for both.",
+      "  - **Restore a daily snapshot:** the app keeps a copy of your tasks from each of the last 3 days.",
+      "- **Auto-clear completed** now works: when it's on, completed tasks older than 30 or 90 days move to Trash when the app starts.",
+      "- **The home screen widget has been removed.** If you added it, it disappears from your home screen."
+    ]
+  },
+  {
     "version": "0.10.0",
     "build": 16,
     "lines": [
@@ -71,23 +88,6 @@
     "lines": [
       "- **Titles keep their full width.** A task's details (priority, notes ≡, due date and time, ↻ repeat, `[done/total]`) now sit on their own line under the title, instead of squeezing it into a broken-up wrap.",
       "- **Group titles are 20% smaller.** They're still uppercase and bright, so they stand out without shouting."
-    ]
-  },
-  {
-    "version": "0.7.0",
-    "build": 11,
-    "lines": [
-      "Repeating tasks.",
-      "- **Make any task repeat:** use **↻ REPEAT…** in the date sheet or the long-press menu.",
-      "  - Choose daily, weekdays, weekly (pick the days), monthly, yearly, or every N days, weeks, months or years.",
-      "  - Choose whether the next date counts **from the schedule** or **after you finish**.",
-      "- **Shorthand:** `*daily` `*weekdays` `*weekly` `*monthly` `*yearly` `*mon,thu` `*every 2w`. For example: `standup *weekdays @9am`.",
-      "- **When you check off a repeating task,** the line draws through it and then it springs back with its **next date**. A message shows when the next one is due.",
-      "  - Its subtasks reset, so a repeating group works as a reusable checklist.",
-      "  - A completed copy is kept on the **COMPLETED** tab, marked **↻**.",
-      "- **Overdue repeating tasks skip ahead** to the next future date. No pile-up of missed ones.",
-      "- **Monthly on the 31st** falls on the last day of shorter months, then returns to the 31st.",
-      "- DONE and SNOOZE on a repeating task's notification work as expected. Snoozing doesn't shift future reminders."
     ]
   }
 ]

@@ -2,6 +2,21 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.12.0 (build 18)
+
+Settings and backup.
+
+- **Settings** (⊛ at the top right):
+  - **Behavior:** reminders on by default, default time, swipe actions, auto-clear of old completed tasks.
+  - **Feel:** boot screen, haptics, reduce motion.
+  - **Notifications:** whether reminders are allowed, with a shortcut to Android's settings.
+- **Backups:**
+  - **Save backup** puts every task (Trash too) in a file, in a folder you choose. **Share backup** sends it to any app you like.
+  - **Import** shows what a backup holds, then lets you **Merge** (add tasks you don't have) or **Replace** everything. **UNDO** works for both.
+  - **Restore a daily snapshot:** the app keeps a copy of your tasks from each of the last 3 days.
+- **Auto-clear completed** now works: when it's on, completed tasks older than 30 or 90 days move to Trash when the app starts.
+- **The home screen widget has been removed.** If you added it, it disappears from your home screen.
+
 ## 0.10.0 (build 16)
 
 Polish: the finishing touches.
