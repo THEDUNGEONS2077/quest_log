@@ -18,8 +18,13 @@ export const kv = createAppKV();
 /** The app store, hydrated synchronously right here. */
 export const appStore = createAppStore({ kv, now: Date.now, newId: randomUUID });
 
-/** Persistence runs for the app's whole lifetime; the teardown is unused. */
-installPersistence(appStore, kv);
+/**
+ * Persistence runs for the app's whole lifetime. `flushPersistence()` writes
+ * pending changes now (used by the notification background task, which may
+ * be stopped by the OS right after it returns).
+ */
+const persistence = installPersistence(appStore, kv);
+export const flushPersistence = persistence.flush;
 
 /** The store plus its memoized selectors, for <StoreProvider value={appBundle}>. */
 export const appBundle = bundleStore(appStore);

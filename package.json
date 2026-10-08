@@ -1,8 +1,9 @@
 {
   "name": "quest_log",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@react-native-community/datetimepicker": "9.1.0",
     "@shopify/flash-list": "2.0.2",
     "expo": "~57.0.27",
     "expo-build-properties": "~57.0.22",
@@ -13,10 +14,12 @@
     "expo-font": "~57.0.4",
     "expo-haptics": "~57.0.3",
     "expo-linking": "~57.0.12",
+    "expo-notifications": "~57.0.22",
     "expo-router": "~57.0.25",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.4",
+    "expo-task-manager": "~57.0.21",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",

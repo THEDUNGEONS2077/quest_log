@@ -392,3 +392,68 @@ describe('details and shorthand (Phase 6)', () => {
     expect(store.getState()).toMatchObject({ editingField: 'notes', editSession: session, editingStartTitle: 'a' });
   });
 });
+
+describe('due dates and reveal (Phase 7)', () => {
+  it('setDue sets date and notify as one undo step; clearing turns notify off', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'a');
+    s.setDue(id, NOW + 1000, true);
+    expect(tk(store.getState().tasks, id)).toMatchObject({ dueAt: NOW + 1000, notify: true });
+    s.setDue(id, null, true);
+    expect(tk(store.getState().tasks, id)).toMatchObject({ dueAt: null, notify: false });
+    s.undo();
+    expect(tk(store.getState().tasks, id)!.dueAt).toBe(NOW + 1000);
+  });
+
+  it('revealTask expands collapsed ancestors, leaves zoom and highlights', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const g = s.addTask(null, 'group');
+    const kid = s.addTask(g, 'kid');
+    s.editTask(g, { collapsed: true });
+    s.setZoom(g);
+    s.setTab('completed');
+    s.revealTask(kid);
+    const st = store.getState();
+    expect(tk(st.tasks, g)!.collapsed).toBe(false);
+    expect(st.ui).toMatchObject({ tab: 'active', zoomRootId: null });
+    expect(st.highlightId).toBe(kid);
+  });
+
+  it('revealTask of a completed task opens COMPLETED with its ancestors expanded', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const g = s.addTask(null, 'group');
+    const kid = s.addTask(g, 'kid');
+    s.toggleDone(g);
+    s.revealTask(kid);
+    expect(store.getState().ui.tab).toBe('completed');
+    expect(store.getState().ui.completedExpanded).toContain(g);
+  });
+
+  it('the due-date sheet opens and closes per task', () => {
+    const { store } = makeStore();
+    store.getState().openDueSheet('x');
+    expect(store.getState().dueSheetFor).toBe('x');
+    store.getState().closeDueSheet();
+    expect(store.getState().dueSheetFor).toBeNull();
+  });
+});
+
+describe('external ops queue (services/externalOps)', () => {
+  it('drains queued notification actions into undoable ops with a toast, then clears', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- service imported lazily to keep this file's top imports pure
+    const { appendExternalOp, drainExternalOps } = require('@/services/externalOps') as typeof import('@/services/externalOps');
+    const { store, kv } = makeStore();
+    const id = store.getState().addTask(null, 'a');
+    appendExternalOp(kv, { kind: 'complete', taskId: id, at: NOW, source: 'notification' });
+    appendExternalOp(kv, { kind: 'complete', taskId: id, at: NOW, source: 'notification' }); // duplicate: idempotent
+    expect(drainExternalOps(kv, store)).toBe(1);
+    expect(tk(store.getState().tasks, id)!.done).toBe(true);
+    expect(store.getState().toast!.message).toBe('COMPLETED FROM NOTIFICATION');
+    expect(kv.getString('ops.pending')).toBeUndefined();
+    store.getState().undo();
+    expect(tk(store.getState().tasks, id)!.done).toBe(false);
+  });
+});

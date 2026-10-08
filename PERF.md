@@ -30,3 +30,7 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 - Release APK: **17.4 MB** (was 31 MB). Native libraries are now stored compressed (`useLegacyPackaging`). Installed size is still to be measured on the device.
 - Permissions: only `VIBRATE`, plus AndroidX's private `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`.
 - JS bundle: 2.9 MB, within the raised 3.5 MB budget. Expo Router is kept (user decision).
+
+### v0.6.0 (build 8), 2026-10-08: reminders
+- Release APK 19.2 MB (budget 25). JS bundle 3.40 MB (budget 3.5): expo-notifications, task-manager and the date picker added about 0.12 MB. Phases 8–13 will cross 3.5 MB; per the user's OK, the budget will be raised then, with the reason recorded.
+- Release permissions: POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, SCHEDULE_EXACT_ALARM, USE_EXACT_ALARM, VIBRATE, WAKE_LOCK. Blocked: INTERNET, the Firebase push permissions, the install referrer, and 16 launcher badge permissions.

@@ -28,7 +28,7 @@ import { parse, type ParseResult } from '@/lib/parser';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { findTask } from '@/lib/taskMap';
-import { childIds, getTask, liveChildIds } from '@/lib/tree';
+import { ancestors, childIds, getTask, liveChildIds } from '@/lib/tree';
 import type { ID, Priority, TaskFields, TasksState } from '@/lib/types';
 
 import { EMPTY_HISTORY, type History, record } from './history';
@@ -99,6 +99,10 @@ export interface AppStore {
   expandedNotes: ID[];
   /** Quick-add target after `#Group`: new tasks go inside it until cleared. Not persisted. */
   quickAddParent: ID | null;
+  /** The task whose due-date sheet is open (PLAN §9.8), or null. Not persisted. */
+  dueSheetFor: ID | null;
+  /** A task to scroll to and flash (opened from a notification or link). Not persisted. */
+  highlightId: ID | null;
   /**
    * Increments whenever editing starts on a row. Part of the typing
    * coalesce key, so each editing session is its own undo step.
@@ -204,6 +208,19 @@ export interface AppStore {
   parseShorthand(text: string): ParseResult;
   /** Stops targeting a `#Group` with the quick-add bar. */
   clearQuickAddParent(): void;
+
+  // --- Due dates and reminders (Phase 7) ---
+  openDueSheet(id: ID): void;
+  closeDueSheet(): void;
+  /** Sets (or with null, clears) a due date and whether it sends a notification. One undo step. */
+  setDue(id: ID, dueAt: number | null, notify: boolean): void;
+  /**
+   * Shows a task (from a notification tap or a questlog://task/<id> link):
+   * picks its tab, expands collapsed ancestors, leaves zoom, and marks it
+   * to be scrolled to and flashed.
+   */
+  revealTask(id: ID): void;
+  clearHighlight(): void;
   toggleCompletedExpanded(id: ID): void;
 
   // --- Settings ---
@@ -250,6 +267,8 @@ export function createAppStore(deps: StoreDeps) {
       editingStartTitle: null,
       expandedNotes: [],
       quickAddParent: null,
+      dueSheetFor: null,
+      highlightId: null,
       editSession: 0,
       settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
       lingering: [],
@@ -513,6 +532,37 @@ export function createAppStore(deps: StoreDeps) {
       parseShorthand: (text) => parse(text, { now: now(), defaultTimeMinutes: get().settings.defaultTimeMinutes }),
 
       clearQuickAddParent: () => set({ quickAddParent: null }),
+
+      openDueSheet: (id) => set({ dueSheetFor: id }),
+      closeDueSheet: () => set({ dueSheetFor: null }),
+
+      setDue(id, dueAt, notify) {
+        const t = getTask(get().tasks, id);
+        if (t.dueAt === dueAt && t.notify === notify) return;
+        get().editTask(id, { dueAt, notify: dueAt === null ? false : notify });
+      },
+
+      revealTask(id) {
+        const tasks = get().tasks;
+        const task = findTask(tasks, id);
+        if (!task || task.deletedAt !== null) return;
+        const chain = ancestors(tasks, id); // nearest first
+        const top = chain.length ? chain[chain.length - 1]! : id;
+        if (getTask(tasks, top).done) {
+          // On COMPLETED: expand the completed ancestors (the tab's own expanded set).
+          const expanded = new Set([...get().ui.completedExpanded, ...chain]);
+          set({ ui: { ...get().ui, tab: 'completed', completedExpanded: [...expanded] }, highlightId: id });
+          return;
+        }
+        // On ACTIVE: expand collapsed ancestors. Not an undo step (it's navigation).
+        const collapsed = chain.filter((a) => getTask(tasks, a).collapsed);
+        if (collapsed.length) {
+          get().dispatch({ type: 'update', changes: collapsed.map((a) => ({ id: a, fields: { collapsed: false } })) }, { undoable: false });
+        }
+        set({ ui: { ...get().ui, tab: 'active', zoomRootId: null }, highlightId: id });
+      },
+
+      clearHighlight: () => set({ highlightId: null }),
       toggleCompletedExpanded(id) {
         const list = get().ui.completedExpanded;
         const completedExpanded = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
@@ -546,7 +596,8 @@ export type AppStoreInstance = ReturnType<typeof createAppStore>;
  * Starts saving the store to `kv`:
  *   - tasks, ui and settings each get a throttled writer (300 ms),
  *   - everything is flushed when the app leaves the foreground.
- * Returns a function that stops persistence and flushes pending writes.
+ * Returns a function that stops persistence (flushing pending writes); its
+ * `.flush()` property writes pending changes without stopping.
  *
  * When loaded data was from a newer app version (writable = false), tasks
  * are never written, so the newer data can't be overwritten.
@@ -559,7 +610,7 @@ export interface PersistenceOptions {
   timers?: Timers;
 }
 
-export function installPersistence(store: AppStoreInstance, kv: KV, opts: PersistenceOptions = {}): () => void {
+export function installPersistence(store: AppStoreInstance, kv: KV, opts: PersistenceOptions = {}): (() => void) & { flush: () => void } {
   const timers = opts.timers ?? defaultTimers;
   const writers: Writer[] = [];
   const unsubs: (() => void)[] = [];
@@ -610,9 +661,12 @@ export function installPersistence(store: AppStoreInstance, kv: KV, opts: Persis
     unsubs.push(() => sub.remove());
   }
 
-  return () => {
+  const stop = () => {
     if (snapshotTimer !== null) timers.clearTimeout(snapshotTimer);
     flushAll();
     unsubs.forEach((u) => u());
   };
+  // `.flush()` writes pending changes immediately without stopping persistence
+  // (the notification background task must save before it returns).
+  return Object.assign(stop, { flush: flushAll });
 }

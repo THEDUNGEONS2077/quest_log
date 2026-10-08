@@ -4,7 +4,18 @@
  * Runs in Europe/London (jest.global-setup.js). 2026 DST changes: clocks go
  * forward on Sun Mar 29 and back on Sun Oct 25.
  */
-import { addDays, addMonths, dayDiff, daysInMonth, formatDue, formatRelative, formatTime, isOverdue, startOfDay } from '@/lib/dates';
+import {
+  addDays,
+  addMonths,
+  dayDiff,
+  daysInMonth,
+  duePresets,
+  formatDue,
+  formatRelative,
+  formatTime,
+  isOverdue,
+  startOfDay,
+} from '@/lib/dates';
 
 /** Local time → epoch ms (month is 1-based here, for readability). */
 const at = (y: number, mo: number, d: number, h = 0, mi = 0) => new Date(y, mo - 1, d, h, mi).getTime();
@@ -72,5 +83,24 @@ describe('labels', () => {
     expect(isOverdue(now - 1, true, now)).toBe(false);
     expect(isOverdue(null, false, now)).toBe(false);
     expect(isOverdue(now + 1, false, now)).toBe(false);
+  });
+});
+
+describe('due presets', () => {
+  it('offers in 1h, tonight, tomorrow and next Monday at the default time', () => {
+    const now = at(2026, 10, 7, 12); // Wed noon
+    expect(duePresets(now, 9 * 60)).toEqual([
+      { label: 'IN 1H', at: at(2026, 10, 7, 13) },
+      { label: 'TONIGHT 20:00', at: at(2026, 10, 7, 20) },
+      { label: 'TOMORROW 09:00', at: at(2026, 10, 8, 9) },
+      { label: 'NEXT MON 09:00', at: at(2026, 10, 12, 9) },
+    ]);
+  });
+
+  it('switches to tomorrow evening after 20:00, and skips to the following Monday on a Monday', () => {
+    const lateMonday = at(2026, 10, 12, 21);
+    const p = duePresets(lateMonday, 9 * 60);
+    expect(p[1]).toEqual({ label: 'TOMORROW 20:00', at: at(2026, 10, 13, 20) });
+    expect(p[3]!.at).toBe(at(2026, 10, 19, 9));
   });
 });

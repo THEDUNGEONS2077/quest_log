@@ -8,15 +8,22 @@
  *   - the keyboard controller (quick-add bar and editor stay above the keyboard),
  *   - safe-area insets,
  *   - the light status bar on a black background,
- *   - a header-less Stack, since each screen draws its own terminal header.
+ *   - a header-less Stack, since each screen draws its own terminal header,
+ *   - reminders: queued notification actions are drained and the OS
+ *     schedule reconciled at start, on foreground and after changes
+ *     (services/reminderLifecycle.ts). The notification background task is
+ *     defined by importing services/notificationTask first, at load time.
  *
- * Planned: the external ops drain (Phase 7) and the boot sequence overlay
- * (Phase 11).
+ * Planned: the boot sequence overlay (Phase 11).
  *
  * Fonts need no loading step here: they're embedded at build time by the
  * expo-font config plugin (app.config.ts).
  */
-import { Stack } from 'expo-router';
+// Must load before anything else: defines the background task that handles
+// DONE/SNOOZE taps when Android starts JS without any UI.
+import '@/services/notificationTask';
+
+import { router, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet } from 'react-native';
@@ -25,7 +32,8 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { setHapticsEnabled } from '@/services/haptics';
-import { appBundle } from '@/store';
+import { startReminders } from '@/services/reminderLifecycle';
+import { appBundle, kv } from '@/store';
 import { StoreProvider } from '@/store/react';
 import { colors } from '@/theme';
 
@@ -36,6 +44,17 @@ export default function RootLayout() {
     setHapticsEnabled(store.getState().settings.haptics);
     return store.subscribe((s) => s.settings.haptics, setHapticsEnabled);
   }, []);
+
+  // Reminders: drain queued notification actions, reconcile the schedule, and
+  // open a task when its notification is tapped.
+  useEffect(
+    () =>
+      startReminders(appBundle.store, kv, (taskId) => {
+        appBundle.store.getState().revealTask(taskId);
+        router.navigate('/');
+      }),
+    [],
+  );
 
   return (
     <GestureHandlerRootView style={styles.root}>

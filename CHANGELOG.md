@@ -2,6 +2,18 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.6.0 (build 8)
+
+Reminders.
+
+- **Due dates with reminders.** Use **◔ DUE** in the editing toolbar, **Due / remind…** in the long-press menu, or tap a task's due label. Pick **IN 1H**, **TONIGHT 20:00**, **TOMORROW 09:00**, **NEXT MON 09:00**, or **CUSTOM…** for any date and time.
+- **NOTIFY on/off** for each task: on sends a notification at the due time, off just keeps the date.
+- **Notifications have DONE and SNOOZE 15M buttons** that work even when the app is closed. The app shows what happened with an UNDO.
+- **Tapping a notification** opens the app right at that task: it scrolls to it and flashes it.
+- Shorthand like `@fri 5pm` now sets a real reminder too.
+- quest_log asks for notification permission **only the first time** a reminder is set. If you decline, dates still work, and the date sheet explains how to turn notifications back on.
+- Reminders survive a phone restart.
+
 ## 0.5.1 (build 7)
 
 From your feedback on 0.5.0:

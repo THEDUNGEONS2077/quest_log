@@ -23,6 +23,7 @@ import { EditToolbar } from '@/components/edit/EditToolbar';
 import { QuickAddBar } from '@/components/edit/QuickAddBar';
 import { CompletedList } from '@/components/list/CompletedList';
 import { TaskList } from '@/components/list/TaskList';
+import { DueSheet } from '@/components/overlays/DueSheet';
 import { Toast } from '@/components/overlays/Toast';
 import { useAppStore } from '@/store/react';
 import { colors, size, space } from '@/theme';
@@ -57,6 +58,8 @@ export default function ListScreen() {
         )}
       </View>
       <Toast bottom={(showQuickAdd || editingId ? barHeight : insets.bottom) + space.sm} />
+      {/* The due-date sheet renders itself when a task's sheet is open. */}
+      <DueSheet />
       {editingId ? (
         <EditToolbar editingId={editingId} structure={tab === 'active'} />
       ) : (

@@ -47,19 +47,22 @@ export function TaskList({ bottomInset }: Props) {
   const selectors = useSelectors();
   const rows = useAppStore((s) => selectors.activeRows(s));
   const editingId = useAppStore((s) => s.editingId);
+  const highlightId = useAppStore((s) => s.highlightId);
   const list = useRef<FlashListRef<Row>>(null);
   // Index range currently on screen, from FlashList's viewability callback.
   const visible = useRef({ first: 0, last: -1 });
 
-  // When editing starts on a row that isn't on screen, scroll it into view
-  // (FlashList only mounts visible rows, so its editor couldn't otherwise focus).
+  // When editing starts on a row that isn't on screen, or a task is opened
+  // from a notification/link, scroll it into view (FlashList only mounts
+  // visible rows, so an editor couldn't otherwise focus).
+  const target = editingId ?? highlightId;
   useEffect(() => {
-    if (!editingId) return;
-    const index = rows.findIndex((r) => r.id === editingId);
+    if (!target) return;
+    const index = rows.findIndex((r) => r.id === target);
     if (index < 0) return;
     const { first, last } = visible.current;
     if (index < first || index > last) list.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
-  }, [editingId, rows]);
+  }, [target, rows]);
 
   // Track the drag start so only a deliberate scroll ends editing, not a nudge.
   const dragStartY = useRef<number | null>(null);

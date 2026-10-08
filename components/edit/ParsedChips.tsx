@@ -32,9 +32,15 @@ export function useShorthand(text: string): ParseResult {
 }
 
 /** One chip; with `onClear` it gets a ✕ that clears the value. */
-function Chip({ label, onClear, a11y }: { label: string; onClear?: () => void; a11y: string }) {
+function Chip({ label, onClear, onPress, a11y }: { label: string; onClear?: () => void; onPress?: () => void; a11y: string }) {
   return (
-    <View style={styles.chip}>
+    <Pressable
+      style={styles.chip}
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={a11y}
+    >
       <Text style={[type.meta, styles.chipText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {label}
       </Text>
@@ -51,7 +57,7 @@ function Chip({ label, onClear, a11y }: { label: string; onClear?: () => void; a
           </Text>
         </Pressable>
       )}
-    </View>
+    </Pressable>
   );
 }
 
@@ -92,7 +98,12 @@ export function TaskChips({ id }: { id: string }) {
         />
       )}
       {showDue && (
-        <Chip label={`${glyphs.notify.glyph} ${formatDue(task.dueAt!, now)}`} onClear={() => actions.clearDue(id)} a11y="due date" />
+        <Chip
+          label={`${glyphs.notify.glyph} ${formatDue(task.dueAt!, now)}`}
+          onPress={() => actions.openDueSheet(id)}
+          onClear={() => actions.clearDue(id)}
+          a11y="due date"
+        />
       )}
     </View>
   );

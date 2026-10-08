@@ -15,8 +15,8 @@
  *   long-press      → menu: Restore · Run again · Delete
  *   CLEAR…          → older than 7 days / 30 days / all (to Trash, undoable)
  */
-import { FlashList } from '@shopify/flash-list';
-import { memo, useCallback, useState } from 'react';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatRelative } from '@/lib/dates';
@@ -31,6 +31,7 @@ import { InlineEditor } from '@/components/edit/InlineEditor';
 import { NotesEditor, NotesView } from '@/components/edit/NotesField';
 import { ActionSheet, type SheetAction } from '@/components/overlays/ActionSheet';
 
+import { HighlightFlash } from './HighlightFlash';
 import { NestingGuides } from './NestingGuides';
 import { SwipeableRow } from './SwipeableRow';
 
@@ -38,9 +39,19 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
   const selectors = useSelectors();
   const rows = useAppStore((s) => selectors.completedRows(s));
   const renderItem = useCallback(({ item }: { item: Row }) => <CompletedRow row={item} />, []);
+  const list = useRef<FlashListRef<Row>>(null);
+
+  // A task opened from a notification or link: scroll to it.
+  const highlightId = useAppStore((s) => s.highlightId);
+  useEffect(() => {
+    if (!highlightId) return;
+    const index = rows.findIndex((r) => r.id === highlightId);
+    if (index >= 0) list.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+  }, [highlightId, rows]);
 
   return (
     <FlashList
+      ref={list}
       data={rows}
       renderItem={renderItem}
       keyExtractor={(r) => r.id}
@@ -134,6 +145,7 @@ const CompletedRow = memo(
             ]}
             onAccessibilityAction={onAccessibilityAction}
           >
+            <HighlightFlash rowId={row.id} />
             <NestingGuides levels={visualDepth} />
             {/* Caret: subtrees are collapsed by default on this tab. */}
             <Pressable

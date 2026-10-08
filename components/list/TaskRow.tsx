@@ -36,6 +36,7 @@ import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, 
 
 import { NestingGuides } from './NestingGuides';
 import { StrikeText } from './StrikeText';
+import { HighlightFlash } from './HighlightFlash';
 import { SwipeableRow } from './SwipeableRow';
 
 /** The haptic for each checkbox outcome (PLAN §9.18). */
@@ -108,6 +109,8 @@ export const TaskRow = memo(
             disabled={editing}
             onAccessibilityAction={onAccessibilityAction}
           >
+            {/* Flashes when the task is opened from a notification or link. */}
+            <HighlightFlash rowId={row.id} />
             <NestingGuides levels={visualDepth} />
 
             {/* Caret: tap collapses/expands; long-press does it for all siblings. */}
@@ -258,6 +261,7 @@ function RowMeta({ task, row, onNotes }: { task: Task; row: Row; onNotes: () => 
 /** The due label (◔ ↻ FRI 16:00 / OVERDUE). Re-renders each minute, so it stays current. */
 function DueChip({ task, dueAt }: { task: Task; dueAt: number }) {
   const now = useMinute();
+  const actions = useActions();
   const overdue = isOverdue(dueAt, task.done, now);
   // Glyph prefixes (◔ notify, ↻ repeat) as nested spans at the larger metaGlyph size.
   const icons = `${task.notify ? `${glyphs.notify.glyph} ` : ''}${task.repeat ? `${glyphs.repeat.glyph} ` : ''}`;
@@ -265,6 +269,10 @@ function DueChip({ task, dueAt }: { task: Task; dueAt: number }) {
   return (
     <Text
       style={[type.meta, styles.text, { color: overdue ? colors.accent : colors.textDim }]}
+      onPress={() => actions.openDueSheet(task.id)}
+      suppressHighlighting
+      accessibilityRole="button"
+      accessibilityHint="Change the due date"
       maxFontSizeMultiplier={maxFontSizeMultiplier}
     >
       {icons !== '' && <Text style={type.metaGlyph}>{icons}</Text>}

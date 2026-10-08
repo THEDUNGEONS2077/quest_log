@@ -2,7 +2,7 @@
  * components/edit/EditToolbar.tsx: the toolbar shown above the keyboard
  * while a task is being edited (PLAN §12.3 accessory bar, first part).
  *
- *   [← OUT] [→ IN] [+ SUB] [! PRI] [≡ NOTE] [↩ UNDO] [✓ DONE]
+ *   [← OUT] [→ IN] [+ SUB] [! PRI] [≡ NOTE] [◔ DUE] [↩ UNDO] [✓ DONE]
  *
  * Layer: UI. Brought forward from Phase 6 after the v0.3.0 test: building
  * structure needed a way to indent and add subtasks without pasting. It
@@ -12,7 +12,8 @@
  * Closing the keyboard (the system back gesture) also finishes editing,
  * so "how do I get out of editing" always has an obvious answer.
  * PRI cycles the priority (none → ! → !! → !!!); NOTE switches between
- * the title and the notes field. The due date button joins in Phase 7.
+ * the title and the notes field. DUE opens the due-date sheet; it closes
+ * the keyboard, which ends editing (the sheet is a separate step).
  */
 import { useEffect } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -65,6 +66,7 @@ export function EditToolbar({ editingId, structure }: Props) {
   const buttons: ButtonSpec[] = [
     ...(structure ? structureButtons : []),
     ...detailButtons,
+    { glyph: glyphs.notify.glyph, label: 'DUE', a11y: 'Set due date and reminder', onPress: () => actions.openDueSheet(editingId) },
     { glyph: glyphs.undo.glyph, label: 'UNDO', a11y: 'Undo', onPress: () => actions.undo() },
     {
       glyph: glyphs.done.glyph,

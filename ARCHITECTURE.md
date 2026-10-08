@@ -54,8 +54,8 @@ Status markers:
 | `components/common/` | `Header`, `Tabs`, `useMinute` (shared minute clock) *(built)*; filter chips, breadcrumb, block cursor *(planned)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete`, `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`; planned: `recurrence`, `dnd`, `search`)* | Anything impure |
-| `services/` | Native side effects. *(built: `haptics`, which follows the Settings toggle; planned: notifications, external ops queue, widget, backup)* | UI |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete`, `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`; planned: `recurrence`, `dnd`, `search`)* | Anything impure |
+| `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes). Planned: widget, backup)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
@@ -114,7 +114,7 @@ action → ops.apply(state, op) → { nextState, inverse }
        → side effects (async): notifications.sync, widget.refresh (2 s throttle)
 ```
 
-### 4.3 External ops queue *(planned, Phase 7 / 12)*
+### 4.3 External ops queue *(built for notifications in Phase 7; the widget joins in Phase 12)*
 Widget taps and notification buttons can fire while the app is closed. They **never** mutate state directly:
 ```
 append { op, taskId, at } to MMKV "ops.pending"
@@ -132,8 +132,8 @@ One code path (`lib/ops.ts`) handles every mutation, wherever it came from.
 4. Migrate (pre-migration snapshot first), repair, validate (built: store/persist.ts)
 4b. Purge Trash older than 7 days (not undoable)            (built)
 4c. Daily snapshot, deferred about 3 s after launch         (built)
-5. Drain ops.pending                                       (planned, Phase 7)
-6. Reconcile notifications (async)                         (planned, Phase 7)
+5. Drain ops.pending                                       (built: services/reminderLifecycle.ts)
+6. Reconcile notifications (async)                         (built; also on foreground and after changes)
 7. Boot sequence overlay, in parallel with readiness       (planned, Phase 11)
 ```
 
@@ -221,6 +221,16 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 - **Quick-add bar:** the text is parsed on Enter, and the task is created with the parsed fields already set.
 - **Editing a title:** the shorthand is applied once, when editing finishes, as its own undo step, and only if the title changed during that session. That way an escaped literal (`\@5pm`, stored as `@5pm`) isn't re-parsed every time the task is edited.
 - **Live chips** show the parse result while typing. `now` comes from `useMinute()`, so renders stay pure.
+
+## 6e. Reminders *(built: `lib/reminders.ts`, `services/notifications.ts`)*
+
+- **Deterministic identifiers.** Every notification is `task:<id>:<dueAt>`. Reconciling means comparing "desired" (from the tree) with "scheduled" (from the OS) as sets: cancel the extras, schedule the missing. It's safe to run any time. Changing a due date changes the identifier, so the old notification is cancelled automatically. `Task.notificationIds` is left unused.
+- **Permission** is requested inside a sync, the first time a reminder is actually needed.
+- **DONE / SNOOZE 15M** are action buttons that don't open the app:
+  - With the app closed (Android), the task in `services/notificationTask.ts` runs headless. It appends to `ops.pending`, drains, flushes persistence, dismisses the notification and re-syncs.
+  - With the app open, the response listener does the same.
+  - Both paths are idempotent, so if both fire it doesn't matter.
+- **Tapping the notification body** calls `revealTask` (tab, expand, scroll, flash).
 
 ## 7. Side effects
 

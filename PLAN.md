@@ -572,8 +572,8 @@ New tasks come from the quick-add bar, from `+ SUB`, or from paste. **Change (20
 
 **Android specifics (built now):**
 - Create a `reminders` channel with high importance.
-- Request exact-alarm permission on Android 12+. Without it, reminders may be a few minutes late, and Settings says so.
-- Use a boot receiver to restore reminders after a restart.
+- ~~Request exact-alarm permission on Android 12+.~~ **Changed (2026-10-08):** the app declares `USE_EXACT_ALARM`, which Android grants automatically to reminder apps on 13+ (allowed because the app isn't distributed through Play), plus `SCHEDULE_EXACT_ALARM`, which is granted at install on Android 12. Reminders are exact with no settings detour.
+- Reminders are restored after a restart by expo-notifications itself (`RECEIVE_BOOT_COMPLETED`); no custom receiver is needed.
 
 **iOS specifics (logged in `IOS_PORT.md`):**
 - iOS allows 64 pending notifications per app. Schedule only the nearest 60 and top up during reconciliation.

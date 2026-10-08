@@ -51,3 +51,11 @@ describe('motion', () => {
     expect(timing.cursorBlink).toBe(530);
   });
 });
+
+describe('app.config accent', () => {
+  it('matches the theme accent (it is duplicated because app.config runs in Node)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- read the file as text, not as a module
+    const src: string = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.config.ts'), 'utf8');
+    expect(src).toContain(`const ACCENT = '${colors.accent}'`);
+  });
+});

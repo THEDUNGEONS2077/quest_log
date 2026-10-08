@@ -21,7 +21,7 @@
  * time are passed in, so results are deterministic and testable. Repeat
  * shorthand (*daily, *mon,thu…) joins in Phase 8 with recurring tasks.
  */
-import { addDays, formatDue, startOfDay } from './dates';
+import { addDays, atTimeOfDay, formatDue } from './dates';
 import type { Priority } from './types';
 
 export interface ParseOptions {
@@ -90,13 +90,6 @@ export function parseTime(text: string): number | null {
   return hours * 60 + minutes;
 }
 
-/** Local time of day `minutes` on the day of `dayTs`. */
-function atMinutes(dayTs: number, minutes: number): number {
-  const d = new Date(startOfDay(dayTs));
-  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-  return d.getTime();
-}
-
 /** Rounds up to the next whole minute (so "@in 2h" doesn't carry seconds). */
 function ceilMinute(ts: number): number {
   return Math.ceil(ts / 60_000) * 60_000;
@@ -131,29 +124,29 @@ function resolveDate(expr: string, next: string | undefined, opts: ParseOptions)
   const used = followingTime !== null ? 1 : 0;
 
   if (e === 'today' || e === 'tod') {
-    const at = atMinutes(now, timeFor());
+    const at = atTimeOfDay(now, timeFor());
     // Day-only "today" whose default time has passed: the next whole hour instead
     // of a date that's overdue the moment it's set.
     // (Floor + 1 hour, so an exact-hour `now` doesn't resolve to itself.)
     if (at <= now && followingTime === null) return { at: (Math.floor(now / 3_600_000) + 1) * 3_600_000, used };
     return { at, used };
   }
-  if (e === 'tomorrow' || e === 'tmrw' || e === 'tmr') return { at: atMinutes(addDays(now, 1), timeFor()), used };
+  if (e === 'tomorrow' || e === 'tmrw' || e === 'tmr') return { at: atTimeOfDay(addDays(now, 1), timeFor()), used };
 
   const weekday = WEEKDAYS[e];
   if (weekday !== undefined) {
     const today = new Date(now).getDay();
     let days = (weekday - today + 7) % 7;
     // Today's weekday counts only if its time is still ahead; otherwise next week.
-    if (days === 0 && atMinutes(now, timeFor()) <= now) days = 7;
-    return { at: atMinutes(addDays(now, days), timeFor()), used };
+    if (days === 0 && atTimeOfDay(now, timeFor()) <= now) days = 7;
+    return { at: atTimeOfDay(addDays(now, days), timeFor()), used };
   }
 
   // Time only: today, or tomorrow if that time has passed ("ambiguous → next future").
   const time = parseTime(e);
   if (time !== null) {
-    const today = atMinutes(now, time);
-    return { at: today > now ? today : atMinutes(addDays(now, 1), time), used: 0 };
+    const today = atTimeOfDay(now, time);
+    return { at: today > now ? today : atTimeOfDay(addDays(now, 1), time), used: 0 };
   }
   return null;
 }

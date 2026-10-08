@@ -8,13 +8,14 @@
  *   + Add subtask
  *   → Indent          ← Outdent
  *   ≡ Notes
+ *   ◔ Due / remind…
  *   ⊞ Duplicate
  *   ⎕ Copy as text
  *   ✕ Delete
  *
  * Layer: UI. Everything here is also reachable without editing the task,
- * so structure and details can be changed from the list directly. Due
- * date, repeat, zoom, select and move join in Phases 7–10.
+ * so structure and details can be changed from the list directly. Repeat,
+ * zoom, select and move join in Phases 8–10.
  */
 import * as Clipboard from 'expo-clipboard';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -42,6 +43,11 @@ export function ContextMenu({ id, onClose }: Props) {
     { glyph: glyphs.indent.glyph, label: 'Indent', onPress: () => actions.indentTask(id) },
     { glyph: glyphs.outdent.glyph, label: 'Outdent', onPress: () => actions.outdentTask(id) },
     { glyph: glyphs.notes.glyph, label: task.notes ? 'Edit notes' : 'Add notes', onPress: () => actions.setEditing(id, null, 'notes') },
+    {
+      glyph: glyphs.notify.glyph,
+      label: task.dueAt !== null ? 'Change due date…' : 'Due / remind…',
+      onPress: () => actions.openDueSheet(id),
+    },
     { glyph: glyphs.duplicate.glyph, label: 'Duplicate', onPress: () => actions.duplicateTask(id) },
     {
       glyph: glyphs.copy.glyph,

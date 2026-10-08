@@ -57,6 +57,7 @@ const SECTIONS: { title: string; lines: Line[] }[] = [
       { key: `${g.add.glyph} SUB`, what: 'Add a subtask and type it' },
       { key: `${g.priority.glyph} PRI`, what: 'Cycle priority' },
       { key: `${g.notes.glyph} NOTE`, what: 'Write notes under the title' },
+      { key: `${g.notify.glyph} DUE`, what: 'Set a due date and reminder' },
       { key: `${g.undo.glyph} UNDO`, what: 'Undo the last change' },
     ],
   },
@@ -70,6 +71,17 @@ const SECTIONS: { title: string; lines: Line[] }[] = [
       { key: `${g.expanded.glyph} ${g.collapsed.glyph}`, what: 'Collapse / expand. Long-press: all at that level' },
       { key: g.notes.glyph, what: 'Show the task’s notes' },
       { key: 'UNDO', what: 'In the message after any complete or delete (5 s)' },
+    ],
+  },
+  {
+    title: 'REMINDERS',
+    lines: [
+      { key: `${g.notify.glyph} DUE / menu`, what: 'Presets (in 1h, tonight, tomorrow, next Mon) or a custom date' },
+      { key: 'NOTIFY', what: 'On: a notification at the due time. Off: just the date' },
+      { key: 'DONE', what: 'On the notification: completes the task, even with the app closed' },
+      { key: 'SNOOZE 15M', what: 'On the notification: remind again in 15 minutes' },
+      { key: 'Tap it', what: 'Opens the app at that task' },
+      { key: 'OVERDUE', what: 'Shown on open tasks past their due time' },
     ],
   },
   {

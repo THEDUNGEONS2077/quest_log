@@ -48,7 +48,19 @@ describe('release variant', () => {
   });
 
   it('requests only the allow-listed permissions', () => {
-    expect(cfg.android?.permissions).toEqual(['android.permission.VIBRATE']);
+    expect(cfg.android?.permissions).toEqual([
+      'android.permission.VIBRATE',
+      'android.permission.POST_NOTIFICATIONS',
+      'android.permission.USE_EXACT_ALARM',
+      'android.permission.SCHEDULE_EXACT_ALARM',
+      'android.permission.RECEIVE_BOOT_COMPLETED',
+    ]);
+  });
+
+  it('blocks push-related permissions that come with expo-notifications', () => {
+    expect(cfg.android?.blockedPermissions).toEqual(
+      expect.arrayContaining(['com.google.android.c2dm.permission.RECEIVE', 'android.permission.ACCESS_NETWORK_STATE']),
+    );
   });
 
   it('takes its version from version.json', () => {

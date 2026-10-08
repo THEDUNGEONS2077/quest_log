@@ -33,9 +33,45 @@ export function getVariant(env: Record<string, string | undefined> = process.env
 /** Base app ID. Permanent once friends install; never change it (PLAN §18). */
 const APP_ID = 'com.thedungeons2077.questlog';
 const BLACK = '#000000';
+/** The theme's accent green (theme/colors.ts). Duplicated here: this file runs in Node and can't import the theme. */
+const ACCENT = '#39FF14';
 
-/** Android permissions the app requests. VIBRATE: haptics (PLAN §9.18). */
-export const ANDROID_PERMISSIONS = ['android.permission.VIBRATE'];
+/**
+ * Android permissions the app requests (PLAN §3):
+ *   VIBRATE              haptics (PLAN §9.18)
+ *   POST_NOTIFICATIONS   reminders; asked for only when the first reminder is set
+ *   USE_EXACT_ALARM      reminders on time. Granted automatically to reminder apps
+ *                        on Android 13+; allowed because the app isn't on Play.
+ *   SCHEDULE_EXACT_ALARM the Android 12 equivalent (granted at install there)
+ *   RECEIVE_BOOT_COMPLETED  restore reminders after a restart (expo-notifications)
+ */
+export const ANDROID_PERMISSIONS = [
+  'android.permission.VIBRATE',
+  'android.permission.POST_NOTIFICATIONS',
+  'android.permission.USE_EXACT_ALARM',
+  'android.permission.SCHEDULE_EXACT_ALARM',
+  'android.permission.RECEIVE_BOOT_COMPLETED',
+];
+
+/** Launcher badge permissions pulled in by expo-notifications' badge helper (unused). */
+const BADGE_PERMISSIONS = [
+  'android.permission.READ_APP_BADGE',
+  'com.sec.android.provider.badge.permission.READ',
+  'com.sec.android.provider.badge.permission.WRITE',
+  'com.htc.launcher.permission.READ_SETTINGS',
+  'com.htc.launcher.permission.UPDATE_SHORTCUT',
+  'com.sonyericsson.home.permission.BROADCAST_BADGE',
+  'com.sonymobile.home.permission.PROVIDER_INSERT_BADGE',
+  'com.anddoes.launcher.permission.UPDATE_COUNT',
+  'com.majeur.launcher.permission.UPDATE_BADGE',
+  'com.huawei.android.launcher.permission.CHANGE_BADGE',
+  'com.huawei.android.launcher.permission.READ_SETTINGS',
+  'com.huawei.android.launcher.permission.WRITE_SETTINGS',
+  'com.oppo.launcher.permission.READ_SETTINGS',
+  'com.oppo.launcher.permission.WRITE_SETTINGS',
+  'me.everything.badger.permission.BADGE_COUNT_READ',
+  'me.everything.badger.permission.BADGE_COUNT_WRITE',
+];
 
 /**
  * Permissions removed from the final release manifest, even when a library
@@ -47,6 +83,15 @@ export const RELEASE_BLOCKED_PERMISSIONS = [
   'android.permission.SYSTEM_ALERT_WINDOW',
   'android.permission.READ_EXTERNAL_STORAGE',
   'android.permission.WRITE_EXTERNAL_STORAGE',
+  // Firebase messaging (bundled by expo-notifications for push, unused here):
+  // no push, so no push or network-state permissions.
+  'com.google.android.c2dm.permission.RECEIVE',
+  'android.permission.ACCESS_NETWORK_STATE',
+  // Play install attribution: no tracking of any kind (PLAN §3).
+  'com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE',
+  // App-icon badge helpers for various launchers (bundled with expo-notifications).
+  // quest_log never sets icon badges (shouldSetBadge: false).
+  ...BADGE_PERMISSIONS,
 ];
 
 /**
@@ -128,6 +173,16 @@ export function buildConfig(variant: Variant, base: Partial<ExpoConfig> = {}): E
           resizeMode: 'contain',
           backgroundColor: BLACK,
           dark: { image: './assets/icon/splash.png', backgroundColor: BLACK },
+        },
+      ],
+
+      // Local reminders. The small icon must be a white silhouette on
+      // transparent: the monochrome launcher icon is exactly that.
+      [
+        'expo-notifications',
+        {
+          icon: './assets/icon/monochrome.png',
+          color: ACCENT,
         },
       ],
 

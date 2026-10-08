@@ -26,6 +26,38 @@ export function startOfDay(ts: number): number {
   return d.getTime();
 }
 
+/** Local time `minutes` after midnight on the day of `day` (DST-safe: set through the calendar). */
+export function atTimeOfDay(day: number, minutes: number): number {
+  const d = new Date(startOfDay(day));
+  d.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return d.getTime();
+}
+
+/** "09:00" for 540 minutes after midnight. */
+export function formatMinutes(minutes: number): string {
+  return `${pad2(Math.floor(minutes / 60))}:${pad2(minutes % 60)}`;
+}
+
+/**
+ * The due-date sheet's preset buttons (PLAN §9.8) for time `now`:
+ *   IN 1H · TONIGHT 20:00 (TOMORROW 20:00 once it's past) ·
+ *   TOMORROW <default> · NEXT MON <default> (1–7 days ahead).
+ */
+export function duePresets(now: number, defaultTimeMinutes: number): { label: string; at: number }[] {
+  const inOneHour = Math.ceil((now + 3_600_000) / 60_000) * 60_000;
+  const tonight = atTimeOfDay(now, 20 * 60);
+  const evening =
+    tonight > now ? { label: 'TONIGHT 20:00', at: tonight } : { label: 'TOMORROW 20:00', at: atTimeOfDay(addDays(now, 1), 20 * 60) };
+  const daysToMonday = (1 - new Date(now).getDay() + 7) % 7 || 7;
+  const hhmm = formatMinutes(defaultTimeMinutes);
+  return [
+    { label: 'IN 1H', at: inOneHour },
+    evening,
+    { label: `TOMORROW ${hhmm}`, at: atTimeOfDay(addDays(now, 1), defaultTimeMinutes) },
+    { label: `NEXT MON ${hhmm}`, at: atTimeOfDay(addDays(now, daysToMonday), defaultTimeMinutes) },
+  ];
+}
+
 /** Same local wall-clock time, `n` calendar days later (or earlier, if n < 0). */
 export function addDays(ts: number, n: number): number {
   const d = new Date(ts);

@@ -44,5 +44,12 @@ This is a running list of everything that behaves differently on iOS or still ne
 - [ ] Links in notes use `Linking.openURL`. Confirm http(s) links open in Safari.
 - [ ] `NotesEditor` is a multiline TextInput with `submitBehavior="newline"`. Check that the editor grows to 8 lines and then scrolls, with the iOS keyboard open.
 
+## Phase 7 additions
+- [ ] iOS has no headless notification task: DONE/SNOOZE responses go into `ops.pending` from the response listener, and the queue is drained on launch and foreground (already wired in `services/reminderLifecycle.ts`). Check this when the app is fully closed.
+- [ ] Cap scheduled reminders at 60 (`desiredReminders(state, now, 60)` on iOS) and top up on each reconcile.
+- [ ] `DueSheet` uses an inline `DateTimePicker` on iOS (mode "datetime"). Style it as a proper sheet.
+- [ ] Notification small icon and color are Android-only. Check the iOS notification appearance.
+- [ ] Request permission with provisional authorization in mind.
+
 ## Offline guarantee
 - [ ] iOS has no INTERNET permission to remove, so the guarantee comes from the code itself. Run a dependency audit to confirm there are no network libraries.
