@@ -813,6 +813,13 @@ All animations run on the UI thread via Reanimated worklets.
 
 ### 11.3 Android (Phase 12)
 
+> **As built (Phase 12, 2026-10-08):**
+> - **One resizable widget** covers small, medium and large: 3 rows at 2×2, 4 rows at 4×2 (the default), and up to 8 at 4×4. Narrow widgets drop the right-hand details, except OVERDUE.
+> - **Which tasks:** open tasks you can act on. Groups that still have open subtasks are left out, because checking one from the home screen would complete everything inside it. Their open subtasks are listed instead.
+> - **Refresh:** due labels are computed when the widget is drawn, not when the snapshot is written. Android redraws every 30 minutes (`updatePeriodMillis`, the minimum), so the midnight rollover and "OVERDUE" appear within 30 minutes while the app is closed. While the app runs, there is also an exact redraw at midnight and on foreground. There is no separate "on notification fire" hook.
+> - **Privacy fix:** the library's widget image is served by an exported provider. A `patch-package` patch gives each image an unguessable name (see ARCHITECTURE.md §9).
+> - The widget's `+` opens `questlog://new`, which focuses the quick-add bar.
+
 - Use `react-native-android-widget`. The widget UI is written in JSX and rendered to native RemoteViews.
 - A widget task handler (headless JS) drains `ops.pending` immediately, applying cascade, recurrence, notification rescheduling, and refresh.
 

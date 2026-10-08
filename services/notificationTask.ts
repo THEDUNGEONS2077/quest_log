@@ -24,6 +24,7 @@ import { dueAtOf } from '@/lib/reminders';
 import { appStore, flushPersistence, kv } from '@/store';
 
 import { appendExternalOp, drainExternalOps } from './externalOps';
+import { refreshWidget } from './widget';
 import { ACTION_DONE, ACTION_SNOOZE, dismissShown, NOTIFICATION_TASK, syncReminders } from './notifications';
 
 /** Turns a notification button response into a queued action, or null for other responses. */
@@ -45,6 +46,7 @@ export async function handleActionResponse(response: Notifications.NotificationR
   flushPersistence();
   dismissShown(response.notification.request.identifier);
   await syncReminders(() => appStore.getState().tasks);
+  await refreshWidget(appStore, kv); // the task may have been on the widget
 }
 
 TaskManager.defineTask<Notifications.NotificationTaskPayload>(NOTIFICATION_TASK, async ({ data, error }) => {

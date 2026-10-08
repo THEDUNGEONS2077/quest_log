@@ -54,9 +54,9 @@ Status markers:
 | `components/common/` | `Header`, `Tabs`, `SearchBar` (+ filter chips), `Breadcrumb`, `useMinute`, `motion` (Reduce Motion: `MotionConfig`, `useReduceMotion`), `BlockCursor` (one shared blink value), `BootSequence` (`BootGate`, `useBooting`), `useOnboarding` (tips, What's new, first-launch focus) *(built)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`), `onboarding` (first-run tips, last build seen) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many), `sample` (example tasks), `changelog` (CHANGELOG.md → What's new))* | Anything impure |
-| `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes); `quickActions` (app icon "New task"); `appInfo` (version, build). Planned: widget, backup)* | UI |
-| `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many), `sample` (example tasks), `changelog` (CHANGELOG.md → What's new), `widget` (snapshot: which tasks, order, labels))* | Anything impure |
+| `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes); `quickActions` (app icon "New task"); `appInfo` (version, build); `widget` (snapshot + redraw, throttled 2 s, midnight and foreground refresh); `widgetEntry` (registers the headless handler from `index.ts`). Planned: backup)* | UI |
+| `widgets/android/` | Home screen widget: `QuestWidget.tsx` (react-native-android-widget primitives, drawn natively from the snapshot) and `widgetTaskHandler.ts` (headless: draw, and [ ] taps through `ops.pending`) *(built)* | Store reads: it draws only from `widget.snapshot` |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
 | `scripts/` | Dev tooling: font subset, icon generation, `seed.ts` (7,500-task perf data), `gen-changelog.mjs` (CHANGELOG.md → `assets/changelog.json`; a test fails when stale), release *(built: fonts, icon, seed, changelog)* | App code |
@@ -114,7 +114,7 @@ action → ops.apply(state, op) → { nextState, inverse }
        → side effects (async): notifications.sync, widget.refresh (2 s throttle)
 ```
 
-### 4.3 External ops queue *(built for notifications in Phase 7; the widget joins in Phase 12)*
+### 4.3 External ops queue *(built: notifications in Phase 7, the widget in Phase 12)*
 Widget taps and notification buttons can fire while the app is closed. They **never** mutate state directly:
 ```
 append { op, taskId, at } to MMKV "ops.pending"
@@ -176,6 +176,7 @@ apply(state, op) → { state: nextState, inverse: Op, structural: boolean }
 | `snapshot.premigration.v<N>` | Exact data before a migration ran |
 | `corrupt.<time>` | Raw bytes of anything that failed to load (never overwritten) |
 | `settings.v1` | User settings |
+| `widget.snapshot` | Up to 8 widget tasks plus the ACTIVE count (`lib/widget.ts`), rewritten 2 s after changes |
 | `onboarding.v1` | First-run tips seen, last build whose What's new was shown |
 | `ui.v1` | Collapsed/zoom state, last tab |
 | `ops.pending` | External ops queue |
@@ -271,6 +272,8 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 - **Native changes go only through config plugins** in `/plugins`. A clean `expo prebuild` always reproduces the same app.
 - **The signing keystore lives outside the repo** (`~/.quest_log/release.keystore`), and its passwords are in `~/.gradle/gradle.properties`. See `RELEASING.md`.
 - **Fonts** are subset by `scripts/subset-fonts.sh` and embedded by the `expo-font` plugin.
+- **Entry point** is `index.ts` (not `expo-router/entry` directly): it starts Expo Router and registers the widget's headless handler, which must exist at load time because Android can start JS just to draw the widget.
+- **Patched dependencies** (`patches/`, applied by `postinstall: patch-package`): `react-native-android-widget` draws the widget as a PNG served by an *exported* content provider, so the launcher can read it. The patch names each image with a random UUID and deletes the previous one, so other apps can't guess the file and read your task titles. Re-check the patch whenever the library is upgraded.
 
 ---
 

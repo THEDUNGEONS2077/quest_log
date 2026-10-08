@@ -1,5 +1,19 @@
 [
   {
+    "version": "0.11.0",
+    "build": 17,
+    "lines": [
+      "Home screen widget.",
+      "- **A quest_log widget** for your home screen: hold an empty spot → **Widgets** → **quest_log**.",
+      "  - Shows your most urgent tasks: overdue first, then due today, then high priority, then your list order.",
+      "  - **Resize it** to show 3, 4 or up to 8 tasks.",
+      "  - Tap **[ ]** to complete a task right from the home screen. It disappears at once, and the app offers **UNDO** next time you open it.",
+      "  - Tap a **title** to open the app at that task, or **+** to open it ready to type a new one.",
+      "- The widget keeps itself up to date: when tasks change, at midnight, and every 30 minutes.",
+      "- Completing a task from a reminder's **DONE** button updates the widget too."
+    ]
+  },
+  {
     "version": "0.10.0",
     "build": 16,
     "lines": [
@@ -71,23 +85,6 @@
     "lines": [
       "- **Titles keep their full width.** A task's details (priority, notes ≡, due date and time, ↻ repeat, `[done/total]`) now sit on their own line under the title, instead of squeezing it into a broken-up wrap.",
       "- **Group titles are 20% smaller.** They're still uppercase and bright, so they stand out without shouting."
-    ]
-  },
-  {
-    "version": "0.7.0",
-    "build": 11,
-    "lines": [
-      "Repeating tasks.",
-      "- **Make any task repeat:** use **↻ REPEAT…** in the date sheet or the long-press menu.",
-      "  - Choose daily, weekdays, weekly (pick the days), monthly, yearly, or every N days, weeks, months or years.",
-      "  - Choose whether the next date counts **from the schedule** or **after you finish**.",
-      "- **Shorthand:** `*daily` `*weekdays` `*weekly` `*monthly` `*yearly` `*mon,thu` `*every 2w`. For example: `standup *weekdays @9am`.",
-      "- **When you check off a repeating task,** the line draws through it and then it springs back with its **next date**. A message shows when the next one is due.",
-      "  - Its subtasks reset, so a repeating group works as a reusable checklist.",
-      "  - A completed copy is kept on the **COMPLETED** tab, marked **↻**.",
-      "- **Overdue repeating tasks skip ahead** to the next future date. No pile-up of missed ones.",
-      "- **Monthly on the 31st** falls on the last day of shorter months, then returns to the 31st.",
-      "- DONE and SNOOZE on a repeating task's notification work as expected. Snoozing doesn't shift future reminders."
     ]
   }
 ]

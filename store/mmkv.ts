@@ -2,9 +2,10 @@
  * store/mmkv.ts: the MMKV-backed KV used by the app (see store/kv.ts).
  *
  * Layer: store. MMKV is synchronous (PLAN §4): reads happen before the
- * first render with no hydration flash, and writes are fast. Only
- * store/index.ts imports this file; tests use createMemoryKV instead,
- * because react-native-mmkv needs its native module.
+ * first render with no hydration flash, and writes are fast. Imported by
+ * store/index.ts and by the widget's headless task (which reads its small
+ * snapshot without loading the whole store). Tests use createMemoryKV
+ * instead, because react-native-mmkv needs its native module.
  */
 import { createMMKV } from 'react-native-mmkv';
 

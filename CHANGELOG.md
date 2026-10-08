@@ -2,6 +2,18 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.11.0 (build 17)
+
+Home screen widget.
+
+- **A quest_log widget** for your home screen: hold an empty spot → **Widgets** → **quest_log**.
+  - Shows your most urgent tasks: overdue first, then due today, then high priority, then your list order.
+  - **Resize it** to show 3, 4 or up to 8 tasks.
+  - Tap **[ ]** to complete a task right from the home screen. It disappears at once, and the app offers **UNDO** next time you open it.
+  - Tap a **title** to open the app at that task, or **+** to open it ready to type a new one.
+- The widget keeps itself up to date: when tasks change, at midnight, and every 30 minutes.
+- Completing a task from a reminder's **DONE** button updates the widget too.
+
 ## 0.10.0 (build 16)
 
 Polish: the finishing touches.
