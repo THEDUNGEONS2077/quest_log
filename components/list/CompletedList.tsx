@@ -36,6 +36,7 @@ import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { NestingGuides } from './NestingGuides';
 import { useKeyboardHeight } from './useKeyboardHeight';
 import { SwipeableRow } from './SwipeableRow';
+import { titleStyles, titleVariant } from './titleStyle';
 
 export function CompletedList({ bottomInset }: { bottomInset: number }) {
   const selectors = useSelectors();
@@ -139,6 +140,7 @@ const CompletedRow = memo(
       else if (e.nativeEvent.actionName === 'menu') setMenu(true);
     };
     const visualDepth = Math.min(row.depth, size.maxVisualDepth);
+    const variant = titleVariant(row.depth, row.hasChildren);
 
     return (
       <>
@@ -195,10 +197,10 @@ const CompletedRow = memo(
             {/* No strikethrough here: a full screen of them is noise (PLAN §9.6). */}
             <View style={styles.title}>
               {field === 'title' ? (
-                <InlineEditor id={task.id} title={task.title} variant="body" />
+                <InlineEditor id={task.id} title={task.title} variant={variant} />
               ) : (
                 <Text
-                  style={[type.body, styles.dim]}
+                  style={[titleStyles[variant], styles.dim]}
                   onPress={() => actions.setEditing(task.id)}
                   onLongPress={() => setMenu(true)}
                   suppressHighlighting
@@ -207,6 +209,21 @@ const CompletedRow = memo(
                   {task.title}
                 </Text>
               )}
+              {/* Details under the title, as on ACTIVE: ↻ for an archived repeat, and when it was last changed. */}
+              {!editing && (task.repeatSourceId !== null || row.depth === 0) && (
+                <View style={styles.details}>
+                  {task.repeatSourceId !== null && (
+                    <Text
+                      style={[type.metaGlyph, styles.dim]}
+                      accessibilityLabel="repeat occurrence"
+                      maxFontSizeMultiplier={maxFontSizeMultiplier}
+                    >
+                      {glyphs.repeat.glyph}
+                    </Text>
+                  )}
+                  {row.depth === 0 && <Modified at={task.updatedAt} />}
+                </View>
+              )}
               {/* Notes can still be added or fixed after the fact. */}
               {field === 'notes' ? (
                 <NotesEditor id={task.id} notes={task.notes} />
@@ -214,17 +231,6 @@ const CompletedRow = memo(
                 editing && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
               )}
             </View>
-            {/* An archived occurrence of a repeating task (PLAN §9.6). */}
-            {task.repeatSourceId !== null && (
-              <Text
-                style={[type.metaGlyph, styles.dim, styles.repeatMark]}
-                accessibilityLabel="repeat occurrence"
-                maxFontSizeMultiplier={maxFontSizeMultiplier}
-              >
-                {glyphs.repeat.glyph}
-              </Text>
-            )}
-            {row.depth === 0 && <Modified at={task.updatedAt} />}
           </Pressable>
         </SwipeableRow>
         {menu && <ActionSheet visible title={task.title || 'Untitled task'} actions={menuActions} onClose={() => setMenu(false)} />}
@@ -234,11 +240,11 @@ const CompletedRow = memo(
   (a, b) => a.row.id === b.row.id && a.row.depth === b.row.depth && a.row.hasChildren === b.row.hasChildren,
 );
 
-/** Right-aligned "last modified": 2h, YESTERDAY, MAR 14. Updates each minute. */
+/** "Last modified" under the title: 2h, YESTERDAY, MAR 14. Updates each minute. */
 function Modified({ at }: { at: number }) {
   const now = useMinute();
   return (
-    <Text style={[type.meta, styles.dim, styles.modified]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+    <Text style={[type.meta, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
       {formatRelative(at, now)}
     </Text>
   );
@@ -264,8 +270,7 @@ const styles = StyleSheet.create({
   checkboxText: { letterSpacing: shape.checkboxTracking },
   title: { flex: 1, minWidth: 0 },
   dim: { color: colors.textDim, ...platformText },
-  repeatMark: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.metaGlyph.lineHeight) / 2 },
-  modified: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
+  details: { flexDirection: 'row', alignItems: 'center', columnGap: space.md, marginTop: space.xs },
   clearRow: { alignItems: 'flex-end', paddingHorizontal: space.lg },
   clear: {
     minHeight: size.hitTarget,

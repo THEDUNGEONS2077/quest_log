@@ -40,8 +40,13 @@ export const type = {
   /** Top-level group headers: uppercase, drawn in textBright. */
   // 20% smaller than body (17 → 14, user request 2026-10-08): uppercase bold already makes groups stand out.
   group: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, textTransform: 'uppercase' },
-  /** Task titles. */
+  /** Task titles (top-level tasks). */
   body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 },
+  /**
+   * Subtask titles: between group titles (14 caps) and top-level tasks (17),
+   * so the tree reads group → subtask at a glance (user request 2026-10-08).
+   */
+  subtask: { fontFamily: fonts.regular, fontSize: 15, lineHeight: 22 },
   /** Tags, counts, due times. */
   meta: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   /** Notes text, drawn in textDim. */

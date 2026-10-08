@@ -2,6 +2,15 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.7.2 (build 13)
+
+- **Subtasks are a size smaller** (15 pt), between group titles and main tasks, so the tree reads clearly.
+- **The COMPLETED tab matches:** the same title sizes, group-style titles for completed groups, and details (↻, last changed) under the title.
+- **Fixed: shorthand when editing a saved task.**
+  - Typing only shorthand (like `!!`) into a task no longer deletes it. The title stays and the priority is set.
+  - Words already in a saved title (like an escaped `@fri`) stay as text when you edit the title later. Only newly typed shorthand is applied.
+  - The chips shown while typing now match exactly what gets applied.
+
 ## 0.7.1 (build 12)
 
 - **Titles keep their full width.** A task's details (priority, notes ≡, due date and time, ↻ repeat, `[done/total]`) now sit on their own line under the title, instead of squeezing it into a broken-up wrap.

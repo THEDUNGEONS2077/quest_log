@@ -19,8 +19,9 @@ import { type NativeSyntheticEvent, StyleSheet, TextInput, type TextInputKeyPres
 
 import { TITLE_MAX } from '@/lib/paste';
 import { useKeepInView } from '@/components/list/keepInView';
+import { type TitleVariant, titleStyles } from '@/components/list/titleStyle';
 import { useActions, useStoreBundle } from '@/store/react';
-import { colors, maxFontSizeMultiplier, platformText, type } from '@/theme';
+import { colors, maxFontSizeMultiplier, platformText } from '@/theme';
 
 /**
  * The task whose editor currently has focus (shared by the title and notes
@@ -63,7 +64,7 @@ interface Props {
   id: string;
   title: string;
   /** Text style for the title (group headers use a different role). */
-  variant: 'body' | 'group';
+  variant: TitleVariant;
 }
 
 export function InlineEditor({ id, title, variant }: Props) {
@@ -125,7 +126,7 @@ export function InlineEditor({ id, title, variant }: Props) {
       autoCorrect
       autoCapitalize="sentences"
       maxFontSizeMultiplier={maxFontSizeMultiplier}
-      style={[styles.input, variant === 'group' ? [type.group, styles.group] : type.body]}
+      style={[styles.input, [titleStyles[variant], variant === 'group' && styles.group]]}
       accessibilityLabel="Task title"
       accessibilityHint="Done saves. Backspace on an empty title deletes the task."
     />
@@ -134,7 +135,7 @@ export function InlineEditor({ id, title, variant }: Props) {
 
 const styles = StyleSheet.create({
   // No padding or margins: the editor must line up exactly with the Text it replaces.
-  // Same nudge as the group title text in TaskRow, so editing doesn't shift it.
-  group: { color: colors.textBright, paddingTop: (type.body.lineHeight - type.group.lineHeight) / 2 },
+  // Group titles are drawn bright, as in the list.
+  group: { color: colors.textBright },
   input: { flex: 1, color: colors.text, padding: 0, margin: 0, textAlignVertical: 'top', ...platformText },
 });

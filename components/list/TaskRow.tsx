@@ -37,6 +37,7 @@ import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, 
 
 import { NestingGuides } from './NestingGuides';
 import { StrikeText } from './StrikeText';
+import { titleStyles, titleVariant } from './titleStyle';
 import { HighlightFlash } from './HighlightFlash';
 import { SwipeableRow } from './SwipeableRow';
 
@@ -110,8 +111,9 @@ export const TaskRow = memo(
 
     const isGroup = row.depth === 0 && row.hasChildren;
     const visualDepth = Math.min(row.depth, size.maxVisualDepth);
-    // Group titles are smaller than body, so they're nudged down to line up with the checkbox.
-    const titleStyle = isGroup ? [type.group, styles.groupTitle] : type.body;
+    // Group / subtask / top-level title size, shared with COMPLETED and the editor.
+    const variant = titleVariant(row.depth, row.hasChildren);
+    const titleStyle = titleStyles[variant];
 
     return (
       <Animated.View style={fadeStyle}>
@@ -178,7 +180,7 @@ export const TaskRow = memo(
             {/* Title (editor or text), then chips and notes while editing, or notes when expanded. */}
             <View style={styles.title}>
               {field === 'title' ? (
-                <InlineEditor id={task.id} title={task.title} variant={isGroup ? 'group' : 'body'} />
+                <InlineEditor id={task.id} title={task.title} variant={variant} />
               ) : (
                 <StrikeText
                   text={task.title}
@@ -358,7 +360,6 @@ const styles = StyleSheet.create({
   editing: { backgroundColor: colors.surface },
   caret: { width: size.indent, alignItems: 'center' },
   glyph: { color: colors.text, ...platformText },
-  groupTitle: { paddingTop: (type.body.lineHeight - type.group.lineHeight) / 2 },
   checkbox: { marginRight: space.md, marginLeft: space.xs },
   // Tighter brackets: `[ ]` reads as one compact box.
   checkboxText: { letterSpacing: shape.checkboxTracking, ...platformText },

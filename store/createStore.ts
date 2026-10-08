@@ -218,8 +218,11 @@ export interface AppStore {
   duplicateTask(id: ID): void;
   /** Context menu ⎕ Copy as text: the task's outline text (the UI puts it on the clipboard). */
   outlineText(id: ID): string;
-  /** Parses shorthand with the user's settings (default time) at the current time. */
-  parseShorthand(text: string): ParseResult;
+  /**
+   * Parses shorthand with the user's settings (default time) at the current
+   * time. Words in `literal` are kept as typed (the saved title's words).
+   */
+  parseShorthand(text: string, literal?: ReadonlySet<string>): ParseResult;
   /** Stops targeting a `#Group` with the quick-add bar. */
   clearQuickAddParent(): void;
 
@@ -276,7 +279,8 @@ export function createAppStore(deps: StoreDeps) {
     if (r.repeat) {
       // A repeat needs a date: typed, existing, or the first occurrence at the default time.
       const dueAt = r.dueAt ?? existingDue ?? firstOccurrence(r.repeat, now(), defaultTimeMinutes);
-      fields.repeat = r.repeat.freq === 'month' || r.repeat.freq === 'year' ? { ...r.repeat, monthDay: new Date(dueAt).getDate() } : r.repeat;
+      fields.repeat =
+        r.repeat.freq === 'month' || r.repeat.freq === 'year' ? { ...r.repeat, monthDay: new Date(dueAt).getDate() } : r.repeat;
       if (fields.dueAt === undefined && existingDue === null) Object.assign(fields, { dueAt, notify: notifyByDefault });
     }
     return fields;
@@ -427,9 +431,11 @@ export function createAppStore(deps: StoreDeps) {
         let task = findTask(get().tasks, id);
         // Shorthand typed during this session (!!, @fri, //…) becomes fields: one undo step.
         if (task && startTitle !== null && task.title !== startTitle) {
-          const r = get().parseShorthand(task.title);
+          // Only newly typed words count as shorthand: the saved title's words stay literal.
+          const r = get().parseShorthand(task.title, new Set(startTitle.split(/\s+/).filter(Boolean)));
           if (r.chips.length) {
-            const fields = { ...shorthandFields(r, task.dueAt), title: r.title };
+            // Typing only shorthand ("!!") must not empty the title (which would delete the task).
+            const fields = { ...shorthandFields(r, task.dueAt), title: r.title || startTitle };
             // `//` appends to existing notes rather than replacing them.
             if (r.notes !== undefined && task.notes) fields.notes = `${task.notes}\n${r.notes}`;
             get().dispatch(ops.editTask(get().tasks, id, fields, now()));
@@ -573,7 +579,7 @@ export function createAppStore(deps: StoreDeps) {
 
       outlineText: (id) => copy.toOutlineText(get().tasks, id),
 
-      parseShorthand: (text) => parse(text, { now: now(), defaultTimeMinutes: get().settings.defaultTimeMinutes }),
+      parseShorthand: (text, literal) => parse(text, { now: now(), defaultTimeMinutes: get().settings.defaultTimeMinutes, literal }),
 
       clearQuickAddParent: () => set({ quickAddParent: null }),
 

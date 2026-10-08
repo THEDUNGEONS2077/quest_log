@@ -121,3 +121,11 @@ describe('repeat shorthand (Phase 8)', () => {
     expect(p('5 * 3 *bold').title).toBe('5 * 3 *bold');
   });
 });
+
+describe('literal words (editing a saved title)', () => {
+  it('keeps listed words as typed and parses only new ones', () => {
+    const r = parse('email @fri !!', { ...opts, literal: new Set(['email', '@fri']) });
+    expect(r).toMatchObject({ title: 'email @fri', priority: 2 });
+    expect(r.dueAt).toBeUndefined();
+  });
+});

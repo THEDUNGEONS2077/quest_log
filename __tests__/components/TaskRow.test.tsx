@@ -130,4 +130,14 @@ describe('TaskRow', () => {
     await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'due' } });
     expect(store.getState().dueSheetFor).toBe('b');
   });
+
+  it('titles use the group / subtask / top-level sizes', async () => {
+    await setup();
+    const size = (text: string) =>
+      (screen.getByText(text).props.style as object[])
+        .flat(Infinity)
+        .reduce((a: Record<string, unknown>, b) => ({ ...a, ...(b as object) }), {}).fontSize;
+    expect(size('g')).toBe(14); // group
+    expect(size('a')).toBe(17); // top-level task
+  });
 });

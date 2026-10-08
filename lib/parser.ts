@@ -32,6 +32,12 @@ export interface ParseOptions {
   now: number;
   /** Time for day-only dates, in minutes after midnight (setting; 540 = 09:00). */
   defaultTimeMinutes: number;
+  /**
+   * Words to keep literally. When editing a saved title, its existing words
+   * are passed here, so only newly typed shorthand is parsed: an earlier
+   * escaped `\@fri` (saved as "@fri") doesn't turn into a date later.
+   */
+  literal?: ReadonlySet<string>;
 }
 
 /** One recognized token, for the live chips under the input. */
@@ -209,6 +215,11 @@ export function parse(input: string, opts: ParseOptions): ParseResult {
   const kept: string[] = [];
   for (let i = 0; i < words.length; i++) {
     const w = words[i]!;
+    // Already in the saved title: keep as typed.
+    if (opts.literal?.has(w)) {
+      kept.push(w);
+      continue;
+    }
     // \word: keep literally, without the backslash.
     if (w.startsWith('\\') && w.length > 1) {
       kept.push(w.slice(1));

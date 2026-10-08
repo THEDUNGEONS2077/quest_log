@@ -25,11 +25,16 @@ import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space
 
 const PRIORITY_LABEL = ['', 'LOW', 'MED', 'HIGH'] as const;
 
-/** Parses `text` with the user's default time at the current minute. */
-export function useShorthand(text: string): ParseResult {
+/**
+ * Parses `text` with the user's default time at the current minute.
+ * `literalFrom`: the saved title; its words are kept as typed, exactly as
+ * they will be when the edit is applied (store.finishEditing).
+ */
+export function useShorthand(text: string, literalFrom?: string | null): ParseResult {
   const now = useMinute();
   const defaultTimeMinutes = useAppStore((s) => s.settings.defaultTimeMinutes);
-  return parse(text, { now, defaultTimeMinutes });
+  const literal = literalFrom ? new Set(literalFrom.split(/\s+/).filter(Boolean)) : undefined;
+  return parse(text, { now, defaultTimeMinutes, literal });
 }
 
 /** One chip; with `onClear` it gets a ✕ that clears the value. */
@@ -86,7 +91,9 @@ export function TaskChips({ id }: { id: string }) {
   const task = useAppStore((s) => findTask(s.tasks, id));
   const actions = useActions();
   const now = useMinute();
-  const parsed = useShorthand(task?.title ?? '');
+  // Preview exactly what finishing the edit will apply: the saved title's words stay literal.
+  const startTitle = useAppStore((s) => (s.editingId === id ? s.editingStartTitle : null));
+  const parsed = useShorthand(task?.title ?? '', startTitle);
   if (!task) return null;
 
   const showPriority = task.priority > 0 && parsed.priority === undefined;
