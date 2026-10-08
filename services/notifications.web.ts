@@ -11,9 +11,6 @@
  */
 import type { TasksState } from '@/lib/types';
 
-/** False here: the web build can't show reminders (rows hide the ◔ reminder mark). */
-export const remindersAvailable = false;
-
 /** 'unsupported': this platform can't show reminders at all. */
 export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
 

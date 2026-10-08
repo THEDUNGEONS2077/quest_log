@@ -295,7 +295,7 @@ The same app, exported as a static single-page site (`npm run web:export` → `w
 | `components/list/focusedInput.ts` | `.web.ts` | `document.activeElement` (keep-in-view) |
 | `components/common/useAppFonts.ts` | `.web.ts` | Fonts load at runtime on the web |
 | `services/datePicker.ts` (Android dialogs) | `.web.ts` | The browser's own picker, on a temporary input inside the open sheet (modals trap focus) |
-| `services/notifications.ts`, `reminderLifecycle.ts`, `notificationTask.ts` | `.web.ts` | No-ops: iPhone web apps can't schedule local notifications. `remindersAvailable = false` hides the ◔ mark, and the UI explains it |
+| `services/notifications.ts`, `reminderLifecycle.ts`, `notificationTask.ts` | `.web.ts` | No-ops: iPhone web apps can't schedule local notifications. `services/reminderSupport.web.ts` (`remindersAvailable = false`) hides the ◔ mark, and the UI explains it |
 | `services/backup.ts` (folder picker, share) | `.web.ts` | Share sheet (Save to Files), else a download; import through `<input type=file>` |
 | `store/mmkv.ts` | `.web.ts` | MMKV's web version uses localStorage. Over quota, the daily snapshots are dropped before a live write fails; it asks for persistent storage |
 

@@ -34,7 +34,7 @@ import { findTask } from '@/lib/taskMap';
 import { isInSubtree } from '@/lib/tree';
 import type { Task } from '@/lib/types';
 import { haptics } from '@/services/haptics';
-import { remindersAvailable } from '@/services/notifications';
+import { remindersAvailable } from '@/services/reminderSupport';
 import { ADVANCE_MS, LINGER_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';

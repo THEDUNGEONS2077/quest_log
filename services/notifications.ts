@@ -25,9 +25,6 @@ import type { TasksState } from '@/lib/types';
 import { colors } from '@/theme';
 
 /** The Android channel all reminders use (PLAN §9.8: high importance). */
-/** True: Android shows reminders (the web build's version of this module says false). */
-export const remindersAvailable = true;
-
 export const CHANNEL_ID = 'reminders';
 /** Notification category carrying the DONE and SNOOZE buttons. */
 export const CATEGORY_ID = 'task';
