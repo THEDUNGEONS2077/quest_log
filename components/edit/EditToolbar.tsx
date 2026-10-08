@@ -17,7 +17,7 @@
  */
 import { useEffect } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { KeyboardStickyView } from '@/components/common/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { registerFloor } from '@/components/list/keepInView';

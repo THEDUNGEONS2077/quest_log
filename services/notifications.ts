@@ -25,6 +25,9 @@ import type { TasksState } from '@/lib/types';
 import { colors } from '@/theme';
 
 /** The Android channel all reminders use (PLAN §9.8: high importance). */
+/** True: Android shows reminders (the web build's version of this module says false). */
+export const remindersAvailable = true;
+
 export const CHANNEL_ID = 'reminders';
 /** Notification category carrying the DONE and SNOOZE buttons. */
 export const CATEGORY_ID = 'task';
@@ -34,8 +37,11 @@ export const ACTION_SNOOZE = 'snooze';
 /** Background task name (defined in services/notificationTask.ts). */
 export const NOTIFICATION_TASK = 'questlog-notification-actions';
 
-/** Permission state for the UI (DueSheet note, Settings in Phase 13). */
-export type PermissionState = 'granted' | 'denied' | 'undetermined';
+/**
+ * Permission state for the UI (DueSheet note, Settings). 'unsupported': this
+ * platform can't show reminders at all (the web build / iPhone PWA).
+ */
+export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
 
 /**
  * One-time setup at app start. Safe to call again (all steps are

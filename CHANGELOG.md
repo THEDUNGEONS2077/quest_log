@@ -2,6 +2,19 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.1.0 (build 20)
+
+quest_log on iPhone.
+
+- **iPhone (and any browser):** open [thedungeons2077.github.io/quest_log](https://thedungeons2077.github.io/quest_log/) in Safari, then **Share → Add to Home Screen**.
+  - It runs full screen, in the same green-on-black style, and **works offline**.
+  - Your tasks stay on your phone, inside the home-screen app.
+  - **Backups** use the share sheet (**Save to Files**), and a backup moves your tasks between Android and iPhone.
+  - **Reminders are Android-only:** iPhone web apps can't schedule them. Due dates still show and turn OVERDUE.
+- **Fixes for every platform:**
+  - Pressing Enter on keyboards that type a line break now saves the task. Before, the shorthand like `!!!` stayed in the title.
+  - Reduce motion now reads **SYSTEM** instead of ANDROID.
+
 ## 1.0.0 (build 19)
 
 Version 1: ready for beta testers.

@@ -34,6 +34,7 @@ import { findTask } from '@/lib/taskMap';
 import { isInSubtree } from '@/lib/tree';
 import type { Task } from '@/lib/types';
 import { haptics } from '@/services/haptics';
+import { remindersAvailable } from '@/services/notifications';
 import { ADVANCE_MS, LINGER_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
@@ -292,7 +293,7 @@ function rowLabel(task: Task, row: Row, now: number): string {
     parts.push(`due ${formatDue(task.dueAt, now).toLowerCase()}${isOverdue(task.dueAt, task.done, now) ? ', overdue' : ''}`);
   }
   if (task.repeat) parts.push(`repeats ${repeatLabel(task.repeat).toLowerCase()}`);
-  if (task.notify && task.dueAt !== null) parts.push('reminder on');
+  if (task.notify && task.dueAt !== null && remindersAvailable) parts.push('reminder on');
   parts.push(task.done ? 'done' : 'not done');
   if (row.hasChildren) parts.push(`${row.progress.done} of ${row.progress.total} subtasks done`);
   if (task.collapsed && row.hasChildren) parts.push('collapsed');
@@ -345,7 +346,7 @@ function DueChip({ task, dueAt }: { task: Task; dueAt: number }) {
   const actions = useActions();
   const overdue = isOverdue(dueAt, task.done, now);
   // Glyph prefixes (◔ notify, ↻ repeat) as nested spans at the larger metaGlyph size.
-  const icons = `${task.notify ? `${glyphs.notify.glyph} ` : ''}${task.repeat ? `${glyphs.repeat.glyph} ` : ''}`;
+  const icons = `${task.notify && remindersAvailable ? `${glyphs.notify.glyph} ` : ''}${task.repeat ? `${glyphs.repeat.glyph} ` : ''}`;
   const label = formatDue(dueAt, now);
   return (
     <Text

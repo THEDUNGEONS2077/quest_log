@@ -17,7 +17,7 @@
 import { useEffect, useRef } from 'react';
 import { type NativeSyntheticEvent, StyleSheet, TextInput, type TextInputKeyPressEventData } from 'react-native';
 
-import { TITLE_MAX } from '@/lib/paste';
+import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { useKeepInView } from '@/components/list/keepInView';
 import { type TitleVariant, titleStyles } from '@/components/list/titleStyle';
 import { useActions, useStoreBundle } from '@/store/react';
@@ -86,8 +86,10 @@ export function InlineEditor({ id, title, variant }: Props) {
   }, []);
 
   const onChangeText = (text: string) => {
-    // Enter never inserts a newline (submitBehavior), so a line break means a paste.
-    if (text.includes('\n')) actions.pasteIntoTask(id, text);
+    // One line break added to the title = Enter (the web build inserts it
+    // instead of submitting): save and close. Any other line break = a paste.
+    if (isEnterInsert(title, text)) actions.finishEditing(id);
+    else if (text.includes('\n')) actions.pasteIntoTask(id, text);
     else actions.updateTitle(id, text.slice(0, TITLE_MAX));
   };
 

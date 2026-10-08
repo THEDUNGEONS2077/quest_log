@@ -1,6 +1,8 @@
-# Installing quest_log (Android)
+# Installing quest_log
 
-quest_log isn't on the Play Store. You install it from a file (an "APK") that I publish on GitHub.
+quest_log isn't in the Play Store or the App Store.
+- **Android:** you install it from a file (an "APK") that I publish on GitHub (below).
+- **iPhone:** you add the web version to your home screen ([iPhone](#iphone) below).
 
 ## First install
 1. On your phone, open the [latest release](https://github.com/THEDUNGEONS2077/quest_log/releases/latest) (or the link I sent you) and download the `.apk` file.
@@ -32,3 +34,16 @@ To check an APK on a computer, run `apksigner verify --print-certs quest_log-vX.
 
 ## Requirements
 Android 7.0 or newer, on a 64-bit (arm64) phone, which covers essentially every phone from the last several years.
+
+## iPhone
+quest_log on iPhone is a **web app** that installs to your home screen. Once installed, it opens full screen and works with no connection.
+
+1. Open **[thedungeons2077.github.io/quest_log](https://thedungeons2077.github.io/quest_log/)** in **Safari**.
+2. Tap **Share** (the square with an arrow) → **Add to Home Screen** → **Add**.
+3. Open **quest_log** from your home screen. Use this icon, not the Safari tab: the home-screen app keeps its own tasks.
+
+Things to know:
+- **Your tasks are stored on the phone only**, inside the home-screen app. Deleting the app from the home screen deletes its tasks, so save a backup first (**⊛ Settings → Save backup…** → **Save to Files**).
+- **Reminders aren't available on iPhone.** Apple doesn't let web apps schedule them. Due dates still show and turn OVERDUE.
+- **Updates arrive by themselves:** when you open the app while online, it fetches the new version and uses it from the next launch.
+- **Moving between Android and iPhone:** save a backup on one, then **Import a backup…** on the other.

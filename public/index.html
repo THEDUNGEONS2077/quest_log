@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!--
+  public/index.html: the page template for the web build / iPhone PWA.
+  Expo fills in the language and title and appends the app's scripts;
+  scripts/web-export.mjs replaces %BASE_URL% (the site's path, e.g.
+  /quest_log) and writes the service worker that makes it work offline.
+-->
+<html lang="%LANG_ISO_CODE%">
+<head>
+  <meta charset="utf-8" />
+  <!-- viewport-fit=cover: draw under the iPhone notch; safe-area insets keep content clear of it. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>%WEB_TITLE%</title>
+  <meta name="description" content="An offline, terminal-style to-do list. Your tasks never leave your device." />
+
+  <!-- Installable app: full screen from the home screen, black status bar, own name and icon. -->
+  <link rel="manifest" href="%BASE_URL%/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-title" content="quest_log" />
+  <link rel="apple-touch-icon" href="%BASE_URL%/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="%BASE_URL%/icons/icon-192.png" />
+  <meta name="format-detection" content="telephone=no" />
+
+  <style>
+    /* The app fills the screen on black, like the Android app (no white flash while loading). */
+    html, body, #root { height: 100%; margin: 0; background: #000; }
+    body {
+      /* No rubber-band bounce or pull-to-refresh: the lists scroll, the page doesn't. */
+      overscroll-behavior: none;
+      /* App-like touch: no grey tap flash, no text selection or callout on long-press
+         (long-press is the drag/menu gesture here). Text fields opt back in below. */
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-text-size-adjust: 100%;
+    }
+    input, textarea { -webkit-user-select: text; user-select: text; }
+    /* The app draws its own focus (green border, glow): no browser focus ring on text fields. */
+    input:focus, textarea:focus { outline: none; }
+    #root { display: flex; }
+  </style>
+</head>
+<body>
+  <noscript>quest_log needs JavaScript to run.</noscript>
+  <div id="root"></div>
+  <script>
+    // Offline support: the service worker keeps a copy of the app (scripts/web-export.mjs writes it).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('%BASE_URL%/sw.js', { scope: '%BASE_URL%/' }).catch(function () {});
+      });
+    }
+  </script>
+</body>
+</html>

@@ -14,6 +14,9 @@ import { BACKUP_MAX_BYTES, BackupError } from '@/store/backup';
 
 const MIME = 'application/json';
 
+/** How Settings presents saving: a folder picker, plus a separate Share button. */
+export const backupUi = { saveLabel: 'Save backup to a folder', separateShare: true } as const;
+
 /**
  * Asks for a folder, then writes the backup there. Returns false if the
  * user cancelled the folder picker. Write errors are thrown.

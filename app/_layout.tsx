@@ -28,13 +28,14 @@ import '@/services/notificationTask';
 import { router, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { BootGate } from '@/components/common/BootSequence';
+import { KeyboardProvider } from '@/components/common/keyboard';
 import { MotionConfig } from '@/components/common/motion';
+import { useAppFonts } from '@/components/common/useAppFonts';
 import { setHapticsEnabled } from '@/services/haptics';
 import { startQuickActions } from '@/services/quickActions';
 import { startReminders } from '@/services/reminderLifecycle';
@@ -77,6 +78,10 @@ export default function RootLayout() {
       }),
     [],
   );
+
+  // Web only: wait for the font (useAppFonts.web.ts). Native has it built in, so this is instant.
+  const fontsReady = useAppFonts();
+  if (!fontsReady) return <View style={styles.root} />;
 
   return (
     <GestureHandlerRootView style={styles.root}>

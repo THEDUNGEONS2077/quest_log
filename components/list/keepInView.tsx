@@ -18,9 +18,11 @@
  * toolbar registers its view, so its top edge is the "floor".
  */
 import { createContext, type RefObject, useCallback, useContext, useMemo, useRef } from 'react';
-import { TextInput, type View } from 'react-native';
+import type { View } from 'react-native';
 
 import { space } from '@/theme';
+
+import { focusedInput } from './focusedInput';
 
 /** Gap kept between the text box and the toolbar (and the list's top edge). */
 const MARGIN = space.md;
@@ -67,7 +69,7 @@ export function useKeepInViewController(container: RefObject<View | null>, list:
 
   /** One measure-and-scroll pass. */
   const pass = useCallback(async () => {
-    const focused = TextInput.State.currentlyFocusedInput() as unknown as View | null;
+    const focused = focusedInput();
     const [input, floor, ceiling] = await Promise.all([measure(focused), measure(floorView), measure(container.current)]);
     if (!input || !floor || !ceiling || !list.current) return;
     const overlapBelow = input.bottom + MARGIN - floor.top; // hidden behind the toolbar/keyboard

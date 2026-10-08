@@ -216,8 +216,24 @@ export function buildConfig(variant: Variant, base: Partial<ExpoConfig> = {}): E
       ...(isDev ? [] : ['./plugins/withReleaseSigning']),
     ],
 
+    // Web build: the installable PWA for iPhone (and any browser), a
+    // single-page app exported to static files (`npm run web:export`).
+    // public/index.html is the page template (PWA tags, service worker);
+    // public/ also holds the manifest and icons.
+    web: {
+      bundler: 'metro',
+      output: 'single',
+      name: 'quest_log',
+      shortName: 'quest_log',
+      themeColor: BLACK,
+      backgroundColor: BLACK,
+      favicon: './public/icons/icon-192.png',
+    },
+
     experiments: {
       typedRoutes: true,
+      // GitHub Pages serves the PWA from /quest_log/ (set by scripts/deploy-web.sh).
+      ...(process.env.QUESTLOG_WEB_BASE ? { baseUrl: process.env.QUESTLOG_WEB_BASE } : {}),
     },
 
     extra: {

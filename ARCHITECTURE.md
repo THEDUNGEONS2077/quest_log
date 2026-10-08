@@ -37,7 +37,7 @@ Status markers:
 **Hard rules:**
 1. **`/lib` is pure.** It has no React, no React Native, no Expo, no `Date.now()` without an injectable clock, and no I/O. Everything in it is unit-tested in Node.
 2. **No business logic in components.** A component renders state and calls store actions; it never decides what a "complete" or a "move" means.
-3. **Every `Platform.OS` branch** lives in `/services` or `/theme/platform.ts`. Anything that will behave differently on iOS gets a line in `IOS_PORT.md` when it's written.
+3. **Every `Platform.OS` branch** lives in `/services` or `/theme/platform.ts`. The other allowed platform split is a **`.web.ts(x)` twin file**: Metro picks `x.web.ts` over `x.ts` in the web build, both export the same API, and callers never know which one they got (see §9b). Anything that will behave differently on iOS gets a line in `IOS_PORT.md` when it's written.
 4. **No magic numbers in components.** Colors, sizes, spacing, durations, and glyphs come from `/theme`. *(built)*
 5. **No network code**, ever (PLAN §3). The release build has no INTERNET permission. *(built: `android.blockedPermissions` in `app.config.ts`)*
 
@@ -281,6 +281,28 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 - **Native changes go only through config plugins** in `/plugins`. A clean `expo prebuild` always reproduces the same app.
 - **The signing keystore lives outside the repo** (`~/.quest_log/release.keystore`), and its passwords are in `~/.gradle/gradle.properties`. See `RELEASING.md`.
 - **Fonts** are subset by `scripts/subset-fonts.sh` and embedded by the `expo-font` plugin.
+
+---
+
+## 9b. Web build / iPhone PWA *(built)*
+
+The same app, exported as a static single-page site (`npm run web:export` → `web-dist/`) and installed on iPhones with **Add to Home Screen**. It's deployed to GitHub Pages by `scripts/deploy-web.sh`.
+
+| Native module | Web twin | Why |
+|---|---|---|
+| `components/common/keyboard.tsx` (keyboard-controller) | `keyboard.web.tsx` | Safari covers the page with the keyboard; `visualViewport` measures it, and sticky bars lift by that much |
+| `components/list/useKeyboardHeight.ts` | `.web.ts` | Same measurement, for list padding |
+| `components/list/focusedInput.ts` | `.web.ts` | `document.activeElement` (keep-in-view) |
+| `components/common/useAppFonts.ts` | `.web.ts` | Fonts load at runtime on the web |
+| `services/datePicker.ts` (Android dialogs) | `.web.ts` | The browser's own picker, on a temporary input inside the open sheet (modals trap focus) |
+| `services/notifications.ts`, `reminderLifecycle.ts`, `notificationTask.ts` | `.web.ts` | No-ops: iPhone web apps can't schedule local notifications. `remindersAvailable = false` hides the ◔ mark, and the UI explains it |
+| `services/backup.ts` (folder picker, share) | `.web.ts` | Share sheet (Save to Files), else a download; import through `<input type=file>` |
+| `store/mmkv.ts` | `.web.ts` | MMKV's web version uses localStorage. Over quota, the daily snapshots are dropped before a live write fails; it asks for persistent storage |
+
+- **Offline:** `scripts/web-export.mjs` writes `sw.js`, a service worker that stores every file of the build. Pages are network-first (so updates arrive) with the stored app as the offline fallback. Other files are cache-first (their names change each build).
+- **Enter in multiline editors:** React Native Web inserts a line break instead of submitting. `isEnterInsert` (lib/paste.ts) tells that apart from a paste on every platform.
+- **Page template:** `public/index.html` holds the iOS home-screen tags, app-like touch CSS (no callout or selection on long-press, no bounce) and the service-worker registration. `public/manifest.json` and `public/icons/` come from `scripts/make-web-icons.sh`.
+- **Tests:** `npm run web:test` (`e2e/web/smoke.mjs`) drives the built site in headless Chromium as an iPhone 15. It checks first run, quick-add with shorthand, complete and UNDO, reload persistence, **launching with the server stopped**, the date picker and a backup round trip. Gestures were checked with Chromium's touch synthesizer.
 
 ---
 

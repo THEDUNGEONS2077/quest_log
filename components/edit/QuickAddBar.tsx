@@ -16,12 +16,12 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { KeyboardStickyView } from 'react-native-keyboard-controller';
+import { KeyboardStickyView } from '@/components/common/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BlockCursor } from '@/components/common/BlockCursor';
 import { ShorthandChips, useShorthand } from '@/components/edit/ParsedChips';
-import { TITLE_MAX } from '@/lib/paste';
+import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { findTask } from '@/lib/taskMap';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
@@ -44,7 +44,12 @@ export function QuickAddBar({ onHeight }: Props) {
   const target = useAppStore((s) => (s.quickAddParent ? (findTask(s.tasks, s.quickAddParent)?.title ?? null) : null));
 
   const onChangeText = (next: string) => {
-    // Enter never inserts a newline here, so a line break means a paste.
+    // One line break added to the same text = Enter (the web build inserts it
+    // instead of submitting): add the task. Any other line break = a paste.
+    if (isEnterInsert(text, next)) {
+      submit();
+      return;
+    }
     if (next.includes('\n')) {
       actions.quickPaste(next);
       setText('');

@@ -20,9 +20,9 @@
  * the sheet explains it and links to system settings; the date itself
  * still works.
  */
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SheetModal } from './SheetModal';
@@ -31,6 +31,7 @@ import { useMinute } from '@/components/common/useMinute';
 import { addDays, atTimeOfDay, duePresets, formatDue, startOfDay } from '@/lib/dates';
 import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
+import { hasDialogPicker, pickDateTime } from '@/services/datePicker';
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
 import { SELECTION } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
@@ -78,31 +79,15 @@ function DueSheetBody({ id }: { id: string }) {
     close();
   };
 
-  /** CUSTOM…: native date picker, then time picker (Android dialogs). */
+  /** CUSTOM…: the system date and time picker (services/datePicker: Android dialogs, the browser's picker on web). */
   const custom = () => {
     const start = new Date(task.dueAt ?? atTimeOfDay(addDays(now, 1), defaultTime));
-    if (Platform.OS !== 'android') {
+    if (!hasDialogPicker) {
       setIosPicker(true);
       return;
     }
-    DateTimePickerAndroid.open({
-      value: start,
-      mode: 'date',
-      minimumDate: new Date(startOfDay(now)),
-      onChange: (e, date) => {
-        if (e.type !== 'set' || !date) return;
-        DateTimePickerAndroid.open({
-          value: start,
-          mode: 'time',
-          is24Hour: true,
-          onChange: (e2, time) => {
-            if (e2.type !== 'set' || !time) return;
-            const d = new Date(date);
-            d.setHours(time.getHours(), time.getMinutes(), 0, 0);
-            choose(d.getTime());
-          },
-        });
-      },
+    void pickDateTime(start, new Date(startOfDay(now))).then((d) => {
+      if (d) choose(d.getTime());
     });
   };
 
@@ -126,21 +111,27 @@ function DueSheetBody({ id }: { id: string }) {
         <Option label="CUSTOM…" onPress={custom} wide />
       </View>
 
-      {/* Notify toggle. */}
-      <Pressable
-        onPress={() => setNotify((n) => !n)}
-        style={styles.toggleRow}
-        accessibilityRole="switch"
-        accessibilityState={{ checked: notify }}
-        accessibilityLabel="Send a notification"
-      >
-        <Text style={[type.body, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          <Text style={type.glyph}>{glyphs.notify.glyph}</Text> NOTIFY
+      {/* Notify toggle. Where reminders can't exist (the web build), a note instead. */}
+      {permission === 'unsupported' ? (
+        <Text style={[type.meta, styles.noteText, styles.note]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          Reminders need the Android app. Here, due dates still show and turn OVERDUE.
         </Text>
-        <Text style={[type.tab, notify ? styles.on : styles.off]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {notify ? '[ ON ]' : '[ OFF ]'}
-        </Text>
-      </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => setNotify((n) => !n)}
+          style={styles.toggleRow}
+          accessibilityRole="switch"
+          accessibilityState={{ checked: notify }}
+          accessibilityLabel="Send a notification"
+        >
+          <Text style={[type.body, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            <Text style={type.glyph}>{glyphs.notify.glyph}</Text> NOTIFY
+          </Text>
+          <Text style={[type.tab, notify ? styles.on : styles.off]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            {notify ? '[ ON ]' : '[ OFF ]'}
+          </Text>
+        </Pressable>
+      )}
       {notify && permission === 'denied' && (
         <Pressable onPress={openNotificationSettings} style={styles.note} accessibilityRole="button">
           <Text style={[type.meta, styles.noteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>

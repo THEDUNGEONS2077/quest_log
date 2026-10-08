@@ -13,7 +13,6 @@
  * are previewed first, then applied as one undo step; the screen then
  * returns to the list, where the toast offers UNDO.
  */
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -24,7 +23,8 @@ import { backupFileName, countDocument, type DocCounts, makeBackup } from '@/lib
 import { atTimeOfDay, formatMinutes, startOfDay } from '@/lib/dates';
 import type { TasksDocument } from '@/lib/types';
 import { appBuild, appVersion } from '@/services/appInfo';
-import { pickBackupText, saveBackupToFolder, shareBackup } from '@/services/backup';
+import { hasDialogPicker, pickTime } from '@/services/datePicker';
+import { backupUi, pickBackupText, saveBackupToFolder, shareBackup } from '@/services/backup';
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
 import { BackupError, parseBackup } from '@/store/backup';
 import { useActions, useAppStore } from '@/store/react';
@@ -72,14 +72,10 @@ export default function SettingsScreen() {
 
   // --- Behavior ---
   const pickDefaultTime = () => {
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: new Date(atTimeOfDay(startOfDay(Date.now()), settings.defaultTimeMinutes)),
-        mode: 'time',
-        is24Hour: true,
-        onChange: (e, date) => {
-          if (e.type === 'set' && date) set({ defaultTimeMinutes: date.getHours() * 60 + date.getMinutes() });
-        },
+    // The system time picker where there is one (services/datePicker), else a short list.
+    if (hasDialogPicker) {
+      void pickTime(new Date(atTimeOfDay(startOfDay(Date.now()), settings.defaultTimeMinutes))).then((date) => {
+        if (date) set({ defaultTimeMinutes: date.getHours() * 60 + date.getMinutes() });
       });
       return;
     }
@@ -102,7 +98,7 @@ export default function SettingsScreen() {
       title: 'REDUCE MOTION',
       actions: (['system', 'on', 'off'] as const).map((v) => ({
         glyph: settings.reduceMotion === v ? g.checkboxOn.glyph : g.checkboxOff.glyph,
-        label: v === 'system' ? 'Follow Android' : v === 'on' ? 'Always' : 'Never',
+        label: v === 'system' ? 'Follow the system setting' : v === 'on' ? 'Always' : 'Never',
         onPress: () => set({ reduceMotion: v }),
       })),
     });
@@ -203,12 +199,15 @@ export default function SettingsScreen() {
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xl }]}>
         <Section title="BEHAVIOR">
-          <Toggle
-            label="Remind me by default"
-            hint="New due dates get a notification"
-            value={settings.notifyByDefault}
-            onChange={(v) => set({ notifyByDefault: v })}
-          />
+          {/* Hidden where reminders can't exist (the web build). */}
+          {permission !== 'unsupported' && (
+            <Toggle
+              label="Remind me by default"
+              hint="New due dates get a notification"
+              value={settings.notifyByDefault}
+              onChange={(v) => set({ notifyByDefault: v })}
+            />
+          )}
           <Choice
             label="Default time"
             hint="For dates without a time, like @fri"
@@ -240,29 +239,42 @@ export default function SettingsScreen() {
           <Choice
             label="Reduce motion"
             hint="Skip animations"
-            value={settings.reduceMotion === 'system' ? 'ANDROID' : settings.reduceMotion === 'on' ? 'ALWAYS' : 'NEVER'}
+            value={settings.reduceMotion === 'system' ? 'SYSTEM' : settings.reduceMotion === 'on' ? 'ALWAYS' : 'NEVER'}
             onPress={pickReduceMotion}
           />
         </Section>
 
         <Section title="NOTIFICATIONS">
-          <Choice
-            label="Permission"
-            hint={
-              permission === 'denied' ? 'Reminders can’t show. Allow them in Android settings.' : 'Asked the first time a reminder is set'
-            }
-            value={permission === null ? '…' : permission === 'granted' ? 'ALLOWED' : permission === 'denied' ? 'BLOCKED' : 'NOT ASKED YET'}
-            onPress={openNotificationSettings}
-          />
-          <Action glyph={g.settings.glyph} label="Open Android settings for quest_log" onPress={openNotificationSettings} />
+          {permission === 'unsupported' ? (
+            <Text style={[type.notes, styles.dim, styles.intro]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              Reminders aren&apos;t available in the web version: iPhone web apps can&apos;t schedule them. Due dates still show and turn
+              OVERDUE. The Android app has full reminders.
+            </Text>
+          ) : (
+            <>
+              <Choice
+                label="Permission"
+                hint={
+                  permission === 'denied'
+                    ? 'Reminders can’t show. Allow them in Android settings.'
+                    : 'Asked the first time a reminder is set'
+                }
+                value={
+                  permission === null ? '…' : permission === 'granted' ? 'ALLOWED' : permission === 'denied' ? 'BLOCKED' : 'NOT ASKED YET'
+                }
+                onPress={openNotificationSettings}
+              />
+              <Action glyph={g.settings.glyph} label="Open Android settings for quest_log" onPress={openNotificationSettings} />
+            </>
+          )}
         </Section>
 
         <Section title="DATA">
           <Text style={[type.notes, styles.dim, styles.intro]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             Everything stays on this phone. A backup is a file you keep; uninstalling the app deletes its data, so save one first.
           </Text>
-          <Action glyph={g.save.glyph} label="Save backup to a folder" onPress={() => void saveBackup()} />
-          <Action glyph={g.share.glyph} label="Share backup…" onPress={() => void share()} />
+          <Action glyph={g.save.glyph} label={backupUi.saveLabel} onPress={() => void saveBackup()} />
+          {backupUi.separateShare && <Action glyph={g.share.glyph} label="Share backup…" onPress={() => void share()} />}
           <Action glyph={g.load.glyph} label="Import a backup…" onPress={() => void importBackup()} />
           <Action glyph={g.undo.glyph} label="Restore a daily snapshot…" onPress={restore} />
           <Action glyph={g.delete.glyph} label="Trash" onPress={() => router.push('/trash')} />

@@ -1,5 +1,20 @@
 [
   {
+    "version": "1.1.0",
+    "build": 20,
+    "lines": [
+      "quest_log on iPhone.",
+      "- **iPhone (and any browser):** open [thedungeons2077.github.io/quest_log](https://thedungeons2077.github.io/quest_log/) in Safari, then **Share → Add to Home Screen**.",
+      "  - It runs full screen, in the same green-on-black style, and **works offline**.",
+      "  - Your tasks stay on your phone, inside the home-screen app.",
+      "  - **Backups** use the share sheet (**Save to Files**), and a backup moves your tasks between Android and iPhone.",
+      "  - **Reminders are Android-only:** iPhone web apps can't schedule them. Due dates still show and turn OVERDUE.",
+      "- **Fixes for every platform:**",
+      "  - Pressing Enter on keyboards that type a line break now saves the task. Before, the shorthand like `!!!` stayed in the title.",
+      "  - Reduce motion now reads **SYSTEM** instead of ANDROID."
+    ]
+  },
+  {
     "version": "1.0.0",
     "build": 19,
     "lines": [
@@ -81,18 +96,6 @@
       "- You feel a tick when you lift a task and each time the landing spot changes. Every move can be undone (**MOVED · UNDO**).",
       "- **Holding still without dragging** still opens the task menu.",
       "- **TalkBack:** new **Move up** and **Move down** actions."
-    ]
-  },
-  {
-    "version": "0.7.2",
-    "build": 13,
-    "lines": [
-      "- **Subtasks are a size smaller** (15 pt), between group titles and main tasks, so the tree reads clearly.",
-      "- **The COMPLETED tab matches:** the same title sizes, group-style titles for completed groups, and details (↻, last changed) under the title.",
-      "- **Fixed: shorthand when editing a saved task.**",
-      "  - Typing only shorthand (like `!!`) into a task no longer deletes it. The title stays and the priority is set.",
-      "  - Words already in a saved title (like an escaped `@fri`) stay as text when you edit the title later. Only newly typed shorthand is applied.",
-      "  - The chips shown while typing now match exactly what gets applied."
     ]
   }
 ]

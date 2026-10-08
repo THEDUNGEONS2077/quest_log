@@ -125,3 +125,14 @@ export function pasteOp(
   }
   return { op: { type: 'batch', ops }, ids };
 }
+
+/**
+ * True when `next` is `prev` with exactly one line break inserted: the user
+ * pressed Enter, rather than pasting lines. Multiline inputs submit on Enter
+ * on Android (submitBehavior), but the web build / iPhone PWA inserts the
+ * line break instead, so editors check this before treating "\n" as a paste.
+ */
+export function isEnterInsert(prev: string, next: string): boolean {
+  const at = next.indexOf('\n');
+  return at !== -1 && next.indexOf('\n', at + 1) === -1 && next.slice(0, at) + next.slice(at + 1) === prev;
+}
