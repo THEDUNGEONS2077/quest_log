@@ -48,13 +48,13 @@ Status markers:
 | Path | Purpose | Does **not** contain |
 |---|---|---|
 | `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list), `help.tsx` (user guide, from the `?` button; update it with every new gesture or shorthand), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
-| `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides` *(built)*; drag layer *(planned, Phase 9)* | Store mutations beyond calling actions |
+| `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides`, `drag` (controller, row gesture, overlay), `keepInView`, `titleStyle`, `HighlightFlash` *(built)* | Store mutations beyond calling actions |
 | `components/edit/` | `InlineEditor` (+ `useEditorFocus`), `NotesField` (editor and linkified view), `ParsedChips` (shorthand preview and clearable field chips), `QuickAddBar`, `EditToolbar` (OUT/IN/SUB/PRI/NOTE/UNDO/DONE) *(built)* | Parsing and key rules (those are `lib/`) |
 | `components/overlays/` | `ActionSheet`, `ContextMenu`, `DueSheet`, `RepeatSheet`, `Toast` *(built)*; boot sequence *(planned)* | |
 | `components/common/` | `Header`, `Tabs`, `useMinute` (shared minute clock) *(built)*; filter chips, breadcrumb, block cursor *(planned)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
-| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`; planned: `dnd`, `search`)* | Anything impure |
+| `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`; planned: `search`)* | Anything impure |
 | `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes). Planned: widget, backup)* | UI |
 | `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |

@@ -2,6 +2,21 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.8.0 (build 14)
+
+Drag-and-drop.
+
+- **Hold a task for a moment, then drag** to move it:
+  - **Up or down** reorders it.
+  - **Sideways** nests it under the task above (drag right) or moves it out a level (drag left).
+  - A green line shows exactly where, and how deep, it will land.
+- Subtasks always travel with their task. The lifted row shows how many (`+3`).
+- **The list scrolls by itself** when you drag near the top or bottom.
+- **Hovering over a closed group** for a moment opens it, so you can drop inside.
+- You feel a tick when you lift a task and each time the landing spot changes. Every move can be undone (**MOVED · UNDO**).
+- **Holding still without dragging** still opens the task menu.
+- **TalkBack:** new **Move up** and **Move down** actions.
+
 ## 0.7.2 (build 13)
 
 - **Subtasks are a size smaller** (15 pt), between group titles and main tasks, so the tree reads clearly.

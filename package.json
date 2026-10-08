@@ -1,6 +1,6 @@
 {
   "name": "quest_log",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@react-native-community/datetimepicker": "9.1.0",

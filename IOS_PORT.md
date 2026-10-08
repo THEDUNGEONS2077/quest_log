@@ -28,7 +28,8 @@ This is a running list of everything that behaves differently on iOS or still ne
 - [ ] `EditToolbar` buttons use `focusable={false}` (Android-only) to keep the editor focused. Confirm tapping them doesn't blur the input on iOS.
 - [ ] `InlineEditor` uses `submitBehavior="blurAndSubmit"` with `multiline`. Confirm iOS shows "Done" and doesn't insert newlines.
 - [ ] The edge-swipe back gesture must not conflict with row swipes (`SwipeableRow`: activeOffsetX ±16, failOffsetY ±12). Add a left-edge exclusion zone.
-- [ ] Long-press must not trigger the text-selection magnifier on non-editing rows.
+- [ ] Long-press must not trigger the text-selection magnifier on non-editing rows (the drag gesture in `components/list/drag.tsx` activates after 300 ms).
+- [ ] Drag-and-drop: confirm that the active Pan stops the native ScrollView from scrolling on iOS (FlashList `scrollEnabled` is also turned off while dragging), and check the lifted row's shadow (`focusGlow`) on iOS.
 
 ## Fonts, glyphs, haptics
 - [ ] Check glyph rendering in JetBrains Mono. Phase 1 found these glyphs missing from the font: ⏰ ↻ ⌕ ⚙ ↶ ⇤ ⤢ ☐ ⧉ ⎘ ↳ (see `theme/glyphs.ts`).

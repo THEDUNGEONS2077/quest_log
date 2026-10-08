@@ -23,6 +23,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 import * as complete from '@/lib/complete';
 import { formatDue } from '@/lib/dates';
 import * as copy from '@/lib/copy';
+import * as dnd from '@/lib/dnd';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
 import { parse, type ParseResult } from '@/lib/parser';
@@ -110,6 +111,10 @@ export interface AppStore {
   repeatSheetFor: ID | null;
   /** A task to scroll to and flash (opened from a notification or link). Not persisted. */
   highlightId: ID | null;
+  /** The task being dragged (PLAN §9.10), or null. Not persisted. */
+  draggingId: ID | null;
+  /** The task whose long-press menu is open, or null. Not persisted. */
+  menuFor: ID | null;
   /**
    * Increments whenever editing starts on a row. Part of the typing
    * coalesce key, so each editing session is its own undo step.
@@ -246,6 +251,13 @@ export interface AppStore {
    */
   revealTask(id: ID): void;
   clearHighlight(): void;
+
+  // --- Drag-and-drop and its accessible alternatives (Phase 9) ---
+  setDragging(id: ID | null): void;
+  openMenu(id: ID): void;
+  closeMenu(): void;
+  /** Accessibility "Move up" / "Move down": swap with the neighbouring sibling. */
+  moveTaskBy(id: ID, delta: -1 | 1): void;
   toggleCompletedExpanded(id: ID): void;
 
   // --- Settings ---
@@ -306,6 +318,8 @@ export function createAppStore(deps: StoreDeps) {
       dueSheetFor: null,
       repeatSheetFor: null,
       highlightId: null,
+      draggingId: null,
+      menuFor: null,
       editSession: 0,
       settings: loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS),
       lingering: [],
@@ -631,6 +645,16 @@ export function createAppStore(deps: StoreDeps) {
       },
 
       clearHighlight: () => set({ highlightId: null }),
+
+      setDragging: (draggingId) => set({ draggingId }),
+      openMenu: (menuFor) => set({ menuFor }),
+      closeMenu: () => set({ menuFor: null }),
+
+      moveTaskBy(id, delta) {
+        const tasks = get().tasks;
+        const op = dnd.moveBy(tasks, id, delta, now(), (x) => findTask(tasks, x)?.deletedAt === null);
+        if (op) get().dispatch(op);
+      },
       toggleCompletedExpanded(id) {
         const list = get().ui.completedExpanded;
         const completedExpanded = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];

@@ -17,7 +17,7 @@
  * and moves to COMPLETED (PLAN §6.6). Every gesture has a screen-reader
  * action as an alternative (PLAN §13).
  */
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect } from 'react';
 import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 
@@ -29,6 +29,7 @@ import { ContextMenu } from '@/components/overlays/ContextMenu';
 import { formatDue, isOverdue } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
 import { findTask } from '@/lib/taskMap';
+import { isInSubtree } from '@/lib/tree';
 import type { Task } from '@/lib/types';
 import { haptics } from '@/services/haptics';
 import { ADVANCE_MS, LINGER_MS, type ToggleOutcome } from '@/store/createStore';
@@ -38,6 +39,7 @@ import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, 
 import { NestingGuides } from './NestingGuides';
 import { StrikeText } from './StrikeText';
 import { titleStyles, titleVariant } from './titleStyle';
+import { useRowDragGesture } from './drag';
 import { HighlightFlash } from './HighlightFlash';
 import { SwipeableRow } from './SwipeableRow';
 
@@ -57,7 +59,10 @@ export const TaskRow = memo(
     // Which field is being edited, only meaningful (and only subscribed) for the editing row.
     const field = useAppStore((s) => (s.editingId === row.id ? s.editingField : null));
     const notesOpen = useAppStore((s) => s.expandedNotes.includes(row.id));
-    const [menu, setMenu] = useState(false);
+    const menu = useAppStore((s) => s.menuFor === row.id);
+    // Dimmed while it (or an ancestor) is being dragged: the subtree travels with the lifted row.
+    const dimmed = useAppStore((s) => s.draggingId !== null && isInSubtree(s.tasks, row.id, s.draggingId));
+    const dragGesture = useRowDragGesture(row.id);
     // Only rows with a due date subscribe to the clock (for the spoken "due …, overdue").
     const now = useMinuteIf(task?.dueAt != null);
     const lingering = useAppStore((s) => s.lingering.includes(row.id));
@@ -97,7 +102,9 @@ export const TaskRow = memo(
         complete: toggle,
         delete: remove,
         edit: () => actions.setEditing(task.id),
-        menu: () => setMenu(true),
+        menu: () => actions.openMenu(task.id),
+        moveUp: () => actions.moveTaskBy(task.id, -1),
+        moveDown: () => actions.moveTaskBy(task.id, 1),
         addSubtask: () => actions.addSubtask(task.id),
         indent: () => actions.indentTask(task.id),
         outdent: () => actions.outdentTask(task.id),
@@ -116,8 +123,10 @@ export const TaskRow = memo(
     const titleStyle = titleStyles[variant];
 
     return (
-      <Animated.View style={fadeStyle}>
+      <Animated.View style={[fadeStyle, dimmed && styles.dimmed]}>
         <SwipeableRow
+          // Long-press (and hold still) to drag or open the menu: PLAN §9.10.
+          drag={dragGesture}
           enabled={swipeOn && !editing}
           right={{ label: `${glyphs.checkboxOn.glyph} ${task.done ? 'UNDO' : 'DONE'}`, onCommit: toggle }}
           left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
@@ -132,10 +141,6 @@ export const TaskRow = memo(
             accessible={!editing}
             accessibilityLabel={rowLabel(task, row, now)}
             accessibilityActions={ROW_ACTIONS}
-            // Long-press anywhere on the row opens the context menu (PLAN §12.6).
-            onLongPress={() => setMenu(true)}
-            delayLongPress={400}
-            disabled={editing}
             onAccessibilityAction={onAccessibilityAction}
           >
             {/* Flashes when the task is opened from a notification or link. */}
@@ -188,7 +193,6 @@ export const TaskRow = memo(
                   color={isGroup ? colors.textBright : colors.text}
                   style={titleStyle}
                   onPress={() => actions.setEditing(task.id)}
-                  onLongPress={() => setMenu(true)}
                 />
               )}
               {/* Details sit on their own line under the title, so the title keeps
@@ -232,7 +236,7 @@ export const TaskRow = memo(
             ) : null}
           </Pressable>
         </SwipeableRow>
-        {menu && <ContextMenu id={task.id} onClose={() => setMenu(false)} />}
+        {menu && <ContextMenu id={task.id} onClose={actions.closeMenu} />}
       </Animated.View>
     );
   },
@@ -252,6 +256,8 @@ const ROW_ACTIONS = [
   { name: 'addSubtask', label: 'Add subtask' },
   { name: 'indent', label: 'Indent' },
   { name: 'outdent', label: 'Outdent' },
+  { name: 'moveUp', label: 'Move up' },
+  { name: 'moveDown', label: 'Move down' },
   { name: 'priority', label: 'Change priority' },
   { name: 'due', label: 'Set due date' },
   { name: 'notes', label: 'Show or hide notes' },
@@ -356,6 +362,7 @@ const styles = StyleSheet.create({
   },
   // Every top-level task is separated from the one above it, group or not
   // (user request 2026-10-08). Groups additionally use the uppercase `group` type.
+  dimmed: { opacity: 0.3 },
   topLevel: { borderTopWidth: shape.hairline, borderTopColor: colors.line, marginTop: space.sm },
   editing: { backgroundColor: colors.surface },
   caret: { width: size.indent, alignItems: 'center' },

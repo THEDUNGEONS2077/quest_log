@@ -20,9 +20,10 @@ import { useCallback, useEffect, useRef } from 'react';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, StyleSheet, Text, View } from 'react-native';
 
 import type { Row } from '@/lib/flatten';
-import { useAppStore, useSelectors } from '@/store/react';
+import { useAppStore, useSelectors, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, size, space, type } from '@/theme';
 
+import { DragOverlay, DragProvider, useDragController } from './drag';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { TaskRow } from './TaskRow';
 import { useKeyboardHeight } from './useKeyboardHeight';
@@ -46,6 +47,16 @@ export function TaskList({ bottomInset }: Props) {
 
   // Keep the text being typed in view (see keepInView.tsx).
   const keepInView = useKeepInViewController(container, list);
+
+  // Drag-and-drop (drag.tsx). Rows are read through a ref: they can change mid-drag
+  // when hovering opens a collapsed group. No dragging while editing.
+  const { store } = useStoreBundle();
+  const rowsRef = useRef(rows);
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
+  const dragging = useAppStore((s) => s.draggingId !== null);
+  const drag = useDragController({ store, list, container, rows: rowsRef, enabled: editingId === null });
   // The keyboard finished opening: re-check the edited row against its final position.
   useEffect(() => {
     if (keyboardHeight > 0 && editingId) keepInView.ensure();
@@ -83,28 +94,33 @@ export function TaskList({ bottomInset }: Props) {
   return (
     <View ref={container} style={styles.container} collapsable={false}>
       <KeepInViewProvider value={keepInView}>
-        <FlashList
-          ref={list}
-          data={rows}
-          renderItem={renderItem}
-          keyExtractor={(r) => r.id}
-          // Separate recycling pools: group headers and plain rows differ in layout.
-          getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
-          onViewableItemsChanged={({ viewableItems }) => {
-            const indices = viewableItems.map((v) => v.index ?? 0);
-            visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };
-          }}
-          // Taps on rows work while the keyboard is open; taps on empty space dismiss it.
-          keyboardShouldPersistTaps="handled"
-          onScrollBeginDrag={onScrollBeginDrag}
-          onScrollEndDrag={() => (dragStartY.current = null)}
-          onScroll={onScroll}
-          scrollEventThrottle={32}
-          // While the keyboard is open, pad by its height (plus the toolbar on it)
-          // so even the last row can be scrolled up to just above the toolbar.
-          contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
-          ListEmptyComponent={EmptyState}
-        />
+        <DragProvider value={drag.api}>
+          <FlashList
+            ref={list}
+            data={rows}
+            renderItem={renderItem}
+            keyExtractor={(r) => r.id}
+            // Separate recycling pools: group headers and plain rows differ in layout.
+            getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
+            onViewableItemsChanged={({ viewableItems }) => {
+              const indices = viewableItems.map((v) => v.index ?? 0);
+              visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };
+            }}
+            // Taps on rows work while the keyboard is open; taps on empty space dismiss it.
+            keyboardShouldPersistTaps="handled"
+            // The list stays still while a task is dragged (auto-scroll moves it instead).
+            scrollEnabled={!dragging}
+            onScrollBeginDrag={onScrollBeginDrag}
+            onScrollEndDrag={() => (dragStartY.current = null)}
+            onScroll={onScroll}
+            scrollEventThrottle={32}
+            // While the keyboard is open, pad by its height (plus the toolbar on it)
+            // so even the last row can be scrolled up to just above the toolbar.
+            contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
+            ListEmptyComponent={EmptyState}
+          />
+          <DragOverlay view={drag.view} api={drag.api} />
+        </DragProvider>
       </KeepInViewProvider>
     </View>
   );

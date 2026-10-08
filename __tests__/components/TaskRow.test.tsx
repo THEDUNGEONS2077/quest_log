@@ -8,6 +8,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Profiler, type ReactNode } from 'react';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 import { TaskRow } from '@/components/list/TaskRow';
 import { createAppStore } from '@/store/createStore';
 import { createMemoryKV } from '@/store/kv';
@@ -24,7 +26,12 @@ async function setup() {
   const store = createAppStore({ kv, now: () => 1_000, newId: () => `new${++n}` });
   const bundle = bundleStore(store);
   const renders: Record<string, number> = {};
-  const wrap = (children: ReactNode) => <StoreProvider value={bundle}>{children}</StoreProvider>;
+  // Overlays (menus) read safe-area insets; the app provides them at the root.
+  const wrap = (children: ReactNode) => (
+    <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 400, height: 800 }, insets: { top: 0, left: 0, right: 0, bottom: 0 } }}>
+      <StoreProvider value={bundle}>{children}</StoreProvider>
+    </SafeAreaProvider>
+  );
   const rows = bundle.selectors.activeRows(store.getState());
   const ui = await render(
     wrap(
@@ -139,5 +146,20 @@ describe('TaskRow', () => {
         .reduce((a: Record<string, unknown>, b) => ({ ...a, ...(b as object) }), {}).fontSize;
     expect(size('g')).toBe(14); // group
     expect(size('a')).toBe(17); // top-level task
+  });
+
+  it('Move up / Move down screen-reader actions reorder without dragging', async () => {
+    const { store } = await setup();
+    const row = screen.getByLabelText(/^c, not done/);
+    await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'moveUp' } });
+    expect(store.getState().tasks.children.root).toEqual(['a', 'c', 'b', 'g']);
+    await fireEvent(row, 'accessibilityAction', { nativeEvent: { actionName: 'moveDown' } });
+    expect(store.getState().tasks.children.root).toEqual(['a', 'b', 'c', 'g']);
+  });
+
+  it('the long-press menu opens from the store (the drag gesture opens it on a still hold)', async () => {
+    const { store } = await setup();
+    await act(() => store.getState().openMenu('a'));
+    expect(screen.getByText('Add subtask')).toBeTruthy();
   });
 });

@@ -644,6 +644,13 @@ New tasks come from the quick-add bar, from `+ SUB`, from the `+` on a group hea
 
 **Accessibility:** "Move up", "Move down", Indent, Outdent, and "Move to…" are available as accessibility actions, so drag is never the only way.
 
+> **Implementation notes (Phase 9, 2026-10-08):**
+> - Other rows don't slide aside while dragging. The 2 pt drop indicator shows the landing spot instead, since animating rows inside a recycling list is fragile and the indicator is exact.
+> - The dragged task's subtree stays in place, dimmed, rather than collapsing into the lifted row. Collapsing would move every row under the finger mid-drag.
+> - The lifted row shows the `+N` badge.
+> - Row positions come from FlashList's `getLayout`, so no per-row `onLayout` cache is needed.
+> - A long-press without moving opens the menu (the same gesture), and a no-op drop adds no undo entry.
+
 ### 9.11 Search and filter
 
 - **Search:**

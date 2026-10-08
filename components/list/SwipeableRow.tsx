@@ -37,9 +37,14 @@ interface Props {
   left?: SwipeAction;
   /** Off while editing, or when swipe actions are turned off in Settings. */
   enabled: boolean;
+  /**
+   * A long-press drag gesture (drag.tsx) to race against the swipe: a quick
+   * sideways move swipes, holding still for 300 ms starts a drag.
+   */
+  drag?: ReturnType<typeof Gesture.Pan> | null;
 }
 
-export function SwipeableRow({ children, right, left, enabled }: Props) {
+export function SwipeableRow({ children, right, left, enabled, drag }: Props) {
   const x = useSharedValue(0);
   const width = useSharedValue(1);
   // Which side is past the threshold right now (-1, 0, 1), so the haptic ticks once per crossing.
@@ -95,7 +100,7 @@ export function SwipeableRow({ children, right, left, enabled }: Props) {
           </Text>
         </Animated.View>
       )}
-      <GestureDetector gesture={pan}>
+      <GestureDetector gesture={drag ? Gesture.Race(drag, pan) : pan}>
         <Animated.View style={rowStyle}>{children}</Animated.View>
       </GestureDetector>
     </View>

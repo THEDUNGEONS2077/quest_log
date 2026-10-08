@@ -41,6 +41,8 @@ export const shape = {
    * so the box reads as one compact control (user request 2026-10-07).
    */
   checkboxTracking: -4,
+  /** Android elevation (shadow depth) of the lifted row while dragging. */
+  liftElevation: 6,
   /** Drop indicator thickness while dragging (PLAN §9.10). */
   dropIndicator: 2,
 } as const;
