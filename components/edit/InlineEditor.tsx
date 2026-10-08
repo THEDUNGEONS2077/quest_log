@@ -125,7 +125,7 @@ export function InlineEditor({ id, title, variant }: Props) {
       autoCorrect
       autoCapitalize="sentences"
       maxFontSizeMultiplier={maxFontSizeMultiplier}
-      style={[styles.input, variant === 'group' ? [type.group, { color: colors.textBright }] : type.body]}
+      style={[styles.input, variant === 'group' ? [type.group, styles.group] : type.body]}
       accessibilityLabel="Task title"
       accessibilityHint="Done saves. Backspace on an empty title deletes the task."
     />
@@ -134,5 +134,7 @@ export function InlineEditor({ id, title, variant }: Props) {
 
 const styles = StyleSheet.create({
   // No padding or margins: the editor must line up exactly with the Text it replaces.
+  // Same nudge as the group title text in TaskRow, so editing doesn't shift it.
+  group: { color: colors.textBright, paddingTop: (type.body.lineHeight - type.group.lineHeight) / 2 },
   input: { flex: 1, color: colors.text, padding: 0, margin: 0, textAlignVertical: 'top', ...platformText },
 });

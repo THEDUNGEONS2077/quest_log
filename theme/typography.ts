@@ -38,7 +38,8 @@ export const type = {
   /** Tab labels: uppercase, +1 letter spacing. */
   tab: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, letterSpacing: 1, textTransform: 'uppercase' },
   /** Top-level group headers: uppercase, drawn in textBright. */
-  group: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 24, textTransform: 'uppercase' },
+  // 20% smaller than body (17 → 14, user request 2026-10-08): uppercase bold already makes groups stand out.
+  group: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, textTransform: 'uppercase' },
   /** Task titles. */
   body: { fontFamily: fonts.regular, fontSize: 17, lineHeight: 24 },
   /** Tags, counts, due times. */

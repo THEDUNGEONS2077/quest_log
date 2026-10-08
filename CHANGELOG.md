@@ -2,6 +2,11 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.7.1 (build 12)
+
+- **Titles keep their full width.** A task's details (priority, notes ≡, due date and time, ↻ repeat, `[done/total]`) now sit on their own line under the title, instead of squeezing it into a broken-up wrap.
+- **Group titles are 20% smaller.** They're still uppercase and bright, so they stand out without shouting.
+
 ## 0.7.0 (build 11)
 
 Repeating tasks.

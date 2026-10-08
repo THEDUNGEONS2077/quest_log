@@ -366,6 +366,8 @@ Only one effect is allowed: a **soft focus glow**. This is a 0–6 px green-brig
 
 ### 8.2 Typography (JetBrains Mono)
 
+> **Change (2026-10-08):** group titles are 20% smaller than body (14/20, uppercase bold). Row details (priority, notes, due, repeat, progress) sit on a line *under* the title instead of beside it, so titles keep the full width.
+
 > **Change (2026-10-07):** one size step larger for readability, after the device test: display 22/30, tab 14/20, group 17/24, body 17/24, meta 13/18, notes 15/22. Indent goes from 20 to 24 pt, and the minimum row height from 48 to 52 pt.
 
 | Role | Size / Line height | Weight | Notes |

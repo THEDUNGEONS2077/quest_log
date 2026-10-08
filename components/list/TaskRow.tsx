@@ -110,7 +110,8 @@ export const TaskRow = memo(
 
     const isGroup = row.depth === 0 && row.hasChildren;
     const visualDepth = Math.min(row.depth, size.maxVisualDepth);
-    const titleStyle = isGroup ? type.group : type.body;
+    // Group titles are smaller than body, so they're nudged down to line up with the checkbox.
+    const titleStyle = isGroup ? [type.group, styles.groupTitle] : type.body;
 
     return (
       <Animated.View style={fadeStyle}>
@@ -188,7 +189,10 @@ export const TaskRow = memo(
                   onLongPress={() => setMenu(true)}
                 />
               )}
-              {editing && <TaskChips id={task.id} />}
+              {/* Details sit on their own line under the title, so the title keeps
+                  the full width (user request 2026-10-08). While editing, the
+                  editing chips take their place. */}
+              {editing ? <TaskChips id={task.id} /> : <RowMeta task={task} row={row} onNotes={() => actions.toggleNotes(task.id)} />}
               {field === 'notes' ? (
                 <NotesEditor id={task.id} notes={task.notes} />
               ) : (
@@ -223,9 +227,7 @@ export const TaskRow = memo(
                   + NOTE
                 </Text>
               </Pressable>
-            ) : (
-              <RowMeta task={task} row={row} onNotes={() => actions.toggleNotes(task.id)} />
-            )}
+            ) : null}
           </Pressable>
         </SwipeableRow>
         {menu && <ContextMenu id={task.id} onClose={() => setMenu(false)} />}
@@ -272,7 +274,7 @@ function rowLabel(task: Task, row: Row, now: number): string {
   return parts.join(', ');
 }
 
-/** Right-side indicators: depth badge, priority, ≡ ◔ ↻, due chip, progress count. */
+/** The details line under the title: depth badge, priority, ≡, due chip (◔ ↻), progress count. */
 function RowMeta({ task, row, onNotes }: { task: Task; row: Row; onNotes: () => void }) {
   // Only the due chip needs the clock, so it subscribes on its own (DueChip).
   // `icon` parts are pure glyphs and use the 20%-larger metaGlyph role.
@@ -356,6 +358,7 @@ const styles = StyleSheet.create({
   editing: { backgroundColor: colors.surface },
   caret: { width: size.indent, alignItems: 'center' },
   glyph: { color: colors.text, ...platformText },
+  groupTitle: { paddingTop: (type.body.lineHeight - type.group.lineHeight) / 2 },
   checkbox: { marginRight: space.md, marginLeft: space.xs },
   // Tighter brackets: `[ ]` reads as one compact box.
   checkboxText: { letterSpacing: shape.checkboxTracking, ...platformText },
@@ -374,5 +377,6 @@ const styles = StyleSheet.create({
   addSubText: { color: colors.accent, ...platformText },
   addNote: { marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
   addNoteText: { color: colors.textDim, ...platformText },
-  meta: { flexDirection: 'row', gap: space.sm, marginLeft: space.sm, paddingTop: (type.body.lineHeight - type.meta.lineHeight) / 2 },
+  // The details line under the title: wraps onto more lines rather than squeezing anything.
+  meta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: space.md, rowGap: space.xs, marginTop: space.xs },
 });
