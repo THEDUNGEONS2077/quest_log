@@ -45,3 +45,8 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 - Release APK 20.4 MB (budget 25). JS bundle 3,737,996 bytes = 3.56 MiB (budget 4.0). The Settings screen, backup logic, expo-file-system and expo-sharing added about 70 KB over v0.10.0.
 - Import and restore build one op over the whole tree, a one-time cost on a user action (not on any hot path). Snapshot listing parses at most 3 snapshots, only when the restore list is opened.
 - Permissions unchanged: 7, with no INTERNET or storage permission. File access goes only through the system pickers, and every file provider is not exported.
+
+### v1.0.0 (build 19), 2026-10-08: V1 beta
+- Release APK 20.4 MB (budget 25). JS bundle 3,743,304 bytes = 3.57 MiB (budget 4.0). Checked automatically by `scripts/release-android.sh`.
+- Desktop smoke budgets (`__tests__/perf.test.ts`, 7,500-task seed) all pass.
+- On-device timings in the table above are still empty. The build machine has no KVM for an emulator, and the test phone blocks USB installs (RELEASING.md), so on-device feel comes from the tester's own use of the release builds.
