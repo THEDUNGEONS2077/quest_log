@@ -15,8 +15,7 @@
  *     defined by importing services/notificationTask first, at load time.
  *   - motion: the Reduce Motion setting, applied to every animation,
  *   - the boot screen, laid over the app on a cold start (BootGate),
- *   - the app icon's "New task" shortcut (services/quickActions.ts),
- *   - the home screen widget's snapshot sync (services/widget.tsx).
+ *   - the app icon's "New task" shortcut (services/quickActions.ts).
  *
  * Fonts need no loading step here: they're embedded at build time by the
  * expo-font config plugin (app.config.ts).
@@ -37,7 +36,6 @@ import { BootGate } from '@/components/common/BootSequence';
 import { MotionConfig } from '@/components/common/motion';
 import { setHapticsEnabled } from '@/services/haptics';
 import { startQuickActions } from '@/services/quickActions';
-import { startWidgetSync } from '@/services/widget';
 import { startReminders } from '@/services/reminderLifecycle';
 import { appBundle, kv } from '@/store';
 import { StoreProvider } from '@/store/react';
@@ -61,9 +59,6 @@ export default function RootLayout() {
       }),
     [],
   );
-
-  // Home screen widget: keep its snapshot in step with the tasks (services/widget.tsx).
-  useEffect(() => startWidgetSync(appBundle.store, kv), []);
 
   // App icon shortcut "New task": open the ACTIVE list ready to type.
   useEffect(

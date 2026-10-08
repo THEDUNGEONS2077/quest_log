@@ -89,9 +89,6 @@ export const RELEASE_BLOCKED_PERMISSIONS = [
   'android.permission.ACCESS_NETWORK_STATE',
   // Play install attribution: no tracking of any kind (PLAN §3).
   'com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE',
-  // AndroidX WorkManager (pulled in by react-native-android-widget) declares a
-  // foreground service it only uses when asked; quest_log never runs one.
-  'android.permission.FOREGROUND_SERVICE',
   // App-icon badge helpers for various launchers (bundled with expo-notifications).
   // quest_log never sets icon badges (shouldSetBadge: false).
   ...BADGE_PERMISSIONS,
@@ -207,33 +204,6 @@ export function buildConfig(variant: Variant, base: Partial<ExpoConfig> = {}): E
             // grows a little.
             useLegacyPackaging: true,
           },
-        },
-      ],
-
-      // Home screen widget (PLAN §11, Phase 12). One resizable widget covers
-      // the small (2×2), medium (4×2, the default) and large (4×4) sizes. Android
-      // redraws it every 30 minutes (the minimum) so due labels stay current
-      // while the app is closed. The fonts are bundled for the widget's text.
-      [
-        'react-native-android-widget',
-        {
-          fonts: ['./assets/fonts/JetBrainsMono-Regular.ttf', './assets/fonts/JetBrainsMono-Bold.ttf'],
-          widgets: [
-            {
-              name: 'QuestWidget',
-              label: 'quest_log',
-              description: 'Your top tasks. Tap [ ] to complete one.',
-              minWidth: '110dp',
-              minHeight: '110dp',
-              targetCellWidth: 4,
-              targetCellHeight: 2,
-              maxResizeWidth: '640dp',
-              maxResizeHeight: '400dp',
-              resizeMode: 'horizontal|vertical',
-              updatePeriodMillis: 30 * 60 * 1000,
-              previewImage: './assets/widget/preview.png',
-            },
-          ],
         },
       ],
 

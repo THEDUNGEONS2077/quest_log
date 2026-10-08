@@ -202,20 +202,6 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: 'HOME SCREEN WIDGET',
-    intro: 'Your most urgent tasks on the home screen, without opening the app.',
-    lines: [
-      { key: 'Add it', what: 'Hold an empty spot on the home screen → Widgets → quest_log. Resize it to show 3, 4 or up to 8 tasks.' },
-      {
-        key: 'Which tasks',
-        what: 'Overdue first, then due today, then high priority (!!!), then your list order. Groups show their open subtasks.',
-      },
-      { key: `${g.checkboxOff.glyph} on the widget`, what: 'Completes the task. Open the app to UNDO it.' },
-      { key: 'Task title', what: 'Opens the app at that task.' },
-      { key: `${g.add.glyph} on the widget`, what: 'Opens the app ready to type a new task.' },
-    ],
-  },
-  {
     title: 'TIPS & UPDATES',
     intro: 'A few small extras that help you find your way.',
     lines: [
