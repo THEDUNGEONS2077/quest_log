@@ -7,8 +7,9 @@
  *     so typing in one row never re-renders another,
  *   - renders a plain <Text> title; only the editing row mounts InlineEditor.
  *
- * A top-level task with children renders as a **group header**: uppercase
- * `group` type in textBright, with a divider line above it.
+ * Every top-level task has a divider line above it. A top-level task with
+ * children also renders as a **group header**: uppercase `group` type in
+ * textBright.
  *
  * Completion (Phase 5): the checkbox and swipe-right check the task (with
  * cascade and auto-complete rules in lib/complete.ts); swipe-left deletes.
@@ -112,7 +113,12 @@ export const TaskRow = memo(
           left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
         >
           <Pressable
-            style={[styles.row, { paddingLeft: space.lg + visualDepth * size.indent }, isGroup && styles.group, editing && styles.editing]}
+            style={[
+              styles.row,
+              { paddingLeft: space.lg + visualDepth * size.indent },
+              row.depth === 0 && styles.topLevel,
+              editing && styles.editing,
+            ]}
             accessible={!editing}
             accessibilityLabel={rowLabel(task, row, now)}
             accessibilityActions={ROW_ACTIONS}
@@ -337,7 +343,9 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     backgroundColor: colors.bg,
   },
-  group: { borderTopWidth: shape.hairline, borderTopColor: colors.line, marginTop: space.sm },
+  // Every top-level task is separated from the one above it, group or not
+  // (user request 2026-10-08). Groups additionally use the uppercase `group` type.
+  topLevel: { borderTopWidth: shape.hairline, borderTopColor: colors.line, marginTop: space.sm },
   editing: { backgroundColor: colors.surface },
   caret: { width: size.indent, alignItems: 'center' },
   glyph: { color: colors.text, ...platformText },

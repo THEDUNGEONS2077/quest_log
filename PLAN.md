@@ -431,7 +431,8 @@ All glyphs are verified in JetBrains Mono on Android in Phase 1 and on iOS in Ph
 - **Rows:**
   - Every row has a checkbox and title, plus optional priority, a due chip, and `≡`, `⏰`, and `↻` indicators.
   - Parents also show a caret and a `[done/total]` progress count.
-- **Group headers:** a top-level task with children renders in the `group` style, with a thin `line` divider above it.
+- **Group headers:** a top-level task with children renders in the `group` style.
+- **Separators** (changed 2026-10-08): *every* top-level task, group or not, has a thin `line` divider above it.
 - **Nesting guides:** 1 pt vertical lines in `line` color, one per depth level.
 - **Collapse/expand:**
   - Tap the caret to collapse or expand.

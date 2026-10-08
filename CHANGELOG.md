@@ -2,6 +2,10 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 0.6.2 (build 10)
+
+- Every main (top-level) task now has a divider line above it, not only groups, so tasks are easier to tell apart at a glance.
+
 ## 0.6.1 (build 9)
 
 From your feedback on 0.6.0:

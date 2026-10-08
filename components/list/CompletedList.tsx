@@ -150,7 +150,12 @@ const CompletedRow = memo(
           <Pressable
             onLongPress={() => setMenu(true)}
             delayLongPress={400}
-            style={[styles.row, { paddingLeft: space.lg + visualDepth * size.indent }, editing && styles.editing]}
+            style={[
+              styles.row,
+              { paddingLeft: space.lg + visualDepth * size.indent },
+              row.depth === 0 && styles.topLevel,
+              editing && styles.editing,
+            ]}
             accessible={!editing}
             accessibilityLabel={`${task.title || 'Untitled task'}, completed`}
             accessibilityActions={[
@@ -242,6 +247,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
   },
   editing: { backgroundColor: colors.surface },
+  // Same separation as ACTIVE: a divider above every top-level task.
+  topLevel: { borderTopWidth: shape.hairline, borderTopColor: colors.line, marginTop: space.sm },
   caret: { width: size.indent, alignItems: 'center' },
   checkbox: { marginRight: space.md, marginLeft: space.xs },
   checkboxText: { letterSpacing: shape.checkboxTracking },
