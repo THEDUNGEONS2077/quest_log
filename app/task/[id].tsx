@@ -3,7 +3,7 @@
  *
  * Layer: UI (Expo Router screen). Has no UI of its own: it asks the store
  * to reveal the task (switch tab, expand ancestors, scroll and flash), then
- * replaces itself with the list. The widget (Phase 12) links here.
+ * replaces itself with the list. Notification taps use the same reveal.
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';

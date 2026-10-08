@@ -2,7 +2,7 @@
  * services/externalOps.ts: the `ops.pending` queue (PLAN §6.4).
  *
  * Layer: services. Actions from outside the app's UI (notification
- * buttons now, the widget in Phase 12) are appended here first, then
+ * buttons) are appended here first, then
  * drained into the store as normal, undoable ops (rules in
  * lib/externalOps.ts). Appending before applying means an action is never
  * lost: if the app dies mid-drain, the next drain finishes the job, and
@@ -40,8 +40,7 @@ export function drainExternalOps(kv: KV, store: AppStoreInstance): number {
   kv.remove(KEYS.opsPending);
   if (last) {
     const what = last.kind === 'complete' ? 'COMPLETED' : 'SNOOZED 15M';
-    const from = last.source === 'widget' ? 'WIDGET' : 'NOTIFICATION';
-    store.getState().showToast(applied > 1 ? `${applied} UPDATES FROM ${from}` : `${what} FROM ${from}`, true);
+    store.getState().showToast(applied > 1 ? `${applied} UPDATES FROM NOTIFICATION` : `${what} FROM NOTIFICATION`, true);
   }
   return applied;
 }

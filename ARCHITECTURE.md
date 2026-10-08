@@ -17,7 +17,7 @@ Status markers:
 │ STATE       /store (Zustand slices, selectors, persist)     │  React-free logic,
 ├────────────────────────────────────────────────────────────┤  calls lib
 │ PURE LIB    /lib  (tree, ops, parser, recurrence, dnd, …)   │  no React, no native
-│ SERVICES    /services (notifications, widget, haptics, …)   │  native side effects
+│ SERVICES    /services (notifications, haptics, …)           │  native side effects
 ├────────────────────────────────────────────────────────────┤
 │ THEME       /theme (tokens, glyphs, platform constants)     │  imported by all UI
 └────────────────────────────────────────────────────────────┘
@@ -56,7 +56,6 @@ Status markers:
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`), `onboarding` (first-run tips, last build seen) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
 | `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many), `sample` (example tasks), `changelog` (CHANGELOG.md → What's new))* | Anything impure |
 | `services/` | Native side effects. *(built: `haptics`; `notifications` (setup, reconcile, permission); `externalOps` (the ops.pending queue); `notificationTask` (headless DONE/SNOOZE); `reminderLifecycle` (drain + sync at start, on foreground, after changes); `quickActions` (app icon "New task"); `appInfo` (version, build). Planned: widget, backup)* | UI |
-| `widgets/android/` | Home screen widget UI and headless task handler *(planned, Phase 12)* | |
 | `theme/` | Design tokens: `colors`, `typography`, `spacing`, `motion`, `glyphs`, `platform` *(built; glyphs approved on device)* | Components |
 | `plugins/` | Expo config plugins: the **only** way to change native config that `app.config.ts` can't express *(built: release signing)* | |
 | `scripts/` | Dev tooling: font subset, icon generation, `seed.ts` (7,500-task perf data), `gen-changelog.mjs` (CHANGELOG.md → `assets/changelog.json`; a test fails when stale), release *(built: fonts, icon, seed, changelog)* | App code |
@@ -111,11 +110,11 @@ Budget: under 4 ms of JS per keystroke (PLAN §5).
 action → ops.apply(state, op) → { nextState, inverse }
        → history.push(inverse) → structureVersion++
        → selectors recompute once → FlashList diffs by key
-       → side effects (async): notifications.sync, widget.refresh (2 s throttle)
+       → side effects (async): notifications.sync
 ```
 
-### 4.3 External ops queue *(built for notifications in Phase 7; the widget joins in Phase 12)*
-Widget taps and notification buttons can fire while the app is closed. They **never** mutate state directly:
+### 4.3 External ops queue *(built in Phase 7)*
+Notification buttons (DONE, SNOOZE 15M) can fire while the app is closed. They **never** mutate state directly:
 ```
 append { op, taskId, at } to MMKV "ops.pending"
   Android: headless JS drains immediately
@@ -179,7 +178,6 @@ apply(state, op) → { state: nextState, inverse: Op, structural: boolean }
 | `onboarding.v1` | First-run tips seen, last build whose What's new was shown |
 | `ui.v1` | Collapsed/zoom state, last tab |
 | `ops.pending` | External ops queue |
-| `widget.snapshot` | Compact widget data |
 | `snapshot.YYYY-MM-DD` | Daily safety copies (keep the last 3) |
 
 **Writes:**
@@ -239,8 +237,9 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 ## 7. Side effects
 
 - Side effects run **after** state changes, asynchronously, and never block the UI thread.
-- Notification scheduling, widget refresh, and haptics live in `/services`, which are the only modules that call native APIs.
-- **Throttles:** persist 300 ms, widget refresh 2 s.
+- Notification scheduling and haptics live in `/services`, which are the only modules that call native APIs.
+- **Throttles:** persist 300 ms.
+- **Retired keys:** data keys a past version wrote and nothing reads any more are listed in `RETIRED_KEYS` (store/kv.ts) and deleted at startup. Example: `widget.snapshot`, from the removed widget.
 - **Idempotency:** notification reconciliation and ops-queue draining are both safe to run repeatedly.
 
 ---

@@ -25,12 +25,19 @@ export const KEYS = {
   /** First-run tips seen and the last "What's new" shown (store/onboarding.ts). */
   onboarding: 'onboarding.v1',
   opsPending: 'ops.pending',
-  widgetSnapshot: 'widget.snapshot',
   /** Daily safety copies: `snapshot.YYYY-MM-DD`. */
   snapshotPrefix: 'snapshot.',
   /** Unreadable data is kept under this prefix instead of being overwritten. */
   corruptPrefix: 'corrupt.',
 } as const;
+
+/**
+ * Keys a past version wrote that nothing uses any more. They're deleted at
+ * startup (installPersistence), so old data doesn't linger on the phone.
+ *   - `widget.snapshot`: the home screen widget's data (v0.11.0, build 17;
+ *     the widget was removed at the user's request).
+ */
+export const RETIRED_KEYS: readonly string[] = ['widget.snapshot'];
 
 /** In-memory KV for tests and tools. */
 export function createMemoryKV(initial: Record<string, string> = {}): KV & { dump(): Record<string, string> } {

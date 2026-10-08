@@ -71,7 +71,7 @@ All data lives **on the device**. There are no accounts.
 | Gestures | Swipe right to complete, swipe left to delete. Long-press then drag reorders and re-nests; long-press without moving opens the context menu. |
 | Drag-and-drop | **In v1** (§9.10). |
 | Recurring tasks | **In v1** (§9.9). |
-| Home screen widget | **In v1.** Android in Phase 12, iOS in Phase 15 (§11). |
+| Home screen widget | ~~In v1.~~ **Removed (user decision, 2026-10-08).** A widget was built in Phase 12 (v0.11.0), then dropped as unnecessary. See §11. |
 | Feedback and crashes | **Neither.** Fully offline. Testers report by talking to you. The Help screen shows the version and build so reports are precise. |
 | Blinking cursor | **Native caret themed green** in text fields (reliable with selection, autocorrect, and IME). A **blinking block `█`** appears in the boot sequence, the empty state, and the idle quick-add bar. |
 
@@ -796,6 +796,8 @@ All animations run on the UI thread via Reanimated worklets.
 
 ## 11. Home Screen Widget
 
+> **Change (2026-10-08): removed.** The Android widget shipped in v0.11.0 (build 17). The user then decided it was unnecessary, and it was taken out completely in the next release: code, dependencies, the `widget.snapshot` data (deleted at startup) and the iOS widget plan. Everything in this section, and the widget mentions elsewhere in this plan (§4, §5, §6, §12.8, §13, §14), is kept for history only. The external ops queue (§6.4) remains for notification buttons.
+
 ### 11.1 Behavior
 
 - **Sizes:** small (2×2), medium (4×2), and large (4×4).
@@ -1211,10 +1213,10 @@ Whatever the choice, the release script gets an iOS counterpart that attaches th
 | 9 | **Drag-and-drop** | `dnd.ts`, DragLayer, depth by horizontal drag, auto-scroll, hover-to-expand, undo, accessibility move actions. 60 fps with the seed. |
 | 10 | **Navigation and power features** | Zoom with breadcrumb, search and filter with ancestors (both tabs), multi-select, Move to…, Trash, per-parent sort. |
 | 11 | **Polish** | Boot sequence, block cursor, focus glow, full motion pass, empty states, first-run tips, Help, What's new, accessibility labels and actions, app icon quick action. |
-| 12 | **Android widget** | Three sizes, snapshot pipeline, interactive checkbox via the headless handler, midnight refresh, deep links. |
+| 12 | ~~Android widget~~ | **Removed.** Built and released as v0.11.0, then dropped at the user's request (§11). |
 | 13 | **Settings and backup** | Every setting in §9.17, JSON export/import with validation and preview, snapshot restore, auto-clear. |
 | 14 | **Android beta** | Maestro suite green. §5 budgets met and recorded in `PERF.md`. `release-android.sh` complete with all verification steps. `INSTALL.md` and `RELEASING.md` written. First draft release tested on your phone, then published and the link sent to friends. Iterate in `0.x` releases, with migration tests for every schema change. |
-| 15 | **iOS port** | Distribution method chosen (§15.8) and a Mac available. Complete `IOS_PORT.md`, iOS widget, iOS Maestro suite, iPhone performance check, iOS release script, first iOS beta. |
+| 15 | **iOS port** | Distribution method chosen (§15.8) and a Mac available. Complete `IOS_PORT.md`, iOS Maestro suite, iPhone performance check, iOS release script, first iOS beta. |
 
 ---
 

@@ -17,10 +17,7 @@ This is a running list of everything that behaves differently on iOS or still ne
 - [ ] Write the Info.plist usage strings for every permission used.
 
 ## Widget
-- [ ] WidgetKit extension in SwiftUI, via `@bacons/apple-targets`.
-- [ ] An App Group container for shared data (MMKV in the group path, or a JSON file).
-- [ ] Interactive checkboxes through **App Intents** (iOS 17+).
-- [ ] A small native module to trigger widget reloads from JS.
+Removed from the project (user decision, 2026-10-08): there is no home screen widget on either platform, so there's no WidgetKit or App Group work.
 
 ## Keyboard and gestures
 - [ ] Check the accessory bar with the iOS keyboard and the predictive text bar.

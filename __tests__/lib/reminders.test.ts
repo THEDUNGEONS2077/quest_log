@@ -81,8 +81,8 @@ describe('external ops', () => {
   });
 
   it('ignores missing or trashed tasks', () => {
-    expect(toOp(s, { kind: 'complete', taskId: 'ghost', at: NOW, source: 'widget' })).toBeNull();
-    expect(toOp(s, { kind: 'complete', taskId: 'trash', at: NOW, source: 'widget' })).toBeNull();
+    expect(toOp(s, { kind: 'complete', taskId: 'ghost', at: NOW, source: 'notification' })).toBeNull();
+    expect(toOp(s, { kind: 'complete', taskId: 'trash', at: NOW, source: 'notification' })).toBeNull();
   });
 
   it('parses the stored queue defensively', () => {

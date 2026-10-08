@@ -38,7 +38,7 @@ import type { Filter } from '@/lib/search';
 import type { ID, Priority, RepeatRule, TaskFields, TasksState } from '@/lib/types';
 
 import { EMPTY_HISTORY, type History, record } from './history';
-import { KEYS, type KV } from './kv';
+import { KEYS, type KV, RETIRED_KEYS } from './kv';
 import {
   createTasksSaver,
   createThrottledWriter,
@@ -912,6 +912,9 @@ export interface PersistenceOptions {
 export function installPersistence(store: AppStoreInstance, kv: KV, opts: PersistenceOptions = {}): (() => void) & { flush: () => void } {
   const timers = opts.timers ?? defaultTimers;
   const writers: Writer[] = [];
+
+  // Tidy up keys earlier versions left behind (store/kv.ts RETIRED_KEYS).
+  if (store.writable) for (const key of RETIRED_KEYS) if (kv.getString(key) !== undefined) kv.remove(key);
   const unsubs: (() => void)[] = [];
 
   // Wire one slice to one key: changes mark the writer dirty, and the writer

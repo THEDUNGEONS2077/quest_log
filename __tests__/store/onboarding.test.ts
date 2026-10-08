@@ -1,7 +1,7 @@
 /**
  * __tests__/store/onboarding.test.ts: first-run tips, What's new marker,
- * example tasks and the quick-add focus request (store/onboarding.ts,
- * store/createStore.ts, lib/sample.ts).
+ * example tasks, the quick-add focus request and retired-key cleanup
+ * (store/onboarding.ts, store/createStore.ts, lib/sample.ts).
  */
 import { childIds } from '@/lib/tree';
 import { taskCount } from '@/lib/taskMap';
@@ -118,5 +118,15 @@ describe('onboarding actions', () => {
     expect(after.editingId).toBeNull();
     expect(after.ui.tab).toBe('active');
     expect(after.quickAddFocus).toBe(1);
+  });
+});
+
+describe('retired keys', () => {
+  it('deletes data earlier versions left behind (the removed widget) at startup', () => {
+    const kv = createMemoryKV({ 'widget.snapshot': '{"v":1,"tasks":[]}' });
+    const { store } = makeStore(kv);
+    const stop = installPersistence(store, kv);
+    expect(kv.getString('widget.snapshot')).toBeUndefined();
+    stop();
   });
 });

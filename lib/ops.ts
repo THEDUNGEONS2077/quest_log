@@ -14,7 +14,7 @@
  *
  * Purity: no clock, no random IDs, no I/O. Callers pass `at` (the time) and
  * new task objects in, so every op replays identically. That's also what
- * makes external ops (widget, notifications) safe to drain later (§6.4).
+ * makes external ops (notification buttons) safe to drain later (§6.4).
  *
  * Immutability: `apply` never mutates its input. It copies only the task
  * buckets and child lists it changes (lib/taskMap.ts), so unchanged tasks

@@ -1,9 +1,8 @@
 /**
  * lib/externalOps.ts: actions that happen outside the app's UI (PLAN §6.4).
  *
- * Layer: pure lib. Notification buttons (DONE, SNOOZE 15M) and, from Phase
- * 12, the home-screen widget can act while the app is closed. They never
- * touch state directly. Each becomes a small record in the `ops.pending`
+ * Layer: pure lib. Notification buttons (DONE, SNOOZE 15M) can act while
+ * the app is closed. They never touch state directly. Each becomes a small record in the `ops.pending`
  * queue, and draining the queue turns each record into a normal op through
  * this module, so the same rules (cascade, auto-complete) apply wherever an
  * action came from.
@@ -26,7 +25,7 @@ export interface ExternalOp {
   /** When the user acted (epoch ms). */
   at: number;
   /** Where it came from, for the toast ("COMPLETED FROM NOTIFICATION"). */
-  source: 'notification' | 'widget';
+  source: 'notification';
   /**
    * The occurrence acted on (the notification's due time). A repeating task
    * never stays done; once it has moved past this occurrence, the action
