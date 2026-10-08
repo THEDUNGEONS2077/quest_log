@@ -84,3 +84,29 @@ describe('dev variant', () => {
     expect(pluginNames('dev')).not.toContain('./plugins/withReleaseSigning');
   });
 });
+
+describe('E2E test build (QUESTLOG_E2E=1)', () => {
+  // Maestro flows clear app data: they must run against a separate app,
+  // never the real one with the user's tasks.
+  const withE2E = (fn: () => void) => {
+    process.env.QUESTLOG_E2E = '1';
+    try {
+      fn();
+    } finally {
+      delete process.env.QUESTLOG_E2E;
+    }
+  };
+
+  it('is a separate app: own package, name and scheme', () => {
+    withE2E(() => {
+      const cfg = buildConfig('release');
+      expect(cfg.android?.package).toBe('com.thedungeons2077.questlog.e2e');
+      expect(cfg.name).toBe('quest_log E2E');
+      expect(cfg.scheme).toBe('questlog-e2e');
+    });
+  });
+
+  it('never changes the real release without the flag', () => {
+    expect(buildConfig('release').android?.package).toBe('com.thedungeons2077.questlog');
+  });
+});

@@ -1,0 +1,7 @@
+# e2e/android/config.yaml: the Maestro suite for quest_log (PLAN Phase 14).
+# Run with scripts/e2e-android.sh. Flows run in file-name order; files
+# under subflows/ are only called by other flows.
+flows:
+  - "*.yaml"
+executionOrder:
+  continueOnFailure: true

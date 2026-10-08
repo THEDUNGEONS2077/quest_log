@@ -1,0 +1,22 @@
+# Subtasks from the editing toolbar, and shorthand turning into fields.
+appId: com.thedungeons2077.questlog.e2e
+name: Subtasks and shorthand
+---
+- runFlow: subflows/fresh-start.yaml
+- runFlow:
+    file: subflows/add-task.yaml
+    env:
+      TITLE: "Trip !!!"
+# Shorthand: "!!!" became high priority, so the title is just "Trip".
+- assertVisible: "(?i)trip"
+- assertVisible: "!!!"
+# Edit it and add a subtask with the toolbar's SUB.
+- tapOn: "(?i)trip"
+- tapOn: "Add subtask"
+- inputText: "Pack bag"
+- tapOn: "Done editing"
+- assertVisible: "(?i)pack bag"
+- assertVisible: "\\[0/1\\]"
+# Complete the subtask: the group shows 1 of 1 and completes too.
+- tapOn: "Complete Pack bag"
+- assertVisible: "COMPLETED · GROUP DONE"

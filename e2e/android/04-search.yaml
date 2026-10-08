@@ -1,0 +1,12 @@
+# Search finds a task by part of its title; closing search shows everything.
+appId: com.thedungeons2077.questlog.e2e
+name: Search
+---
+- runFlow: subflows/fresh-start.yaml
+- tapOn: "Load example tasks"
+- tapOn: "Search and filter tasks"
+- inputText: "coffee"
+- assertVisible: "(?i)coffee"
+- assertNotVisible: "(?i)plan the weekend"
+- tapOn: "Close search"
+- assertVisible: "(?i)plan the weekend"

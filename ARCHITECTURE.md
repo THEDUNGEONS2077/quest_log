@@ -50,8 +50,8 @@ Status markers:
 | `app/` | Expo Router screens: `_layout.tsx` (providers, store hydration), `index.tsx` (list, back-button handling), `help.tsx` (collapsible user guide; update it with every new gesture or shorthand), `whats-new.tsx` (changelog after an update), `settings.tsx` (settings, backup, import, snapshot restore), `trash.tsx`, `task/[id].tsx` (deep link), `dev.tsx` (hidden dev tools: long-press the title) *(built)* | Reusable components, logic |
 | `components/list/` | `TaskList`, `TaskRow` (incl. group header), `CompletedList`, `StrikeText`, `SwipeableRow`, `NestingGuides`, `drag` (controller, row gesture, overlay), `keepInView`, `titleStyle`, `HighlightFlash`, `Caret` (rotating ▸), `FocusGlow` *(built)* | Store mutations beyond calling actions |
 | `components/edit/` | `InlineEditor` (+ `useEditorFocus`), `NotesField` (editor and linkified view), `ParsedChips` (shorthand preview and clearable field chips), `QuickAddBar`, `EditToolbar` (OUT/IN/SUB/PRI/NOTE/UNDO/DONE) *(built)* | Parsing and key rules (those are `lib/`) |
-| `components/overlays/` | `ActionSheet` (scrolls when long), `ContextMenu`, `DueSheet` (single task or selection), `RepeatSheet`, `MovePicker`, `Toast` *(built)* | |
-| `components/common/` | `Header`, `Tabs`, `SearchBar` (+ filter chips), `Breadcrumb`, `useMinute`, `motion` (Reduce Motion: `MotionConfig`, `useReduceMotion`), `BlockCursor` (one shared blink value), `BootSequence` (`BootGate`, `useBooting`), `useOnboarding` (tips, What's new, first-launch focus) *(built)* | |
+| `components/overlays/` | `SheetModal` (shared bottom-sheet frame: fading backdrop, rising sheet), `ActionSheet` (scrolls when long), `ContextMenu`, `DueSheet` (single task or selection), `RepeatSheet`, `MovePicker`, `Toast` *(built)* | |
+| `components/common/` | `Header`, `Tabs`, `SearchBar` (+ filter chips), `Breadcrumb`, `useMinute`, `motion` (Reduce Motion: `MotionConfig`, `useReduceMotion`), `BlockCursor` (one shared blink value), `BootSequence` (`BootGate`, `useBooting`), `useOnboarding` (tips, What's new, first-launch focus), `CrashScreen` (the root ErrorBoundary: tasks are safe, retry, copy details) *(built)* | |
 | `components/dev/` | Dev-screen tools (`StorePanel`: seed and clear, with confirmation) *(built)* | User-facing features |
 | `store/` | Zustand store (`createStore.ts`), history, memoized selectors, persistence (`persist.ts`, `repair.ts`), migrations, MMKV adapter (`mmkv.ts`), `onboarding` (first-run tips, last build seen), `backup` (reads backup files and snapshots: migrate → repair → validate, with plain-language errors) *(built)* | UI code. Only `mmkv.ts` touches the native storage module |
 | `lib/` | Pure logic. *(built: `types`, `taskMap`, `tree`, `flatten`, `ops`, `complete` (incl. repeat advance), `copy`, `outliner`, `paste`, `parser`, `dates`, `purge`, `reminders`, `externalOps`, `recurrence`, `dnd`, `search`, `bulk` (selection, Move to…, sort, Trash; `sequence()` builds one undo step from many), `sample` (example tasks), `changelog` (CHANGELOG.md → What's new), `backup` (backup file format, counts, merge and replace ops))* | Anything impure |
@@ -61,7 +61,7 @@ Status markers:
 | `scripts/` | Dev tooling: font subset, icon generation, `seed.ts` (7,500-task perf data), `gen-changelog.mjs` (CHANGELOG.md → `assets/changelog.json`; a test fails when stale), release *(built: fonts, icon, seed, changelog)* | App code |
 | `assets/` | Subset fonts, placeholder icons, `changelog.json` (generated) *(built)* | |
 | `__tests__/` | Jest tests, plus `fixtures/` with saved beta data for migration tests *(built: theme, config)* | |
-| `e2e/android/` | Maestro flows *(planned, Phase 14)* | |
+| `e2e/android/` | Maestro flows, run by `scripts/e2e-android.sh` against the separate "quest_log E2E" test app (never the real one) *(written; not yet run, see RELEASING.md)* | |
 | `android/`, `ios/` | **Generated** by `expo prebuild`. Never edited, never committed. | Anything hand-written |
 
 ---

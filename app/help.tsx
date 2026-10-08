@@ -215,6 +215,10 @@ const SECTIONS: Section[] = [
         what: 'Shows what a backup holds, then Merge (add tasks you don’t have) or Replace (swap everything). UNDO works for both.',
       },
       { key: 'Snapshots', what: 'The app keeps a copy of your tasks from each of the last 3 days. Restore one if something goes wrong.' },
+      {
+        key: 'Report a problem',
+        what: 'Settings → Report a problem opens a pre-filled page on GitHub in your browser. The app itself never goes online.',
+      },
     ],
   },
   {

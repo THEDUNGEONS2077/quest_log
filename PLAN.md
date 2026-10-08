@@ -1227,7 +1227,7 @@ Whatever the choice, the release script gets an iOS counterpart that attaches th
 | 11 | **Polish** | Boot sequence, block cursor, focus glow, full motion pass, empty states, first-run tips, Help, What's new, accessibility labels and actions, app icon quick action. |
 | 12 | ~~Android widget~~ | **Removed.** Built and released as v0.11.0, then dropped at the user's request (§11). |
 | 13 | **Settings and backup** | Every setting in §9.17, JSON export/import with validation and preview, snapshot restore, auto-clear. |
-| 14 | **Android beta** | Maestro suite green. §5 budgets met and recorded in `PERF.md`. `release-android.sh` complete with all verification steps. `INSTALL.md` and `RELEASING.md` written. First draft release tested on your phone, then published and the link sent to friends. Iterate in `0.x` releases, with migration tests for every schema change. |
+| 14 | **Android beta** *(as built: v1.0.0. `release-android.sh` and the Maestro flows exist. The suite hasn't run yet: there's no KVM on the build machine, and the test phone blocks USB installs. See RELEASING.md)* | Maestro suite green. §5 budgets met and recorded in `PERF.md`. `release-android.sh` complete with all verification steps. `INSTALL.md` and `RELEASING.md` written. First draft release tested on your phone, then published and the link sent to friends. Iterate in `0.x` releases, with migration tests for every schema change. |
 | 15 | **iOS port** | Distribution method chosen (§15.8) and a Mac available. Complete `IOS_PORT.md`, iOS Maestro suite, iPhone performance check, iOS release script, first iOS beta. |
 
 ---

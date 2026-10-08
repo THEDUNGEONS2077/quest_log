@@ -14,9 +14,10 @@
  * outside or pressing back closes it.
  */
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SheetModal } from './SheetModal';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 export interface SheetAction {
@@ -44,51 +45,43 @@ export function ActionSheet({ visible, title, actions, onClose, children }: Prop
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
-      {/* Backdrop: tap outside the sheet to close. */}
-      {/* The backdrop isn't a screen-reader element (it would swallow the sheet's text);
-          Android back closes the sheet instead. */}
-      <Pressable style={styles.backdrop} onPress={onClose} accessible={false}>
-        <Pressable
-          style={[styles.sheet, { paddingBottom: insets.bottom + space.sm, maxHeight: height * MAX_HEIGHT_SHARE }]}
-          onPress={() => {}}
-          accessible={false}
-        >
-          <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {`${glyphs.prompt.glyph} ${title}`}
-          </Text>
-          <View style={styles.divider} />
-          <ScrollView bounces={false}>
-            {children}
-            {actions.map((a) => (
-              <Pressable
-                key={a.label}
-                style={({ pressed }) => [styles.action, pressed && styles.pressed]}
-                onPress={() => {
-                  if (!a.keepOpen) onClose();
-                  a.onPress();
-                }}
-                accessibilityRole="button"
-                accessibilityLabel={a.label}
-              >
-                <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                  {a.glyph}
-                </Text>
-                <Text style={[type.body, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                  {a.label}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </Pressable>
-      </Pressable>
-    </Modal>
+    // Tap outside or press back to close; the sheet slides up (SheetModal).
+    <SheetModal
+      visible={visible}
+      onClose={onClose}
+      sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.sm, maxHeight: height * MAX_HEIGHT_SHARE }]}
+    >
+      <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        {`${glyphs.prompt.glyph} ${title}`}
+      </Text>
+      <View style={styles.divider} />
+      <ScrollView bounces={false}>
+        {children}
+        {actions.map((a) => (
+          <Pressable
+            key={a.label}
+            style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+            onPress={() => {
+              if (!a.keepOpen) onClose();
+              a.onPress();
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={a.label}
+          >
+            <Text style={[type.glyph, styles.glyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {a.glyph}
+            </Text>
+            <Text style={[type.body, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {a.label}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+    </SheetModal>
   );
 }
 
 const styles = StyleSheet.create({
-  // Black at 60% over the list: the sheet reads as the only thing to act on.
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
     backgroundColor: colors.surfaceRaised,
     borderTopWidth: shape.hairline,

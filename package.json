@@ -58,7 +58,9 @@
     "check": "npm run typecheck && npm run lint && npm test",
     "fonts:subset": "./scripts/subset-fonts.sh",
     "icons:placeholder": "./scripts/make-placeholder-icon.sh",
-    "test:perf": "jest __tests__/perf.test.ts"
+    "test:perf": "jest __tests__/perf.test.ts",
+    "android:e2e": "QUESTLOG_E2E=1 APP_VARIANT=release expo prebuild --clean --platform android && cd android && ./gradlew assembleRelease; s=$?; ./gradlew --stop >/dev/null; exit $s",
+    "e2e": "maestro test e2e/android"
   },
   "private": true,
   "allowScripts": {

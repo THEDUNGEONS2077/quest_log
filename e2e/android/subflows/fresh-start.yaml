@@ -1,0 +1,15 @@
+# Fresh install state: clears data, launches, skips the boot screen, and
+# closes the keyboard the first launch opens for quick-add.
+appId: com.thedungeons2077.questlog.e2e
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    when:
+      visible: "tap to skip"
+    commands:
+      - tapOn: "tap to skip"
+- extendedWaitUntil:
+    visible: "> NO ACTIVE QUESTS.*"
+    timeout: 10000
+- hideKeyboard

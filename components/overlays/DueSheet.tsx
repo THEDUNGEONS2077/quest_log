@@ -22,8 +22,10 @@
  */
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { SheetModal } from './SheetModal';
 
 import { useMinute } from '@/components/common/useMinute';
 import { addDays, atTimeOfDay, duePresets, formatDue, startOfDay } from '@/lib/dates';
@@ -105,76 +107,70 @@ function DueSheetBody({ id }: { id: string }) {
   };
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent navigationBarTranslucent>
-      {/* The backdrop isn't a screen-reader element (it would swallow the sheet's text);
-          Android back closes the sheet instead. */}
-      <Pressable style={styles.backdrop} onPress={close} accessible={false}>
-        <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]} onPress={() => {}} accessible={false}>
-          <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : task.title || 'Untitled task'}`}
-          </Text>
-          {task.dueAt !== null && (
-            <Text style={[type.meta, styles.current]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              {`DUE ${formatDue(task.dueAt, now)}`}
-            </Text>
-          )}
-          <View style={styles.divider} />
+    <SheetModal visible onClose={close} sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
+      <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : task.title || 'Untitled task'}`}
+      </Text>
+      {task.dueAt !== null && (
+        <Text style={[type.meta, styles.current]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          {`DUE ${formatDue(task.dueAt, now)}`}
+        </Text>
+      )}
+      <View style={styles.divider} />
 
-          {/* Presets: two per row. */}
-          <View style={styles.grid}>
-            {duePresets(now, defaultTime).map((p) => (
-              <Option key={p.label} label={p.label} onPress={() => choose(p.at)} />
-            ))}
-            <Option label="CUSTOM…" onPress={custom} wide />
-          </View>
+      {/* Presets: two per row. */}
+      <View style={styles.grid}>
+        {duePresets(now, defaultTime).map((p) => (
+          <Option key={p.label} label={p.label} onPress={() => choose(p.at)} />
+        ))}
+        <Option label="CUSTOM…" onPress={custom} wide />
+      </View>
 
-          {/* Notify toggle. */}
-          <Pressable
-            onPress={() => setNotify((n) => !n)}
-            style={styles.toggleRow}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: notify }}
-            accessibilityLabel="Send a notification"
-          >
-            <Text style={[type.body, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              <Text style={type.glyph}>{glyphs.notify.glyph}</Text> NOTIFY
-            </Text>
-            <Text style={[type.tab, notify ? styles.on : styles.off]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              {notify ? '[ ON ]' : '[ OFF ]'}
-            </Text>
-          </Pressable>
-          {notify && permission === 'denied' && (
-            <Pressable onPress={openNotificationSettings} style={styles.note} accessibilityRole="button">
-              <Text style={[type.meta, styles.noteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                Notifications are blocked for quest_log. The date still works. Tap to open settings.
-              </Text>
-            </Pressable>
-          )}
-
-          {/* Repeat: its own sheet (PLAN §9.9). One task at a time. */}
-          {!forSelection && (
-            <Option
-              label={`${glyphs.repeat.glyph} ${task.repeat ? `REPEAT: ${repeatLabel(task.repeat)}` : 'REPEAT…'}`}
-              onPress={() => {
-                close();
-                actions.openRepeatSheet(id);
-              }}
-              wide
-            />
-          )}
-
-          {(task.dueAt !== null || forSelection) && (
-            <Option
-              label={`${glyphs.delete.glyph} CLEAR DATE`}
-              onPress={() => {
-                apply(null, false);
-                close();
-              }}
-              wide
-            />
-          )}
-        </Pressable>
+      {/* Notify toggle. */}
+      <Pressable
+        onPress={() => setNotify((n) => !n)}
+        style={styles.toggleRow}
+        accessibilityRole="switch"
+        accessibilityState={{ checked: notify }}
+        accessibilityLabel="Send a notification"
+      >
+        <Text style={[type.body, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          <Text style={type.glyph}>{glyphs.notify.glyph}</Text> NOTIFY
+        </Text>
+        <Text style={[type.tab, notify ? styles.on : styles.off]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          {notify ? '[ ON ]' : '[ OFF ]'}
+        </Text>
       </Pressable>
+      {notify && permission === 'denied' && (
+        <Pressable onPress={openNotificationSettings} style={styles.note} accessibilityRole="button">
+          <Text style={[type.meta, styles.noteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            Notifications are blocked for quest_log. The date still works. Tap to open settings.
+          </Text>
+        </Pressable>
+      )}
+
+      {/* Repeat: its own sheet (PLAN §9.9). One task at a time. */}
+      {!forSelection && (
+        <Option
+          label={`${glyphs.repeat.glyph} ${task.repeat ? `REPEAT: ${repeatLabel(task.repeat)}` : 'REPEAT…'}`}
+          onPress={() => {
+            close();
+            actions.openRepeatSheet(id);
+          }}
+          wide
+        />
+      )}
+
+      {(task.dueAt !== null || forSelection) && (
+        <Option
+          label={`${glyphs.delete.glyph} CLEAR DATE`}
+          onPress={() => {
+            apply(null, false);
+            close();
+          }}
+          wide
+        />
+      )}
 
       {/* iOS has no imperative dialog: an inline picker (Phase 15 polishes this). */}
       {iosPicker && (
@@ -187,7 +183,7 @@ function DueSheetBody({ id }: { id: string }) {
           }}
         />
       )}
-    </Modal>
+    </SheetModal>
   );
 }
 
@@ -208,7 +204,6 @@ function Option({ label, onPress, wide }: { label: string; onPress: () => void; 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
     backgroundColor: colors.surfaceRaised,
     borderTopWidth: shape.hairline,

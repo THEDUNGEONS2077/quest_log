@@ -15,7 +15,8 @@
  *     defined by importing services/notificationTask first, at load time.
  *   - motion: the Reduce Motion setting, applied to every animation,
  *   - the boot screen, laid over the app on a cold start (BootGate),
- *   - the app icon's "New task" shortcut (services/quickActions.ts).
+ *   - the app icon's "New task" shortcut (services/quickActions.ts),
+ *   - the crash screen (the exported ErrorBoundary, CrashScreen.tsx).
  *
  * Fonts need no loading step here: they're embedded at build time by the
  * expo-font config plugin (app.config.ts).
@@ -40,6 +41,12 @@ import { startReminders } from '@/services/reminderLifecycle';
 import { appBundle, kv } from '@/store';
 import { StoreProvider } from '@/store/react';
 import { colors } from '@/theme';
+
+/**
+ * Crash safety net: Expo Router shows this instead of the app when a screen
+ * throws while rendering (components/common/CrashScreen.tsx).
+ */
+export { CrashScreen as ErrorBoundary } from '@/components/common/CrashScreen';
 
 export default function RootLayout() {
   // Keep the haptics service in step with the "Haptics" setting.

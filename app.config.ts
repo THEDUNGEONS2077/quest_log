@@ -100,19 +100,23 @@ export const RELEASE_BLOCKED_PERMISSIONS = [
  */
 export function buildConfig(variant: Variant, base: Partial<ExpoConfig> = {}): ExpoConfig {
   const isDev = variant === 'dev';
-  const appId = isDev ? `${APP_ID}.dev` : APP_ID;
+  // QUESTLOG_E2E=1: the Maestro test build. A release build installed as a
+  // separate app ("quest_log E2E", own package and scheme), so tests that
+  // clear app data can never touch the real app's tasks. Never published.
+  const isE2E = !isDev && process.env.QUESTLOG_E2E === '1';
+  const appId = isDev ? `${APP_ID}.dev` : isE2E ? `${APP_ID}.e2e` : APP_ID;
   // The dev icon set has a "DEV" label under the mark.
   const icon = (name: string) => `./assets/icon/${name}${isDev ? '-dev' : ''}.png`;
 
   return {
     ...base,
-    name: isDev ? 'quest_log DEV' : 'quest_log',
+    name: isDev ? 'quest_log DEV' : isE2E ? 'quest_log E2E' : 'quest_log',
     slug: 'quest_log',
     // version.json is the single source of truth for versions (PLAN §15.4).
     version: version.versionName,
     // Deep links: questlog://task/<id>. The dev build uses a separate scheme
     // so links never open the wrong install.
-    scheme: isDev ? 'questlog-dev' : 'questlog',
+    scheme: isDev ? 'questlog-dev' : isE2E ? 'questlog-e2e' : 'questlog',
     orientation: 'portrait',
     userInterfaceStyle: 'dark',
     backgroundColor: BLACK,
@@ -193,8 +197,9 @@ export function buildConfig(variant: Variant, base: Partial<ExpoConfig> = {}): E
           android: {
             // arm64 only: smaller APKs and faster builds. Covers essentially
             // every phone from recent years (PLAN §15.6). Also used for dev,
-            // since the test phone is arm64.
-            buildArchs: ['arm64-v8a'],
+            // since the test phone is arm64. QUESTLOG_ABIS overrides it, e.g.
+            // for an x86_64 emulator build of the Maestro test app.
+            buildArchs: (process.env.QUESTLOG_ABIS ?? 'arm64-v8a').split(','),
             // R8 code shrinking plus resource shrinking for release (PLAN §5 size budgets).
             enableMinifyInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,

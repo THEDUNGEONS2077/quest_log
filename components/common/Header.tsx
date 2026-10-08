@@ -32,8 +32,9 @@ export function Header() {
   return (
     <View style={styles.header}>
       <View style={styles.titleRow}>
-        <Pressable onLongPress={() => router.push('/dev')} delayLongPress={1500} accessibilityRole="header">
-          <Text style={[type.display, styles.title]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        {/* The title gives way first at large text sizes, so the buttons always fit. */}
+        <Pressable onLongPress={() => router.push('/dev')} delayLongPress={1500} accessibilityRole="header" style={styles.titleBox}>
+          <Text style={[type.display, styles.title]} numberOfLines={1} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             {`${glyphs.prompt.glyph} quest_log`}
           </Text>
         </Pressable>
@@ -82,6 +83,7 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: space.sm },
   icons: { flexDirection: 'row', gap: space.sm },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleBox: { flexShrink: 1, marginRight: space.sm },
   title: { color: colors.accent, ...platformText },
   iconButton: {
     width: size.hitTarget,

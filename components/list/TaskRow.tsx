@@ -194,8 +194,11 @@ export const TaskRow = memo(
               </Text>
             </Pressable>
 
-            {/* Title (editor or text), then chips and notes while editing, or notes when expanded. */}
-            <View style={styles.title}>
+            {/* Title (editor or text), then chips and notes while editing, or notes when expanded.
+                The whole column is the tap target, not just the title's letters, so a
+                short title is as easy to tap as a long one. Screen readers use the
+                row's actions instead (accessible={false} keeps one element per row). */}
+            <Pressable style={styles.title} onPress={editing ? undefined : tapTitle} disabled={editing} accessible={false}>
               {field === 'title' ? (
                 <InlineEditor id={task.id} title={task.title} variant={variant} />
               ) : (
@@ -217,7 +220,7 @@ export const TaskRow = memo(
               ) : (
                 (notesOpen || editing) && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
               )}
-            </View>
+            </Pressable>
 
             {/* While editing the title of a task without notes: the quiet "+ NOTE" affordance (PLAN §9.7). */}
             {/* Group headers: "+" adds a subtask straight from the title (user request 2026-10-08). */}

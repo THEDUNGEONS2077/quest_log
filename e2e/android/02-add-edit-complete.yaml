@@ -1,0 +1,21 @@
+# The core loop: add a task, rename it, complete it, undo the completion.
+appId: com.thedungeons2077.questlog.e2e
+name: Add, edit, complete, undo
+---
+- runFlow: subflows/fresh-start.yaml
+- runFlow:
+    file: subflows/add-task.yaml
+    env:
+      TITLE: "Buy milk"
+- assertVisible: "(?i)buy milk"
+# Edit: tap the title, replace the text, Enter saves.
+- tapOn: "(?i)buy milk"
+- eraseText: 20
+- inputText: "Buy oat milk"
+- pressKey: Enter
+- assertVisible: "(?i)buy oat milk"
+# Complete it: it moves to COMPLETED, with UNDO.
+- tapOn: "Complete Buy oat milk"
+- assertVisible: "COMPLETED"
+- tapOn: "Undo"
+- assertVisible: "(?i)buy oat milk"

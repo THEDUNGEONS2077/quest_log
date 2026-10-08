@@ -2,6 +2,17 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.0.0 (build 19)
+
+Version 1: ready for beta testers.
+
+- **Easier tapping:** tap anywhere in a task's title area to edit it, not just on the words.
+- **Smoother sheets:** menus and the date and repeat pickers rise into place over a fading backdrop.
+- **Large text:** at the biggest Android font sizes, the header shrinks its title so the buttons always fit.
+- **Crash safety net:** if a screen ever fails, the app says **SOMETHING WENT WRONG**, reassures you that your tasks are safe, and offers **TRY AGAIN** and **COPY ERROR DETAILS**.
+- **Report a problem** (Settings → Help) opens a pre-filled GitHub page in your browser. The app itself still never goes online.
+- New install, backup and update guides for testers (`INSTALL.md`), and a README on GitHub.
+
 ## 0.12.0 (build 18)
 
 Settings and backup.

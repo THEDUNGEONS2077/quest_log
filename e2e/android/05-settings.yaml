@@ -1,0 +1,21 @@
+# Settings opens, a toggle switches and stays switched, and help screens open.
+appId: com.thedungeons2077.questlog.e2e
+name: Settings and help
+---
+- runFlow: subflows/fresh-start.yaml
+- tapOn: "Settings"
+- assertVisible: "> settings"
+- tapOn: "Haptics"
+- assertVisible: "\\[OFF\\]"
+- tapOn: "Close settings"
+- tapOn: "Settings"
+- assertVisible: "\\[OFF\\]"
+- scrollUntilVisible:
+    element: "What's new"
+- tapOn: "What's new"
+- assertVisible: "> what's new"
+- tapOn: "Close what's new"
+- tapOn: "Close settings"
+- tapOn: "User guide"
+- assertVisible: "START HERE"
+- tapOn: "Close guide"

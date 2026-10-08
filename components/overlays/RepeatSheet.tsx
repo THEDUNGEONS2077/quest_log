@@ -17,8 +17,10 @@
  * keyed by task, so each opening starts from that task's rule.
  */
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { SheetModal } from './SheetModal';
 
 import { PRESETS, repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
@@ -64,100 +66,90 @@ function RepeatSheetBody({ id }: { id: string }) {
     rule.freq === r.freq && rule.interval === r.interval && (rule.weekdays ?? []).join() === (r.weekdays ?? []).join();
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={close} statusBarTranslucent navigationBarTranslucent>
-      {/* The backdrop isn't a screen-reader element (it would swallow the sheet's text);
-          Android back closes the sheet instead. */}
-      <Pressable style={styles.backdrop} onPress={close} accessible={false}>
-        <Pressable style={[styles.sheet, { paddingBottom: insets.bottom + space.md }]} onPress={() => {}} accessible={false}>
-          <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {`${glyphs.prompt.glyph} ${task.title || 'Untitled task'}`}
-          </Text>
-          <Text style={[type.meta, styles.summary]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {`${glyphs.repeat.glyph} ${repeatLabel(rule)}`}
-          </Text>
-          <View style={styles.divider} />
+    <SheetModal visible onClose={close} sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
+      <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        {`${glyphs.prompt.glyph} ${task.title || 'Untitled task'}`}
+      </Text>
+      <Text style={[type.meta, styles.summary]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        {`${glyphs.repeat.glyph} ${repeatLabel(rule)}`}
+      </Text>
+      <View style={styles.divider} />
 
-          {/* Presets. */}
-          <View style={styles.grid}>
-            {(Object.keys(PRESETS) as (keyof typeof PRESETS)[]).map((k) => (
-              <Chip key={k} label={k.toUpperCase()} selected={isPreset(PRESETS[k])} onPress={() => preset(PRESETS[k])} />
-            ))}
-          </View>
+      {/* Presets. */}
+      <View style={styles.grid}>
+        {(Object.keys(PRESETS) as (keyof typeof PRESETS)[]).map((k) => (
+          <Chip key={k} label={k.toUpperCase()} selected={isPreset(PRESETS[k])} onPress={() => preset(PRESETS[k])} />
+        ))}
+      </View>
 
-          {/* Weekly: which days. */}
-          {rule.freq === 'week' && (
-            <View style={styles.days} accessibilityLabel="Repeat on days">
-              {DAY_LETTERS.map((letter, d) => {
-                const on = rule.weekdays?.includes(d) ?? false;
-                return (
-                  <Pressable
-                    key={d}
-                    onPress={() => toggleDay(d)}
-                    style={[styles.day, on && styles.selected]}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: on }}
-                    accessibilityLabel={DAY_NAMES[d]}
-                  >
-                    <Text style={[type.tab, on ? styles.accent : styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                      {letter}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
+      {/* Weekly: which days. */}
+      {rule.freq === 'week' && (
+        <View style={styles.days} accessibilityLabel="Repeat on days">
+          {DAY_LETTERS.map((letter, d) => {
+            const on = rule.weekdays?.includes(d) ?? false;
+            return (
+              <Pressable
+                key={d}
+                onPress={() => toggleDay(d)}
+                style={[styles.day, on && styles.selected]}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: on }}
+                accessibilityLabel={DAY_NAMES[d]}
+              >
+                <Text style={[type.tab, on ? styles.accent : styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  {letter}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
 
-          {/* Custom interval: EVERY [−] N [+] [UNIT]. */}
-          <View style={styles.row}>
-            <Text style={[type.tab, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              EVERY
-            </Text>
-            <Step label="−" a11y="Fewer" onPress={() => setRule({ ...rule, interval: Math.max(1, rule.interval - 1) })} />
-            <Text
-              style={[type.body, styles.count]}
-              accessibilityLabel={`Every ${rule.interval}`}
-              maxFontSizeMultiplier={maxFontSizeMultiplier}
-            >
-              {rule.interval}
-            </Text>
-            <Step label="+" a11y="More" onPress={() => setRule({ ...rule, interval: Math.min(99, rule.interval + 1) })} />
-            <Chip
-              label={UNITS.find((u) => u.freq === rule.freq)!.label}
-              selected
-              onPress={() => {
-                // Cycle the unit; weekdays only apply to weeks.
-                const i = UNITS.findIndex((u) => u.freq === rule.freq);
-                const freq = UNITS[(i + 1) % UNITS.length]!.freq;
-                setRule({ ...rule, freq, weekdays: freq === 'week' ? rule.weekdays : undefined });
-              }}
-            />
-          </View>
+      {/* Custom interval: EVERY [−] N [+] [UNIT]. */}
+      <View style={styles.row}>
+        <Text style={[type.tab, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          EVERY
+        </Text>
+        <Step label="−" a11y="Fewer" onPress={() => setRule({ ...rule, interval: Math.max(1, rule.interval - 1) })} />
+        <Text style={[type.body, styles.count]} accessibilityLabel={`Every ${rule.interval}`} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          {rule.interval}
+        </Text>
+        <Step label="+" a11y="More" onPress={() => setRule({ ...rule, interval: Math.min(99, rule.interval + 1) })} />
+        <Chip
+          label={UNITS.find((u) => u.freq === rule.freq)!.label}
+          selected
+          onPress={() => {
+            // Cycle the unit; weekdays only apply to weeks.
+            const i = UNITS.findIndex((u) => u.freq === rule.freq);
+            const freq = UNITS[(i + 1) % UNITS.length]!.freq;
+            setRule({ ...rule, freq, weekdays: freq === 'week' ? rule.weekdays : undefined });
+          }}
+        />
+      </View>
 
-          {/* Count from the schedule, or from when it was done. */}
-          <View style={styles.row}>
-            <Text style={[type.tab, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              FROM
-            </Text>
-            <Chip label="SCHEDULE" selected={rule.from === 'schedule'} onPress={() => setRule({ ...rule, from: 'schedule' })} />
-            <Chip label="AFTER DONE" selected={rule.from === 'completion'} onPress={() => setRule({ ...rule, from: 'completion' })} />
-          </View>
+      {/* Count from the schedule, or from when it was done. */}
+      <View style={styles.row}>
+        <Text style={[type.tab, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          FROM
+        </Text>
+        <Chip label="SCHEDULE" selected={rule.from === 'schedule'} onPress={() => setRule({ ...rule, from: 'schedule' })} />
+        <Chip label="AFTER DONE" selected={rule.from === 'completion'} onPress={() => setRule({ ...rule, from: 'completion' })} />
+      </View>
 
-          <View style={[styles.row, styles.actions]}>
-            <Chip label={`${glyphs.done.glyph} SAVE`} selected onPress={save} grow />
-            {task.repeat && (
-              <Chip
-                label={`${glyphs.delete.glyph} STOP REPEATING`}
-                onPress={() => {
-                  actions.setRepeat(id, null);
-                  close();
-                }}
-                grow
-              />
-            )}
-          </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+      <View style={[styles.row, styles.actions]}>
+        <Chip label={`${glyphs.done.glyph} SAVE`} selected onPress={save} grow />
+        {task.repeat && (
+          <Chip
+            label={`${glyphs.delete.glyph} STOP REPEATING`}
+            onPress={() => {
+              actions.setRepeat(id, null);
+              close();
+            }}
+            grow
+          />
+        )}
+      </View>
+    </SheetModal>
   );
 }
 
@@ -195,7 +187,6 @@ function Step({ label, a11y, onPress }: { label: string; a11y: string; onPress: 
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   sheet: {
     backgroundColor: colors.surfaceRaised,
     borderTopWidth: shape.hairline,

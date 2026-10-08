@@ -1,0 +1,11 @@
+# First run: empty state, example tasks, and UNDO removing them again.
+appId: com.thedungeons2077.questlog.e2e
+name: First run and example tasks
+---
+- runFlow: subflows/fresh-start.yaml
+- tapOn: "Load example tasks"
+- assertVisible: "(?i)welcome to quest_log"
+- assertVisible: "(?i)groceries"
+- assertVisible: "EXAMPLE TASKS ADDED"
+- tapOn: "Undo"
+- assertVisible: "> NO ACTIVE QUESTS.*"

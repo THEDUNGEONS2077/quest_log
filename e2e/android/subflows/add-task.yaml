@@ -1,0 +1,6 @@
+# Adds one task through the quick-add bar. Param: TITLE.
+appId: com.thedungeons2077.questlog.e2e
+---
+- tapOn: "New task"
+- inputText: ${TITLE}
+- pressKey: Enter

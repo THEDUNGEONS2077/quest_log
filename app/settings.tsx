@@ -16,7 +16,7 @@
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionSheet, type SheetAction } from '@/components/overlays/ActionSheet';
@@ -30,6 +30,18 @@ import { BackupError, parseBackup } from '@/store/backup';
 import { useActions, useAppStore } from '@/store/react';
 import type { Settings } from '@/store/settings';
 import { colors, glyphs as g, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+
+/** Where beta testers report problems (opened in the browser, only when tapped). */
+const ISSUES_URL = 'https://github.com/THEDUNGEONS2077/quest_log/issues/new';
+
+/**
+ * Opens a new GitHub issue with the version filled in. The app itself has no
+ * network access: the browser opens the page, and the tester decides what to send.
+ */
+function reportProblem(): void {
+  const body = `**What happened?**\n\n\n**What did you expect?**\n\n\n---\nquest_log v${appVersion()} (build ${appBuild()}), Android ${String(Platform.Version)}`;
+  void Linking.openURL(`${ISSUES_URL}?body=${encodeURIComponent(body)}`);
+}
 
 /** Default-time choices offered where the system time picker isn't used. */
 const TIME_PRESETS = [7, 8, 9, 12, 18, 20].map((h) => h * 60);
@@ -268,6 +280,7 @@ export default function SettingsScreen() {
         <Section title="HELP">
           <Action glyph={g.help.glyph} label="User guide" onPress={() => router.push('/help')} />
           <Action glyph={g.prompt.glyph} label="What's new" onPress={() => router.push('/whats-new')} />
+          <Action glyph={g.copy.glyph} label="Report a problem" onPress={reportProblem} />
           <Text style={[type.meta, styles.dim, styles.version]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             {`quest_log v${appVersion()} (build ${appBuild()}) · offline, no accounts, no tracking`}
           </Text>

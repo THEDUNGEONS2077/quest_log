@@ -210,8 +210,15 @@ const CompletedRow = memo(
                   {glyphs.checkboxOn.glyph}
                 </Text>
               </Pressable>
-              {/* No strikethrough here: a full screen of them is noise (PLAN §9.6). */}
-              <View style={styles.title}>
+              {/* No strikethrough here: a full screen of them is noise (PLAN §9.6).
+                  The whole column is the tap target (as on ACTIVE); screen readers use the row's actions. */}
+              <Pressable
+                style={styles.title}
+                onPress={editing ? undefined : () => actions.setEditing(task.id)}
+                onLongPress={editing ? undefined : () => setMenu(true)}
+                disabled={editing}
+                accessible={false}
+              >
                 {field === 'title' ? (
                   <InlineEditor id={task.id} title={task.title} variant={variant} />
                 ) : (
@@ -246,7 +253,7 @@ const CompletedRow = memo(
                 ) : (
                   editing && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
                 )}
-              </View>
+              </Pressable>
             </Pressable>
           </SwipeableRow>
         </View>
