@@ -18,6 +18,7 @@ import { useActions } from '@/store/react';
 import { colors, maxFontSizeMultiplier, platformText, space, type } from '@/theme';
 
 import { useEditorFocus } from './InlineEditor';
+import { useOwnedText } from './useOwnedText';
 
 /** Max notes length (PLAN §9.3). */
 export const NOTES_MAX = 10_000;
@@ -28,19 +29,27 @@ export function NotesEditor({ id, notes }: { id: string; notes: string }) {
   const actions = useActions();
   const focus = useEditorFocus(id);
   const input = useRef<TextInput>(null);
+  // The field owns its text while typing; outside changes remount it (useOwnedText.ts).
+  const { epoch, typed } = useOwnedText(notes);
 
-  // Focus on mount, caret at the end (continue writing).
+  // Focus on mount (and after an outside change), caret at the end (continue writing).
   useEffect(() => {
     input.current?.focus();
     input.current?.setSelection?.(notes.length, notes.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [epoch]);
 
   return (
     <TextInput
+      // Uncontrolled: see useOwnedText.ts (Android keyboard suggestions).
+      key={epoch}
       ref={input}
-      value={notes}
-      onChangeText={(text) => actions.updateNotes(id, text.slice(0, NOTES_MAX))}
+      defaultValue={notes}
+      onChangeText={(text) => {
+        const next = text.slice(0, NOTES_MAX);
+        typed(next);
+        actions.updateNotes(id, next);
+      }}
       onFocus={focus.onFocus}
       onContentSizeChange={focus.onContentSizeChange}
       onBlur={focus.onBlur}

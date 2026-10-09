@@ -21,6 +21,8 @@ import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { useKeepInView } from '@/components/list/keepInView';
 import { type TitleVariant, titleStyles } from '@/components/list/titleStyle';
 import { useActions, useStoreBundle } from '@/store/react';
+
+import { useOwnedText } from './useOwnedText';
 import { colors, maxFontSizeMultiplier, platformText } from '@/theme';
 
 /**
@@ -72,25 +74,32 @@ export function InlineEditor({ id, title, variant }: Props) {
   const { store } = useStoreBundle();
   const input = useRef<TextInput>(null);
   const caret = useRef({ start: title.length, end: title.length });
+  // The field owns its text while typing; outside changes remount it (useOwnedText.ts).
+  const { epoch, typed } = useOwnedText(title);
 
   // On mount: focus, and put the caret where the action asked (default: end).
+  // After an outside change (new epoch): refocus with the caret at the end.
   useEffect(() => {
-    const wanted = store.getState().editingCaret;
+    const wanted = epoch === 0 ? store.getState().editingCaret : null;
     const at = wanted === null ? title.length : Math.min(wanted, title.length);
     caret.current = { start: at, end: at };
     input.current?.focus();
     // setSelection is missing on some TextInput implementations (tests); optional call.
     input.current?.setSelection?.(at, at);
-    // Only on mount: later caret moves come from the user.
+    // Only on mount and on a new epoch: later caret moves come from the user.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [epoch]);
 
   const onChangeText = (text: string) => {
     // One line break added to the title = Enter (the web build inserts it
     // instead of submitting): save and close. Any other line break = a paste.
     if (isEnterInsert(title, text)) actions.finishEditing(id);
     else if (text.includes('\n')) actions.pasteIntoTask(id, text);
-    else actions.updateTitle(id, text.slice(0, TITLE_MAX));
+    else {
+      const next = text.slice(0, TITLE_MAX);
+      typed(next); // the field already shows this: don't write it back
+      actions.updateTitle(id, next);
+    }
   };
 
   const onKeyPress = (e: NativeSyntheticEvent<TextInputKeyPressEventData>) => {
@@ -106,8 +115,11 @@ export function InlineEditor({ id, title, variant }: Props) {
 
   return (
     <TextInput
+      // Uncontrolled (defaultValue): writing the value back on every keystroke
+      // breaks Android keyboards' word suggestions ("@1pm" → "@1p1pm").
+      key={epoch}
       ref={input}
-      value={title}
+      defaultValue={title}
       onChangeText={onChangeText}
       onSelectionChange={(e) => (caret.current = e.nativeEvent.selection)}
       onKeyPress={onKeyPress}

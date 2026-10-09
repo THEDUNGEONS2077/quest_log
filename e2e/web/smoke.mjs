@@ -5,7 +5,8 @@
 // main journeys and fails on the first broken one or on any page error:
 //   first run → example tasks → quick-add with shorthand → complete + UNDO
 //   → data survives a reload → the app opens OFFLINE (service worker)
-//   → due date through the browser picker → backup save and import.
+//   → due date through the browser picker → amend it (sheet fits the screen)
+//   → backup save and import.
 // Screenshots of each step go to e2e/web/screenshots/ (git-ignored).
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync } from 'node:fs';
@@ -144,6 +145,26 @@ await check('due-date-via-browser-picker', async () => {
   await picker.fill(`${next.getFullYear()}-${pad(next.getMonth() + 1)}-${pad(next.getDate())}T16:30`);
   // fill() fires the input's change event, like confirming the picker; the app then removes the input.
   // Choosing a date closes the sheet and ends editing; the row shows the new date.
+  await visible(/16:30/);
+});
+
+await check('amend-sheet-fits-on-screen', async () => {
+  // Bug 2026-10-09: the due sheet outgrew the screen and hid AMEND. Open it for the
+  // now-dated task and require the top (AMEND) and bottom (CLEAR DATE) to be on screen.
+  await page.getByText(/16:30/).first().click();
+  const { height } = page.viewportSize();
+  for (const label of ['CHANGE DATE…', 'CHANGE TIME…', '+1 DAY']) {
+    const box = await page.getByText(label).first().boundingBox();
+    if (!box || box.y < 0 || box.y + box.height > height) throw new Error(`"${label}" is off screen`);
+  }
+  // On short screens the rest scrolls into view (it must not be cut off).
+  const clear = page.getByText('CLEAR DATE').first();
+  await clear.scrollIntoViewIfNeeded();
+  const box = await clear.boundingBox();
+  if (!box || box.y + box.height > height) throw new Error('"CLEAR DATE" cannot be scrolled into view');
+  await page.getByText('CHANGE DATE…').first().scrollIntoViewIfNeeded();
+  // +1 DAY moves the date and closes the sheet.
+  await page.getByLabel('+1 DAY').click();
   await visible(/16:30/);
 });
 

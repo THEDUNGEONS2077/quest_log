@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.2.1",
+    "build": 22,
+    "lines": [
+      "Fixes for typing shorthand and changing dates.",
+      "- **Typing `@1pm` no longer turns into `@1p1pm`.** When your keyboard suggested or completed a word, the app wrote the text back into the box at the wrong moment and the suggestion was added twice. Text boxes now keep your typing as it is.",
+      "- **The due-date sheet fits the screen.** With the new AMEND buttons it had grown taller than the screen, so the top (including AMEND) was hidden and only the REPEAT button showed. It now always fits, and scrolls on small screens."
+    ]
+  },
+  {
     "version": "1.2.0",
     "build": 21,
     "lines": [
@@ -76,23 +85,6 @@
       "  - The COMPLETED tab's buttons are now labeled.",
       "  - Pop-up sheets read their contents properly.",
       "- **Reduce motion** now applies to every animation."
-    ]
-  },
-  {
-    "version": "0.9.0",
-    "build": 15,
-    "lines": [
-      "Finding, focusing and organizing.",
-      "- **All main tasks are in caps,** like group titles, whether or not they have subtasks.",
-      "- **A rewritten user guide** (`?`): plain-language sections that open with a tap, starting with **START HERE**.",
-      "- **Search** (`/` at the top right) searches titles and notes on the tab you're on. Capitals and accents don't matter. Results show the groups they're in, dimmed, and the matched text is highlighted.",
-      "- **Filters** (with search on ACTIVE): **!!!** high priority · **DUE** · **OVERDUE** · **↻** repeating.",
-      "- **Zoom into a group** (hold → Zoom into) to see only that group. The path at the top (`← ALL / WORK / …`) takes you back up, and so does the back button.",
-      "- **Select several tasks** (hold → Select, then tap more). The bar at the bottom offers **DONE · PRI · DUE · MOVE · GROUP · DEL**.",
-      "- **Move to…** (hold menu) sends a task to any group from a searchable list.",
-      "- **Sort subtasks…** (hold menu) orders a group by priority, due date or A–Z, once.",
-      "- **Trash** (on the COMPLETED tab): deleted tasks are kept for 7 days. Restore them to where they were, or delete them for good.",
-      "- **Back button** steps out of selection, then search, then zoom, before leaving the app."
     ]
   }
 ]

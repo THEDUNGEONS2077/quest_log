@@ -52,7 +52,7 @@ export function QuickAddBar({ onHeight }: Props) {
     }
     if (next.includes('\n')) {
       actions.quickPaste(next);
-      setText('');
+      clear();
     } else {
       setText(next);
     }
@@ -71,6 +71,12 @@ export function QuickAddBar({ onHeight }: Props) {
     return () => clearTimeout(t);
   }, [focusRequest]);
 
+  /** Empties the field. It's uncontrolled (see the TextInput below), so it's cleared directly. */
+  const clear = () => {
+    input.current?.clear();
+    setText('');
+  };
+
   const submit = () => {
     const title = text.trim();
     if (!title) {
@@ -78,7 +84,7 @@ export function QuickAddBar({ onHeight }: Props) {
       return;
     }
     actions.quickAdd(title);
-    setText('');
+    clear();
     input.current?.blur(); // done: the keyboard goes away after each added task
   };
 
@@ -130,7 +136,9 @@ export function QuickAddBar({ onHeight }: Props) {
             )}
             <TextInput
               ref={input}
-              value={text}
+              // Uncontrolled: writing the value back on every keystroke breaks Android
+              // keyboards' word suggestions ("@1pm" → "@1p1pm"; components/edit/useOwnedText.ts).
+              defaultValue=""
               onChangeText={onChangeText}
               onSubmitEditing={submit}
               onFocus={() => {

@@ -22,7 +22,7 @@
  */
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SheetModal } from './SheetModal';
@@ -36,6 +36,9 @@ import { getPermissionState, openNotificationSettings, type PermissionState } fr
 import { SELECTION } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+
+/** The sheet never covers more than this share of the screen; its options scroll. */
+const MAX_HEIGHT_SHARE = 0.85;
 
 /** Renders the sheet for the task in `dueSheetFor`; keyed by task, so each opening starts fresh. */
 export function DueSheet() {
@@ -53,6 +56,7 @@ function DueSheetBody({ id }: { id: string }) {
   const defaultTime = useAppStore((s) => s.settings.defaultTimeMinutes);
   const actions = useActions();
   const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
   const now = useMinute();
   // Starts from the task's notify flag, or the setting's default for a task without a date.
   const [notify, setNotify] = useState(() => (task && task.dueAt !== null ? task.notify : notifyDefault));
@@ -113,7 +117,14 @@ function DueSheetBody({ id }: { id: string }) {
   };
 
   return (
-    <SheetModal visible onClose={close} sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
+    // Never taller than 85% of the screen; the options scroll under a fixed title.
+    // (Bug 2026-10-09: with AMEND the sheet outgrew the screen, its top, AMEND
+    // included, went off-screen, and only REPEAT… and below were visible.)
+    <SheetModal
+      visible
+      onClose={close}
+      sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md, maxHeight: height * MAX_HEIGHT_SHARE }]}
+    >
       <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : task.title || 'Untitled task'}`}
       </Text>
@@ -124,90 +135,92 @@ function DueSheetBody({ id }: { id: string }) {
       )}
       <View style={styles.divider} />
 
-      {/* AMEND: a task that already has a date changes it without starting over
+      <ScrollView style={styles.scroll} bounces={false} keyboardShouldPersistTaps="handled">
+        {/* AMEND: a task that already has a date changes it without starting over
           (user request 2026-10-09). CHANGE DATE keeps the time, CHANGE TIME keeps
           the day, and the nudges move it from where it is. */}
-      {amendable && (
-        <>
-          <Text style={[type.meta, styles.section]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            AMEND
+        {amendable && (
+          <>
+            <Text style={[type.meta, styles.section]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              AMEND
+            </Text>
+            <View style={styles.grid}>
+              <Option label="CHANGE DATE…" onPress={changeDate} />
+              <Option label="CHANGE TIME…" onPress={changeTime} />
+              <Option label="+1 HOUR" onPress={() => choose(nudgeDue(task.dueAt!, 'hour'))} third />
+              <Option label="+1 DAY" onPress={() => choose(nudgeDue(task.dueAt!, 'day'))} third />
+              <Option label="+1 WEEK" onPress={() => choose(nudgeDue(task.dueAt!, 'week'))} third />
+            </View>
+            <Text
+              style={[type.meta, styles.section, styles.sectionGap]}
+              accessibilityRole="header"
+              maxFontSizeMultiplier={maxFontSizeMultiplier}
+            >
+              NEW DATE
+            </Text>
+          </>
+        )}
+
+        {/* Presets: two per row. */}
+        <View style={styles.grid}>
+          {duePresets(now, defaultTime).map((p) => (
+            <Option key={p.label} label={p.label} onPress={() => choose(p.at)} />
+          ))}
+          <Option label="CUSTOM…" onPress={custom} wide />
+        </View>
+
+        {/* Notify toggle. Where reminders can't exist (the web build), a note instead. */}
+        {permission === 'unsupported' ? (
+          <Text style={[type.meta, styles.noteText, styles.note]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            Reminders need the Android app. Here, due dates still show and turn OVERDUE.
           </Text>
-          <View style={styles.grid}>
-            <Option label="CHANGE DATE…" onPress={changeDate} />
-            <Option label="CHANGE TIME…" onPress={changeTime} />
-            <Option label="+1 HOUR" onPress={() => choose(nudgeDue(task.dueAt!, 'hour'))} third />
-            <Option label="+1 DAY" onPress={() => choose(nudgeDue(task.dueAt!, 'day'))} third />
-            <Option label="+1 WEEK" onPress={() => choose(nudgeDue(task.dueAt!, 'week'))} third />
-          </View>
-          <Text
-            style={[type.meta, styles.section, styles.sectionGap]}
-            accessibilityRole="header"
-            maxFontSizeMultiplier={maxFontSizeMultiplier}
+        ) : (
+          <Pressable
+            onPress={() => setNotify((n) => !n)}
+            style={styles.toggleRow}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: notify }}
+            accessibilityLabel="Send a notification"
           >
-            NEW DATE
-          </Text>
-        </>
-      )}
+            <Text style={[type.body, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              <Text style={type.glyph}>{glyphs.notify.glyph}</Text> NOTIFY
+            </Text>
+            <Text style={[type.tab, notify ? styles.on : styles.off]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {notify ? '[ ON ]' : '[ OFF ]'}
+            </Text>
+          </Pressable>
+        )}
+        {notify && permission === 'denied' && (
+          <Pressable onPress={openNotificationSettings} style={styles.note} accessibilityRole="button">
+            <Text style={[type.meta, styles.noteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              Notifications are blocked for quest_log. The date still works. Tap to open settings.
+            </Text>
+          </Pressable>
+        )}
 
-      {/* Presets: two per row. */}
-      <View style={styles.grid}>
-        {duePresets(now, defaultTime).map((p) => (
-          <Option key={p.label} label={p.label} onPress={() => choose(p.at)} />
-        ))}
-        <Option label="CUSTOM…" onPress={custom} wide />
-      </View>
+        {/* Repeat: its own sheet (PLAN §9.9). One task at a time. */}
+        {!forSelection && (
+          <Option
+            label={`${glyphs.repeat.glyph} ${task.repeat ? `REPEAT: ${repeatLabel(task.repeat)}` : 'REPEAT…'}`}
+            onPress={() => {
+              close();
+              actions.openRepeatSheet(id);
+            }}
+            wide
+          />
+        )}
 
-      {/* Notify toggle. Where reminders can't exist (the web build), a note instead. */}
-      {permission === 'unsupported' ? (
-        <Text style={[type.meta, styles.noteText, styles.note]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          Reminders need the Android app. Here, due dates still show and turn OVERDUE.
-        </Text>
-      ) : (
-        <Pressable
-          onPress={() => setNotify((n) => !n)}
-          style={styles.toggleRow}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: notify }}
-          accessibilityLabel="Send a notification"
-        >
-          <Text style={[type.body, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            <Text style={type.glyph}>{glyphs.notify.glyph}</Text> NOTIFY
-          </Text>
-          <Text style={[type.tab, notify ? styles.on : styles.off]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {notify ? '[ ON ]' : '[ OFF ]'}
-          </Text>
-        </Pressable>
-      )}
-      {notify && permission === 'denied' && (
-        <Pressable onPress={openNotificationSettings} style={styles.note} accessibilityRole="button">
-          <Text style={[type.meta, styles.noteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            Notifications are blocked for quest_log. The date still works. Tap to open settings.
-          </Text>
-        </Pressable>
-      )}
-
-      {/* Repeat: its own sheet (PLAN §9.9). One task at a time. */}
-      {!forSelection && (
-        <Option
-          label={`${glyphs.repeat.glyph} ${task.repeat ? `REPEAT: ${repeatLabel(task.repeat)}` : 'REPEAT…'}`}
-          onPress={() => {
-            close();
-            actions.openRepeatSheet(id);
-          }}
-          wide
-        />
-      )}
-
-      {(task.dueAt !== null || forSelection) && (
-        <Option
-          label={`${glyphs.delete.glyph} CLEAR DATE`}
-          onPress={() => {
-            apply(null, false);
-            close();
-          }}
-          wide
-        />
-      )}
+        {(task.dueAt !== null || forSelection) && (
+          <Option
+            label={`${glyphs.delete.glyph} CLEAR DATE`}
+            onPress={() => {
+              apply(null, false);
+              close();
+            }}
+            wide
+          />
+        )}
+      </ScrollView>
 
       {/* iOS has no imperative dialog: an inline picker (Phase 15 polishes this). */}
       {iosPicker && (
@@ -253,12 +266,16 @@ const styles = StyleSheet.create({
   title: { color: colors.textBright, ...platformText },
   current: { color: colors.accent, marginTop: space.xs, ...platformText },
   divider: { height: shape.hairline, backgroundColor: colors.line, marginVertical: space.md, marginHorizontal: -space.lg },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  // Rows are spaced by each option's top margin; columns by the gap.
+  grid: { flexDirection: 'row', flexWrap: 'wrap', columnGap: space.sm },
+  // The options area takes what's left under the title and scrolls if needed.
+  scroll: { flexShrink: 1 },
   option: {
     // Two per row: each grows from a basis under half the width, so the gap fits.
     flexGrow: 1,
     flexBasis: '40%',
-    minHeight: size.rowMinHeight,
+    // 44 (the tap-target minimum) rather than 52: the sheet stays short enough to fit.
+    minHeight: size.hitTarget,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: shape.hairline,
@@ -267,7 +284,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     marginTop: space.sm,
   },
-  wide: { flexBasis: '100%' },
+  // Full width as an explicit width, not flexBasis: outside the grid the options sit in a
+  // column, where flexBasis would mean full *height* (a screen-tall, blank REPEAT button).
+  wide: { flexBasis: 'auto', width: '100%' },
   // Three per row (the AMEND nudges).
   third: { flexBasis: '28%' },
   section: { color: colors.textDim, marginBottom: space.sm, ...platformText },

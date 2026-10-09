@@ -2,6 +2,13 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.2.1 (build 22)
+
+Fixes for typing shorthand and changing dates.
+
+- **Typing `@1pm` no longer turns into `@1p1pm`.** When your keyboard suggested or completed a word, the app wrote the text back into the box at the wrong moment and the suggestion was added twice. Text boxes now keep your typing as it is.
+- **The due-date sheet fits the screen.** With the new AMEND buttons it had grown taller than the screen, so the top (including AMEND) was hidden and only the REPEAT button showed. It now always fits, and scrolls on small screens.
+
 ## 1.2.0 (build 21)
 
 Changing due dates.
