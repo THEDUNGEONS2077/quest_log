@@ -720,3 +720,37 @@ describe('quest tabs (lib/quests.ts, user request 2026-10-09)', () => {
     expect(store.getState().ui).toMatchObject({ category: 'daily', zoomRootId: null });
   });
 });
+
+describe('editing keeps the list still (bug 2026-10-09)', () => {
+  it('the quest order is locked while editing and re-sorts when editing ends', () => {
+    const { store, advance } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    advance(1000);
+    const b = s.addTask(null, 'b');
+    const sel = makeSelectors();
+    const order = () => sel.activeRows(store.getState()).map((r) => r.id);
+    expect(order()).toEqual([b, a]);
+    // Editing "a": raising its priority (a structural change) doesn't move it yet.
+    s.setEditing(a);
+    s.cyclePriority(a);
+    expect(order()).toEqual([b, a]);
+    // Done editing: it takes its place (priority first).
+    s.setEditing(null);
+    expect(order()).toEqual([a, b]);
+  });
+
+  it('opening or closing a quest is not a change: it keeps its place', () => {
+    const { store, advance } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    s.addTask(a, 'child');
+    advance(1000);
+    const b = s.addTask(null, 'b');
+    const sel = makeSelectors();
+    const before = tk(store.getState().tasks, a)!.updatedAt;
+    s.toggleCollapsed(a);
+    expect(tk(store.getState().tasks, a)!.updatedAt).toBe(before);
+    expect(sel.activeRows(store.getState()).map((r) => r.id)).toEqual([b, a]);
+  });
+});

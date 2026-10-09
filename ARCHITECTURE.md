@@ -205,7 +205,9 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 
 ## 6g. Quests: order and categories *(built: `lib/quests.ts`, `lib/flatten.ts`)*
 
-- **Order:** quests (true top level) display **newest-modified first**. `updatedAt` bubbles up from any change inside a quest, so a new quest is at the top and active ones rise.
+- **Order:** quests (true top level) display by **priority first** (!!! → none), then **newest-modified first** (`questOrder`). `updatedAt` bubbles up from any change inside a quest, so a new quest is at the top of its priority and active ones rise.
+  - Collapsing and expanding a quest are view changes, so they don't touch `updatedAt`.
+  - **Locked while editing:** `questOrderLock` is captured when editing starts and released when it ends, so structural changes made while editing (PRI, DUE, SUB, shorthand) can't move the row under the editor. When editing ends, TaskList scrolls to the edited task if the re-sort moved it.
   - The stored `children` order is untouched. Below the top level, the manual order still applies, and zooming into a quest shows its objectives in manual order.
   - Like COMPLETED, the order refreshes on structural changes, never while typing.
   - Quick-add bumps `revealTop` so the list scrolls up to the new quest. FlashList otherwise holds the visible rows in place.

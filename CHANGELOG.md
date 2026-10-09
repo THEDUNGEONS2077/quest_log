@@ -2,6 +2,13 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.4.1 (build 27)
+
+- **Editing stays put.** While you edit a task, the list no longer re-sorts under you, even when you change its priority, date or subtasks. When you finish, the list re-sorts once and follows your task so it stays in view.
+- **Opening or closing a quest no longer moves it to the top.** Only real changes count.
+- **High-priority quests stay on top:** `!!!` first, then `!!`, then `!`, then the rest. Within each, the newest or most recently changed comes first.
+- **The ACTIVE · COMPLETED switch is 10% smaller.**
+
 ## 1.4.0 (build 26)
 
 Quest tabs.

@@ -53,6 +53,21 @@ export function TaskList({ bottomInset }: Props) {
   const container = useRef<View>(null);
   const keyboardHeight = useKeyboardHeight();
 
+  // The quest order is locked while editing (store questOrderLock) and re-sorts when
+  // editing ends. If the task just edited moved, follow it so it stays in view.
+  const edited = useRef<{ id: string; index: number } | null>(null);
+  useEffect(() => {
+    if (editingId !== null) {
+      edited.current = { id: editingId, index: rows.findIndex((r) => r.id === editingId) };
+      return;
+    }
+    const last = edited.current;
+    edited.current = null;
+    if (!last) return;
+    const index = rows.findIndex((r) => r.id === last.id);
+    if (index >= 0 && index !== last.index) list.current?.scrollToIndex({ index, animated: true, viewPosition: 0.3 });
+  }, [editingId, rows]);
+
   // Keep the text being typed in view (see keepInView.tsx).
   const keepInView = useKeepInViewController(container, list);
 

@@ -100,19 +100,28 @@ function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
     <Pressable
       onPress={() => actions.setTab(tab)}
       // A slim switch, but still 44 pt to tap.
-      hitSlop={{ top: space.sm, bottom: space.sm }}
+      hitSlop={{ top: SWITCH_SLOP, bottom: SWITCH_SLOP }}
       style={[styles.switch, selected && styles.switchOn]}
       accessibilityRole="tab"
       accessibilityState={{ selected }}
       accessibilityLabel={`${label.toLowerCase()}, ${count}`}
     >
-      <Animated.Text style={[type.meta, styles.text, { color: base }]} numberOfLines={1} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+      <Animated.Text
+        style={[type.meta, styles.switchText, { color: base }]}
+        numberOfLines={1}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
+      >
         {`${label} · `}
         <Animated.Text style={countStyle}>{count}</Animated.Text>
       </Animated.Text>
     </Pressable>
   );
 }
+
+/** The ACTIVE / COMPLETED switch: 10% smaller than before (28 → 25 pt drawn). */
+const SWITCH_HEIGHT = 25;
+/** Extra touch area above and below, so it's still 44 pt to tap. */
+const SWITCH_SLOP = Math.ceil((size.hitTarget - SWITCH_HEIGHT) / 2);
 
 const styles = StyleSheet.create({
   wrap: { marginHorizontal: space.lg, marginBottom: space.md, gap: space.sm },
@@ -131,14 +140,15 @@ const styles = StyleSheet.create({
   // The switch: slimmer and unfilled, so it reads as secondary to the quest tabs.
   switch: {
     flex: 1,
-    minHeight: 28,
+    minHeight: SWITCH_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
     borderBottomWidth: shape.dropIndicator,
     borderBottomColor: colors.line,
   },
   switchOn: { borderBottomColor: colors.accent },
-  text: { ...platformText },
+  // 10% smaller than the meta role (13/18 → 12/16, user request 2026-10-09).
+  switchText: { fontSize: 12, lineHeight: 16, ...platformText },
   bright: { color: colors.textBright, ...platformText },
   accent: { color: colors.accent, ...platformText },
   dim: { color: colors.textDim, ...platformText },

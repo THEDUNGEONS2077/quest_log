@@ -51,7 +51,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'QUEST TABS',
-    intro: 'Quests are sorted into three kinds. The newest or most recently changed quest is always at the top.',
+    intro: 'Quests are sorted into three kinds. High-priority quests stay on top, then the newest or most recently changed.',
     lines: [
       {
         key: 'DAILY',
@@ -62,7 +62,10 @@ const SECTIONS: Section[] = [
       { key: 'ALL', what: 'Every quest together.' },
       { key: 'ACTIVE · COMPLETED', what: 'The switch under the tabs: open quests, or the ones you finished, for the tab you are on.' },
       { key: 'Change category', what: 'Hold a quest and let go → Category… → DAILY, MAIN or MISC.' },
-      { key: 'Order', what: 'Quests sort by last change, newest first. Objectives inside a quest keep the order you give them.' },
+      {
+        key: 'Order',
+        what: 'Priority first (!!! then !! then !), then the newest or most recently changed. Nothing moves while you edit; when you finish, the list follows your quest. Opening or closing a quest is not a change. Objectives keep the order you give them.',
+      },
     ],
   },
   {

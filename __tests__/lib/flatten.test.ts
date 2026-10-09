@@ -1,7 +1,7 @@
 /**
  * __tests__/lib/flatten.test.ts: ACTIVE and COMPLETED row derivation (lib/flatten.ts).
  */
-import { flattenActive, flattenCompleted } from '@/lib/flatten';
+import { flattenActive, flattenCompleted, questOrder } from '@/lib/flatten';
 
 import { build, outline } from '../helpers/tree';
 
@@ -99,5 +99,25 @@ describe('quests: newest first, by category tab (user request 2026-10-09)', () =
 
   it('a zoomed-in quest ignores the tab and keeps manual order', () => {
     expect(outline(flattenActive(s, { zoomRootId: 'old', category: 'misc' }))).toEqual(['a1', 'a2']);
+  });
+});
+
+describe('quest order: priority, then newest (user request 2026-10-09)', () => {
+  const s = build([
+    ['new', { updatedAt: 9 }],
+    ['high-old', { updatedAt: 1, priority: 3 }],
+    ['med', { updatedAt: 5, priority: 2 }],
+    ['high-new', { updatedAt: 2, priority: 3 }],
+    ['low', { updatedAt: 3, priority: 1 }],
+  ]);
+
+  it('!!! first, then !!, then !, then the rest; newest first within each', () => {
+    expect(questOrder(s)).toEqual(['high-new', 'high-old', 'med', 'low', 'new']);
+  });
+
+  it('a locked order is kept as is; quests added since come first', () => {
+    const locked = ['low', 'new', 'med'];
+    expect(questOrder(s, 'all', locked).slice(2)).toEqual(['low', 'new', 'med']);
+    expect(outline(flattenActive(s, { order: locked })).slice(2)).toEqual(['low', 'new', 'med']);
   });
 });

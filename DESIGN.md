@@ -186,7 +186,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **Quest tabs:** four equal segments, 52 pt tall, hairline border, radius 2. The label (`tab` role) sits over the count of open quests (`meta`).
   - **Selected:** `accent` border on `surface`, label in `textBright`, count in `accent`.
   - **Unselected:** both label and count in `textDim`.
-- **View switch:** two equal halves, 28 pt drawn (44 to tap), with no frame, just a 2 pt bottom bar (`line`, or `accent` when selected). Label `LABEL · n` in `meta`. It reads as secondary to the tabs above.
+- **View switch:** two equal halves, 25 pt drawn (44 to tap), with no frame, just a 2 pt bottom bar (`line`, or `accent` when selected). Label `LABEL · n` at 12 / 16 (10% under `meta`). It reads as secondary to the tabs above.
 - **The panel never changes height** between tabs: every tab has the switch.
 - **New item:** when the COMPLETED count goes up, its number pulses to `textBright` (120 ms in, 320 ms out), so you see where the item went.
 

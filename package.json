@@ -1,6 +1,6 @@
 {
   "name": "quest_log",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",

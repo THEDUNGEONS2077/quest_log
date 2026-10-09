@@ -30,6 +30,7 @@ import * as bulk from '@/lib/bulk';
 import * as dnd from '@/lib/dnd';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
+import { questOrder } from '@/lib/flatten';
 import { parse, type ParseResult } from '@/lib/parser';
 import { firstOccurrence, PRESETS } from '@/lib/recurrence';
 import { CATEGORIES, type CategoryTab, categoryForNew } from '@/lib/quests';
@@ -176,6 +177,12 @@ export interface AppStore {
    * looking at in place, leaving the new quest just above the screen.
    */
   revealTop: number;
+  /**
+   * The quest order locked while a task is being edited (lib/flatten.ts
+   * questOrder), so the list can't re-sort under the editor; released when
+   * editing ends. Not persisted.
+   */
+  questOrderLock: ID[] | null;
   /** How the tasks were loaded at startup (for diagnostics and recovery messages). */
   loadStatus: LoadResult['status'];
 
@@ -441,7 +448,7 @@ export function createAppStore(deps: StoreDeps) {
   /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
   const stopEditingIfGone = (next: TasksState): Partial<AppStore> => {
     const id = store.getState().editingId;
-    return id !== null && !findTask(next, id) ? { editingId: null, editingCaret: null } : {};
+    return id !== null && !findTask(next, id) ? { editingId: null, editingCaret: null, questOrderLock: null } : {};
   };
 
   const store = createStore<AppStore>()(
@@ -471,6 +478,7 @@ export function createAppStore(deps: StoreDeps) {
       onboarding: loadJSON(kv, KEYS.onboarding, DEFAULT_ONBOARDING),
       quickAddFocus: 0,
       revealTop: 0,
+      questOrderLock: null,
       loadStatus: loaded.status,
 
       dispatch(op, options = {}) {
@@ -617,7 +625,9 @@ export function createAppStore(deps: StoreDeps) {
 
       toggleCollapsed(id) {
         const task = getTask(get().tasks, id);
-        get().editTask(id, { collapsed: !task.collapsed });
+        // A view change, not an edit: no updatedAt bump, so the quest doesn't
+        // sort to the top just for being opened or closed.
+        get().dispatch({ type: 'update', changes: [{ id, fields: { collapsed: !task.collapsed } }] });
       },
 
       setSiblingsCollapsed(id, collapsed) {
@@ -800,8 +810,10 @@ export function createAppStore(deps: StoreDeps) {
         // first, exactly as Enter would, so its shorthand is never left as raw text.
         const prev = get().editingId;
         if (prev !== null && prev !== editingId) commitEdit(prev, get().editingStartTitle);
-        // A new editing session starts a new undo step for typing.
+        // A new editing session starts a new undo step for typing. The quest order locks
+        // when editing starts and unlocks when it ends (not when moving between tasks).
         set({
+          questOrderLock: editingId === null ? null : (get().questOrderLock ?? questOrder(get().tasks)),
           editingId,
           editingCaret: caret,
           editingField: field,

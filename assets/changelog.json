@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.4.1",
+    "build": 27,
+    "lines": [
+      "- **Editing stays put.** While you edit a task, the list no longer re-sorts under you, even when you change its priority, date or subtasks. When you finish, the list re-sorts once and follows your task so it stays in view.",
+      "- **Opening or closing a quest no longer moves it to the top.** Only real changes count.",
+      "- **High-priority quests stay on top:** `!!!` first, then `!!`, then `!`, then the rest. Within each, the newest or most recently changed comes first.",
+      "- **The ACTIVE · COMPLETED switch is 10% smaller.**"
+    ]
+  },
+  {
     "version": "1.4.0",
     "build": 26,
     "lines": [
@@ -54,20 +64,6 @@
       "Fixes for typing shorthand and changing dates.",
       "- **Typing `@1pm` no longer turns into `@1p1pm`.** When your keyboard suggested or completed a word, the app wrote the text back into the box at the wrong moment and the suggestion was added twice. Text boxes now keep your typing as it is.",
       "- **The due-date sheet fits the screen.** With the new AMEND buttons it had grown taller than the screen, so the top (including AMEND) was hidden and only the REPEAT button showed. It now always fits, and scrolls on small screens."
-    ]
-  },
-  {
-    "version": "1.2.0",
-    "build": 21,
-    "lines": [
-      "Changing due dates.",
-      "- **Change a date without starting over:** tap the date under a task, or hold the task and let go. **Change due date / time…** is now first in that menu. The new **AMEND** row offers:",
-      "  - **CHANGE DATE…** picks a new day and keeps the time",
-      "  - **CHANGE TIME…** picks a new time and keeps the day",
-      "  - **+1 HOUR**, **+1 DAY** and **+1 WEEK**",
-      "- **Shorthand on saved tasks now always works.** Typing `!!`, `@fri 5pm` or `// note` into an existing task used to stay as plain text if you tapped another task or the new-task bar instead of pressing Enter. It's now applied whichever way you finish editing.",
-      "- **Shorthand amends dates sensibly:** on a task due Friday 15:00, `@5pm` means Friday at 17:00 and `@mon` means Monday at 15:00.",
-      "- An empty task is no longer left behind when you tap away from it."
     ]
   }
 ]

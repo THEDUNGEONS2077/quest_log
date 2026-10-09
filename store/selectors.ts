@@ -43,6 +43,8 @@ interface SelectorInput {
   search?: Record<'active' | 'completed', { query: string; filter: Filter }>;
   /** Just-checked top-level tasks still shown on ACTIVE (see AppStore.lingering). */
   lingering?: readonly string[];
+  /** The quest order locked while editing (see AppStore.questOrderLock). */
+  questOrderLock?: readonly string[] | null;
 }
 
 const NO_LINGERING: readonly string[] = [];
@@ -65,8 +67,9 @@ function memoLast<K extends unknown[], R>(compute: (...keys: K) => R): (...keys:
 export function makeSelectors() {
   // Keyed on structureVersion; `tasks` is passed along but deliberately not a key.
   let activeTasks: TasksState;
-  const active = memoLast((_version: number, zoomRootId: string | null, lingering: readonly string[], category: CategoryTab) =>
-    flattenActive(activeTasks, { zoomRootId, keep: lingering.length ? new Set(lingering) : undefined, category }),
+  const active = memoLast(
+    (_version: number, zoomRootId: string | null, lingering: readonly string[], category: CategoryTab, order: readonly string[] | null) =>
+      flattenActive(activeTasks, { zoomRootId, keep: lingering.length ? new Set(lingering) : undefined, category, order }),
   );
 
   let completedTasks: TasksState;
@@ -131,7 +134,13 @@ export function makeSelectors() {
         // Overdue depends on the time: results refresh at most once a minute.
         return found(s.tasks.structureVersion, s.ui.zoomRootId, q.query, q.filter, Math.floor(Date.now() / 60_000));
       }
-      return active(s.tasks.structureVersion, s.ui.zoomRootId, s.lingering ?? NO_LINGERING, s.ui.category ?? 'all');
+      return active(
+        s.tasks.structureVersion,
+        s.ui.zoomRootId,
+        s.lingering ?? NO_LINGERING,
+        s.ui.category ?? 'all',
+        s.questOrderLock ?? null,
+      );
     },
     /** Rows for the COMPLETED tab (search results when searching). */
     completedRows(s: SelectorInput): Row[] {
