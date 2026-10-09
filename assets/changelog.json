@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.5.3",
+    "build": 32,
+    "lines": [
+      "- **Fixed for good: the `> new quest` bar hanging in the middle of the screen.** The earlier fix covered one cause; others remained, such as switching to another app while typing, or closing **Move to…** with its search keyboard up. The bar now checks itself against the real keyboard: whenever it comes to rest, whenever you return to the app, and whenever the keyboard closes. If it's up with no keyboard under it, it slides back down.",
+      "- **Back never closes the app from the middle of something.** While typing a new quest, back (or closing the keyboard) ends typing and leaves the bar as `> new quest`; what you typed stays. Back also ends editing a task, and clears an `IN: GROUP` target, before anything else. The app only closes when nothing is selected or open.",
+      "- **Every tab switch shows the list from the top,** including ACTIVE ↔ COMPLETED, which used to keep the old position. Zooming out of a quest still takes you back to where you were. All 32 one-tap moves between the tabs are now checked automatically."
+    ]
+  },
+  {
     "version": "1.5.2",
     "build": 31,
     "lines": [
@@ -59,19 +68,6 @@
       "- **Opening or closing a quest no longer moves it to the top.** Only real changes count.",
       "- **High-priority quests stay on top:** `!!!` first, then `!!`, then `!`, then the rest. Within each, the newest or most recently changed comes first.",
       "- **The ACTIVE · COMPLETED switch is 10% smaller.**"
-    ]
-  },
-  {
-    "version": "1.4.0",
-    "build": 26,
-    "lines": [
-      "Quest tabs.",
-      "- **New tabs: ALL · DAILY · MAIN · MISC**, each showing how many open quests it has. Under them, an **ACTIVE · COMPLETED** switch shows open or finished quests for that tab. Your finished quests now live there.",
-      "- **A quest joins the tab you add it on.** Quests added on **DAILY** repeat daily by themselves, so they come back each day and build streaks. Adding from ALL puts a quest in MAIN.",
-      "- **Change a quest's category:** hold the quest, let go, then **Category…**.",
-      "- **The newest quest is always at the top.** Quests are listed by their last change, newest first, and the list scrolls up to show a quest you just added. Objectives inside a quest keep the order you give them.",
-      "- Your existing quests sorted themselves: repeating daily ones went to DAILY, everything else to MAIN.",
-      "- **The XP bar is a little more subtle** (80% opacity)."
     ]
   }
 ]

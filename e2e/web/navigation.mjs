@@ -256,9 +256,88 @@ try {
     await atTop('MAIN (scrolled) → COMPLETED → ALL → ACTIVE');
   });
 
+  await path('every tab switch opens at the top: all 32 one-tap moves between the 8 views', async () => {
+    // A long list on every quest tab, open and completed ("- [x]" lines paste as done).
+    for (const [tab, name] of [
+      [/^daily quests/i, 'Daily'],
+      [/^main quests/i, 'Main'],
+      [/^misc quests/i, 'Misc'],
+    ]) {
+      await tap(tab);
+      await tap(/^active,/);
+      const lines = [];
+      for (let i = 1; i <= 14; i++) lines.push(`${name} quest ${i}`, `- [x] ${name} done ${i}`);
+      await page.getByLabel('New quest').fill(lines.join('\n'));
+      await page.waitForTimeout(300);
+    }
+    const quest = { ALL: /^all quests/i, DAILY: /^daily quests/i, MAIN: /^main quests/i, MISC: /^misc quests/i };
+    const view = { ACTIVE: /^active,/, COMPLETED: /^completed,/ };
+    let checked = 0;
+    for (const q of Object.keys(quest)) {
+      for (const v of Object.keys(view)) {
+        // From q · v: every other quest tab (same switch), and the other switch half.
+        const moves = [
+          ...Object.keys(quest)
+            .filter((t) => t !== q)
+            .map((t) => [t, v]),
+          [q, v === 'ACTIVE' ? 'COMPLETED' : 'ACTIVE'],
+        ];
+        for (const [tq, tv] of moves) {
+          await tap(quest[q]);
+          await tap(view[v]);
+          await scrollListBy(600);
+          await page.waitForTimeout(150);
+          if ((await listScroll()) < 50) throw new Error(`${q} · ${v}: the list didn't scroll, so the move can't be checked`);
+          await tap(tq === q ? view[tv] : quest[tq]);
+          await atTop(`${q} · ${v} → ${tq} · ${tv}`);
+          checked++;
+        }
+      }
+    }
+    if (checked !== 32) throw new Error(`checked ${checked} moves, expected 32`);
+  });
+
+  await path('re-tapping the selected tab, and the title, go to the top', async () => {
+    await tap(/^all quests/i);
+    await tap(/^active,/);
+    await scrollListBy(600);
+    await tap(/^all quests/i); // the selected tab, again
+    await page.waitForTimeout(400); // an animated scroll
+    await atTop('ALL tapped again');
+    await scrollListBy(600);
+    await tap(/^quest_log, level/);
+    await page.waitForTimeout(400);
+    await atTop('title (home)');
+  });
+
+  await path('zoom: in opens at the top; out returns to where you were', async () => {
+    await tap(/^main quests/i);
+    await tap(/^active,/);
+    // A group with objectives, then newer quests above it, so it sits a little way down.
+    await page.getByLabel('New quest').fill('Zoom group\n  - [ ] Step A\n  - [ ] Step B');
+    await page.waitForTimeout(300);
+    await page.getByLabel('New quest').fill('Filler 1\nFiller 2\nFiller 3');
+    await page.waitForTimeout(400);
+    await scrollListBy(120);
+    await page.waitForTimeout(250);
+    const before = await listScroll();
+    if (before < 60) throw new Error(`could not scroll to set up the check (${before}px)`);
+    await hold(/^zoom group$/i);
+    await page.getByText('Zoom into').click();
+    await see('← MAIN');
+    await atTop('zoomed into a quest');
+    await tap('Back to main quests');
+    await page.waitForTimeout(300);
+    const after = await listScroll();
+    if (Math.abs(after - before) > 16) throw new Error(`zoomed out to ${after}px, was at ${before}px`);
+  });
+
   await path('edit a task, then switch tab: editing ends, nothing left open', async () => {
+    await tap(/^all quests/i);
+    await tap(/^active,/);
+    // The newest quest (from the zoom check), at the top of ALL.
     await page
-      .getByText(/^plan the weekend$/i)
+      .getByText(/^filler 1$/i)
       .first()
       .click();
     await page.getByLabel('Done editing').waitFor();

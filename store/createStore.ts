@@ -181,6 +181,10 @@ export interface AppStore {
    * quick action, first launch). Not persisted.
    */
   quickAddFocus: number;
+  /** The quick-add field has focus (it's being typed in). Not persisted. */
+  quickAddActive: boolean;
+  /** Bumped to ask the quick-add field to let go of focus (Android back). */
+  quickAddRelease: number;
   /**
    * Bumped to scroll the visible list to its top: a new quest was added at
    * the top (quick-add, paste; FlashList otherwise keeps the rows you were
@@ -297,9 +301,11 @@ export interface AppStore {
   setTab(tab: Tab): void;
   /**
    * Android back on the main screen: steps out of the innermost mode, one
-   * per press: selection, search, zoom (a level), COMPLETED → ACTIVE, a
-   * category tab → ALL. Returns false when there's nothing left (the app
-   * then closes).
+   * per press: typing in quick-add (it lets go), editing a task, the
+   * quick-add group target, selection, search, zoom (a level),
+   * COMPLETED → ACTIVE, a category tab → ALL. Returns false only when
+   * nothing is left, and the app then closes (user request 2026-10-10:
+   * never close it from the middle of something).
    */
   backStep(): boolean;
   /** Shows a quest tab (ALL / DAILY / MAIN / MISC); leaves zoom and the #Group target. */
@@ -340,6 +346,8 @@ export interface AppStore {
   parseShorthand(text: string, literal?: ReadonlySet<string>, existingDue?: number | null): ParseResult;
   /** Stops targeting a `#Group` with the quick-add bar. */
   clearQuickAddParent(): void;
+  /** The quick-add field gained or lost focus (it reports it; backStep reads it). */
+  setQuickAddActive(active: boolean): void;
 
   // --- Due dates and reminders (Phase 7) ---
   openDueSheet(id: ID): void;
@@ -546,6 +554,8 @@ export function createAppStore(deps: StoreDeps) {
       toast: null,
       onboarding: loadJSON(kv, KEYS.onboarding, DEFAULT_ONBOARDING),
       quickAddFocus: 0,
+      quickAddActive: false,
+      quickAddRelease: 0,
       revealTop: 0,
       questOrderLock: null,
       loadStatus: loaded.status,
@@ -910,6 +920,18 @@ export function createAppStore(deps: StoreDeps) {
 
       backStep() {
         const s = get();
+        if (s.quickAddActive) {
+          set({ quickAddRelease: s.quickAddRelease + 1 });
+          return true;
+        }
+        if (s.editingId !== null) {
+          s.finishEditing(s.editingId);
+          return true;
+        }
+        if (s.quickAddParent !== null) {
+          set({ quickAddParent: null });
+          return true;
+        }
         if (s.selection) {
           s.clearSelection();
           return true;
@@ -993,6 +1015,10 @@ export function createAppStore(deps: StoreDeps) {
         parse(text, { now: now(), defaultTimeMinutes: get().settings.defaultTimeMinutes, literal, existingDue }),
 
       clearQuickAddParent: () => set({ quickAddParent: null }),
+
+      setQuickAddActive: (quickAddActive) => {
+        if (get().quickAddActive !== quickAddActive) set({ quickAddActive });
+      },
 
       openDueSheet: (id) => set({ dueSheetFor: id }),
       openRepeatSheet: (id) => set({ repeatSheetFor: id }),

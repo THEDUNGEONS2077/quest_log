@@ -67,7 +67,7 @@ const SECTIONS: Section[] = [
       { key: 'Your place', what: 'A tab always opens at the top. Zoom out of a quest and you are back where you were.' },
       {
         key: 'Back button',
-        what: 'Steps out one thing at a time: selection, then search, then zoom, then COMPLETED back to ACTIVE, then back to ALL, and only then leaves the app.',
+        what: 'Steps out one thing at a time: typing a new quest, editing, selection, search, zoom, then COMPLETED back to ACTIVE, then back to ALL. It only leaves the app when nothing is left.',
       },
       {
         key: 'Order',

@@ -839,6 +839,31 @@ describe('navigation (pass 2026-10-09)', () => {
     expect(s.backStep()).toBe(false); // nothing left: the app closes
   });
 
+  it('Android back while typing in quick-add lets go of it first, and never closes the app from there', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.setQuickAddActive(true); // the field has focus
+    const release = store.getState().quickAddRelease;
+    expect(s.backStep()).toBe(true);
+    expect(store.getState().quickAddRelease).toBe(release + 1); // asked to let go
+    s.setQuickAddActive(false); // it did
+    expect(s.backStep()).toBe(false); // now nothing is selected: the app may close
+  });
+
+  it('Android back ends editing, then clears the quick-add group target, before anything else', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.quickAdd('#Work'); // makes the group WORK; quick-add now adds into it
+    const g = store.getState().quickAddParent!;
+    expect(g).not.toBeNull();
+    s.setEditing(g);
+    expect(s.backStep()).toBe(true);
+    expect(store.getState().editingId).toBeNull();
+    expect(s.backStep()).toBe(true);
+    expect(store.getState().quickAddParent).toBeNull();
+    expect(s.backStep()).toBe(false);
+  });
+
   it('switching tabs ends editing (applying its shorthand) and selection', () => {
     const { store } = makeStore();
     const s = store.getState();

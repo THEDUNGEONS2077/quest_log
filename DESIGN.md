@@ -376,7 +376,7 @@ These are the rules that make the app feel good. Most were refined through devic
    - hold still to drag, or hold for the menu
    - drag sideways to change nesting
    Every one also has a visible button or menu entry **and** a screen-reader action.
-7. **The back button steps out of the innermost mode first:** selection, then search, then zoom (one level at a time), then leaves the app.
+7. **The back button steps out of the innermost thing first:** typing (the field lets go), editing, then selection, search, zoom (one level at a time), and only then leaves the app. It never closes the app from the middle of something.
    - **A tab opens at the top; depth keeps its place:** switching quest tab always shows the list from the top, while zooming out of a group returns to where you were.
    - **Re-tap a tab for its top; tap the title for home.**
    - **A view never shows something that has left it:** zoomed into a group that gets completed or deleted, you're taken out to the nearest level still there (after the completion has played).

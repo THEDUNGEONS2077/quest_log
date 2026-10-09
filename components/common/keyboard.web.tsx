@@ -54,3 +54,8 @@ export function KeyboardStickyView({ offset, style, children }: StickyProps) {
 export function useAfterKeyboardCloses(visible: boolean): boolean {
   return visible;
 }
+
+/** Web: no native keyboard tracker to protect (see keyboard.tsx), so run it now. */
+export function closeKeyboardThen(then: () => void): void {
+  then();
+}

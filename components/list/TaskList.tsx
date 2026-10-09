@@ -15,8 +15,8 @@
  * scrolled to first, so its editor can mount and take focus. Dragging the
  * list a meaningful distance ends editing (PLAN §9.3).
  *
- * Views: a quest tab always opens at the top; within it, each zoom level
- * keeps its own scroll position. Views slide in from their side
+ * Views: every tab switch opens at the top (a fresh list); within a tab,
+ * each zoom level keeps its own scroll position. Views slide in from their side
  * (useViewPlace.ts): zooming deeper comes in from the right, zooming out
  * from the left.
  */
@@ -61,7 +61,7 @@ export function TaskList({ bottomInset }: Props) {
   const zoomDepth = useAppStore((s) => zoomLevel(s.tasks, s.ui.zoomRootId));
   const shown = useAppStore((s) => s.ui.tab === 'active');
   const place = useViewPlace(list, `${category}/${zoomRootId ?? ''}`, CATEGORY_TABS.indexOf(category) * 100 + zoomDepth, {
-    group: category,
+    tab: category,
     visible: shown,
   });
 
@@ -146,6 +146,8 @@ export function TaskList({ bottomInset }: Props) {
         <DragProvider value={drag.api}>
           <Animated.View style={[styles.container, place.style]}>
             <FlashList
+              // A fresh list for every tab switch: it always opens at the top (useViewPlace).
+              key={place.listKey}
               ref={list}
               data={rows}
               renderItem={renderItem}

@@ -2,6 +2,12 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.5.3 (build 32)
+
+- **Fixed for good: the `> new quest` bar hanging in the middle of the screen.** The earlier fix covered one cause; others remained, such as switching to another app while typing, or closing **Move to…** with its search keyboard up. The bar now checks itself against the real keyboard: whenever it comes to rest, whenever you return to the app, and whenever the keyboard closes. If it's up with no keyboard under it, it slides back down.
+- **Back never closes the app from the middle of something.** While typing a new quest, back (or closing the keyboard) ends typing and leaves the bar as `> new quest`; what you typed stays. Back also ends editing a task, and clears an `IN: GROUP` target, before anything else. The app only closes when nothing is selected or open.
+- **Every tab switch shows the list from the top,** including ACTIVE ↔ COMPLETED, which used to keep the old position. Zooming out of a quest still takes you back to where you were. All 32 one-tap moves between the tabs are now checked automatically.
+
 ## 1.5.2 (build 31)
 
 - **Fixed: completed daily quests now show on DAILY · COMPLETED.** A daily quest from before the quest tabs existed dropped to MAIN once completed. Ones already filed there move back to DAILY by themselves. **Run again** also puts a quest back on its own tab now, instead of on MAIN.

@@ -5,10 +5,24 @@
  * Layer: UI. Native apps use react-native-keyboard-controller, which tracks
  * the keyboard frame by frame. Components import from here, never from the
  * library, so the web build can swap in its own versions.
+ *
+ * The "> new quest" bar stuck mid-screen (bugs 2026-10-09, 2026-10-10): the
+ * library follows the keyboard through its animations and can't recover
+ * when it misses one, so it reports a keyboard that isn't there. Three
+ * protections, from cause to cure:
+ *   1. useAfterKeyboardCloses: sheets open only after the keyboard closed;
+ *   2. closeKeyboardThen: a sheet with its own text field closes only after
+ *      its keyboard closed;
+ *   3. KeyboardStickyView checks itself against the system and slides back
+ *      down whenever the two disagree (any cause, including ones not known).
  */
-import { type ComponentProps, useEffect, useState } from 'react';
-import { Keyboard } from 'react-native';
-import { KeyboardController, KeyboardEvents, KeyboardStickyView as LibraryStickyView } from 'react-native-keyboard-controller';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, Keyboard, type ViewProps } from 'react-native';
+import { KeyboardController, KeyboardEvents, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import Animated, { interpolate, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
+
+import { duration, easing } from '@/theme';
 
 export { KeyboardProvider } from 'react-native-keyboard-controller';
 
@@ -52,50 +66,116 @@ export function useAfterKeyboardCloses(visible: boolean): boolean {
   return visible && clear;
 }
 
-/** How long after the library reports "keyboard shown" the system must agree. */
-const PHANTOM_CHECK_MS = 700;
-
 /**
- * True while the library reports a keyboard the system doesn't see.
+ * Runs `then` once the keyboard is closed: at once if it already is,
+ * otherwise after closing it (or KEYBOARD_CLOSE_TIMEOUT_MS at most).
  *
- * Second line of defence for the same bug as useAfterKeyboardCloses: if the
- * library's tracker is ever left believing the keyboard is open, its
- * "shown" report has no keyboard behind it. React Native's own keyboard
- * events read the window directly (the editing toolbar already relies on
- * them), so a "shown" the system still doesn't confirm 700 ms later is a
- * phantom. Cleared by the next real keyboard opening or closing.
+ * For closing a Modal that has its own text field (Move to…'s search).
+ * When a Modal closes, the library copies the keyboard state it saw inside
+ * the Modal back to the main screen; closed while its keyboard is still up,
+ * that's "keyboard open" with no closing animation ever to follow on the
+ * main screen, which lifts the quick-add bar mid-screen (bug 2026-10-10).
  */
-function usePhantomKeyboard(): boolean {
-  const [phantom, setPhantom] = useState(false);
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const real = () => {
-      clearTimeout(timer);
-      setPhantom(false);
-    };
-    const subs = [
-      KeyboardEvents.addListener('keyboardDidShow', () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => setPhantom(!Keyboard.isVisible()), PHANTOM_CHECK_MS);
-      }),
-      KeyboardEvents.addListener('keyboardWillShow', real),
-      KeyboardEvents.addListener('keyboardDidHide', real),
-      Keyboard.addListener('keyboardDidShow', real),
-    ];
-    return () => {
-      clearTimeout(timer);
-      subs.forEach((sub) => sub.remove());
-    };
-  }, []);
-  return phantom;
+export function closeKeyboardThen(then: () => void): void {
+  if (!KeyboardController.isVisible()) {
+    then();
+    return;
+  }
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    then();
+  };
+  void KeyboardController.dismiss().then(finish);
+  setTimeout(finish, KEYBOARD_CLOSE_TIMEOUT_MS);
 }
+
+/** How long the keyboard position must be still before it's checked against the system. */
+const SETTLE_MS = 500;
+/** Lifted at least this much (0–1) counts as "the bar is up". */
+const LIFTED = 0.05;
+
+type StickyProps = ViewProps & {
+  /** translateY added when the keyboard is closed / open (the library's offsets). */
+  offset?: { closed?: number; opened?: number };
+};
 
 /**
  * Content that rides just above the on-screen keyboard (the quick-add bar,
- * the editing toolbar): the library's view, but it stays at the bottom while
- * the reported keyboard is a phantom (see usePhantomKeyboard).
+ * the editing toolbar). It follows the library's frame-by-frame keyboard
+ * position, and corrects itself when that position is wrong.
+ *
+ * Why: the library tracks the keyboard by its animations, and has no way
+ * back if it misses one. It then reports a keyboard that isn't there and
+ * the bar hangs mid-screen until a real keyboard opens (bugs 2026-10-09 and
+ * 2026-10-10). Known causes: the keyboard closing while a Modal shows, a
+ * Modal closing with its own keyboard up, the app being left with the
+ * keyboard open (it closes in the background, where no animation runs), and
+ * a keyboard animation that never finishes.
+ *
+ * So after the position has been still for SETTLE_MS, whenever the app
+ * comes back to the foreground, and whenever React Native reports the
+ * keyboard closed, the bar checks the position against React Native's own
+ * keyboard state, which reads the window directly (the editing toolbar
+ * already relies on it). Lifted with no keyboard there, the bar slides back
+ * down (`trust` → 0) and stays down until a real keyboard opens.
  */
-export function KeyboardStickyView(props: ComponentProps<typeof LibraryStickyView>) {
-  const phantom = usePhantomKeyboard();
-  return <LibraryStickyView {...props} enabled={(props.enabled ?? true) && !phantom} />;
+export function KeyboardStickyView({ offset, style, children, ...rest }: StickyProps) {
+  const closed = offset?.closed ?? 0;
+  const opened = offset?.opened ?? 0;
+  const { height, progress } = useReanimatedKeyboardAnimation();
+  // 1 = follow the library; 0 = stay at the bottom (the library is wrong).
+  const trust = useSharedValue(1);
+
+  const check = useCallback(() => {
+    const lifted = progress.get() > LIFTED;
+    if (!lifted)
+      trust.set(1); // in agreement again (and harmless at the bottom)
+    else if (!Keyboard.isVisible()) trust.set(withTiming(0, { duration: duration.base, easing }));
+  }, [progress, trust]);
+
+  // Debounced: every movement restarts the wait, so the check runs once things settle.
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const checkSoon = useCallback(() => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(check, SETTLE_MS);
+  }, [check]);
+
+  useAnimatedReaction(
+    () => progress.get(),
+    (now, before) => {
+      if (now !== before) scheduleOnRN(checkSoon);
+    },
+  );
+
+  useEffect(() => {
+    const believe = () => trust.set(1);
+    const subs = [
+      // A real keyboard opening: follow it again (and check, in case it's a phantom).
+      KeyboardEvents.addListener('keyboardWillShow', () => {
+        believe();
+        checkSoon();
+      }),
+      Keyboard.addListener('keyboardDidShow', believe),
+      Keyboard.addListener('keyboardDidHide', checkSoon),
+      AppState.addEventListener('change', (state) => state === 'active' && checkSoon()),
+    ];
+    return () => {
+      clearTimeout(timer.current);
+      subs.forEach((sub) => sub.remove());
+    };
+  }, [trust, checkSoon]);
+
+  const stick = useAnimatedStyle(() => {
+    const t = trust.get();
+    const follow = height.get() + interpolate(progress.get(), [0, 1], [closed, opened]);
+    return { transform: [{ translateY: t * follow + (1 - t) * closed }] };
+  });
+
+  return (
+    <Animated.View style={[style, stick]} {...rest}>
+      {children}
+    </Animated.View>
+  );
 }

@@ -14,9 +14,14 @@
  *     field and becomes task fields on Enter (lib/parser.ts).
  *   - After `#Group`, new tasks go inside that group; an `IN: GROUP ✕`
  *     chip shows the target and clears it.
+ *   - Typing ends (the field lets go, back to `> new quest█`) when the
+ *     keyboard closes, the system back gesture included, and on Android
+ *     back while the field has focus (store backStep), the same as editing
+ *     a task (user request 2026-10-10: back never closes the app from here).
+ *     A typed draft stays in the field.
  */
 import { useEffect, useRef, useState } from 'react';
-import { type LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, type LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { KeyboardStickyView } from '@/components/common/keyboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -25,7 +30,7 @@ import { ShorthandChips, useShorthand } from '@/components/edit/ParsedChips';
 import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { findTask } from '@/lib/taskMap';
 import { shownTitle } from '@/lib/title';
-import { useActions, useAppStore } from '@/store/react';
+import { useActions, useAppStore, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 interface Props {
@@ -35,6 +40,8 @@ interface Props {
 
 /** The last `quickAddFocus` request acted on (module-wide: survives remounts). */
 let handledFocus = 0;
+/** The last `quickAddRelease` request acted on (module-wide, like handledFocus). */
+let handledRelease = 0;
 
 export function QuickAddBar({ onHeight }: Props) {
   const actions = useActions();
@@ -75,6 +82,24 @@ export function QuickAddBar({ onHeight }: Props) {
     const t = setTimeout(() => input.current?.focus(), 0);
     return () => clearTimeout(t);
   }, [focusRequest]);
+
+  // Let go when asked (Android back, store backStep) or when the keyboard closes.
+  const releaseRequest = useAppStore((s) => s.quickAddRelease);
+  useEffect(() => {
+    if (releaseRequest === handledRelease) return;
+    handledRelease = releaseRequest;
+    input.current?.blur();
+  }, [releaseRequest]);
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidHide', () => {
+      if (input.current?.isFocused()) input.current.blur();
+    });
+    return () => sub.remove();
+  }, []);
+  // Unmounted while focused (editing starts, the tab changes): it no longer has focus.
+  // (The store handle is stable; `actions` changes with every state change.)
+  const { store } = useStoreBundle();
+  useEffect(() => () => store.getState().setQuickAddActive(false), [store]);
 
   /** Empties the field. It's uncontrolled (see the TextInput below), so it's cleared directly. */
   const clear = () => {
@@ -148,9 +173,13 @@ export function QuickAddBar({ onHeight }: Props) {
               onSubmitEditing={submit}
               onFocus={() => {
                 setFocused(true);
+                actions.setQuickAddActive(true);
                 actions.setEditing(null); // only one editor at a time (PLAN §6.5)
               }}
-              onBlur={() => setFocused(false)}
+              onBlur={() => {
+                setFocused(false);
+                actions.setQuickAddActive(false);
+              }}
               multiline
               submitBehavior="submit"
               maxLength={TITLE_MAX}

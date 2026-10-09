@@ -19,7 +19,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAfterKeyboardCloses } from '@/components/common/keyboard';
+import { closeKeyboardThen, useAfterKeyboardCloses } from '@/components/common/keyboard';
 
 import { normalize } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
@@ -73,22 +73,19 @@ function MovePickerBody({ moving }: { moving: ID[] }) {
 
   // Opens once the keyboard is closed (see useAfterKeyboardCloses).
   const ready = useAfterKeyboardCloses(true);
+  // Closes only once its own keyboard (the search field's) is down too: closing with
+  // the keyboard up would leave the quick-add bar lifted (closeKeyboardThen).
+  const cancel = () => closeKeyboardThen(actions.closeMovePicker);
+  const moveTo = (parent: ID | null) => closeKeyboardThen(() => actions.moveTo(moving, parent));
 
   return (
-    <Modal
-      visible={ready}
-      transparent
-      animationType="fade"
-      onRequestClose={actions.closeMovePicker}
-      statusBarTranslucent
-      navigationBarTranslucent
-    >
+    <Modal visible={ready} transparent animationType="fade" onRequestClose={cancel} statusBarTranslucent navigationBarTranslucent>
       <View style={[styles.sheet, { paddingTop: insets.top + space.md, paddingBottom: insets.bottom }]}>
         <View style={styles.head}>
           <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             {`${glyphs.prompt.glyph} MOVE ${what} TO…`}
           </Text>
-          <Pressable onPress={actions.closeMovePicker} style={styles.close} accessibilityRole="button" accessibilityLabel="Cancel move">
+          <Pressable onPress={cancel} style={styles.close} accessibilityRole="button" accessibilityLabel="Cancel move">
             <Text style={[type.glyph, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
               {glyphs.delete.glyph}
             </Text>
@@ -109,14 +106,9 @@ function MovePickerBody({ moving }: { moving: ID[] }) {
           data={shown}
           keyExtractor={(d) => d.id}
           keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={<Option label={`${glyphs.moveTo.glyph} TOP LEVEL`} depth={0} onPress={() => actions.moveTo(moving, null)} />}
+          ListHeaderComponent={<Option label={`${glyphs.moveTo.glyph} TOP LEVEL`} depth={0} onPress={() => moveTo(null)} />}
           renderItem={({ item }) => (
-            <Option
-              label={item.title}
-              depth={q ? 0 : item.depth}
-              disabled={item.disabled}
-              onPress={() => actions.moveTo(moving, item.id)}
-            />
+            <Option label={item.title} depth={q ? 0 : item.depth} disabled={item.disabled} onPress={() => moveTo(item.id)} />
           )}
         />
       </View>

@@ -14,18 +14,19 @@
  *
  * Layer: UI (Expo Router screen). Composition only.
  *
- * Both lists stay mounted once visited and are only hidden, so each tab
- * keeps its own scroll position and switching is instant (PLAN §5 tab
- * switch < 50 ms). The COMPLETED list mounts the first time it's opened.
- * Switching slides the list in from its side (COMPLETED is on the right),
- * as the quest tabs and zoom levels do inside each list (useViewPlace.ts).
+ * Both lists stay mounted once visited and are only hidden. The COMPLETED
+ * list mounts the first time it's opened. Every tab switch shows a list
+ * from the top (each list starts afresh: useViewPlace.ts), and slides it in
+ * from its side (COMPLETED is on the right), as the quest tabs and zoom
+ * levels do inside each list.
  *
  * Tapping the title goes home; tapping the selected tab again goes to the
  * top of it (store goHome / toTabTop).
  *
- * Android back steps out of the innermost mode first: selection, then
- * search, then zoom (one level at a time), then COMPLETED → ACTIVE, then a
- * quest tab → ALL, and only then leaves the app (store backStep).
+ * Android back steps out of the innermost thing first: typing in quick-add,
+ * editing, the quick-add group target, selection, search, zoom (one level
+ * at a time), COMPLETED → ACTIVE, a quest tab → ALL. Only with nothing left
+ * does it leave the app (store backStep).
  */
 import { useEffect, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';

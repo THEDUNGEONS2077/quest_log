@@ -72,7 +72,7 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
   // Each quest tab opens at the top and slides in from its side (useViewPlace.ts).
   const category = useAppStore((s) => s.ui.category);
   const shown = useAppStore((s) => s.ui.tab === 'completed');
-  const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category), { group: category, visible: shown });
+  const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category), { tab: category, visible: shown });
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => place.onScroll(e.nativeEvent.contentOffset.y);
 
   // The COMPLETED switch tapped again (store revealTop): back to the top, if it's on screen.
@@ -95,6 +95,8 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
       <KeepInViewProvider value={keepInView}>
         <Animated.View style={[styles.container, place.style]}>
           <FlashList
+            // A fresh list for every tab switch: it always opens at the top (useViewPlace).
+            key={place.listKey}
             ref={list}
             data={rows}
             renderItem={renderItem}
