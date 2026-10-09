@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.5.0",
+    "build": 29,
+    "lines": [
+      "Smoother navigation, a better moment when you finish something, and a bug fix.",
+      "- **Fixed: the `> new quest` bar could get stuck in the middle of the screen.** This happened after a sheet (due date, the hold menu) was opened while the keyboard was up. Sheets now wait for the keyboard to close before they open, and the bar drops back down by itself if it is ever lifted with no keyboard under it.",
+      "- **Completing a task feels like it.** The checkbox pops, a green scan line sweeps across the row, and the XP you earned rises from it (`+18 XP`). A completed quest stays where it is while this plays, then slides out to the right.",
+      "- **Objectives start with a capital letter.** Whatever you type, paste or quick-add into a quest is saved that way, and older ones are shown that way.",
+      "- **Navigation:**",
+      "  - **Tap the title** (`<7>_quest_log`) to go home: ALL quests, ACTIVE, at the top.",
+      "  - **Tap the tab you're on again** to go to its top: out of a zoomed-in quest first, otherwise the list scrolls up.",
+      "  - **Each tab and zoom level keeps its own place.** Switch tabs, or zoom out of a quest, and you're back where you were. Lists slide in from the side they're on, so you can tell which way you moved.",
+      "  - **Zoomed into a quest you just completed?** You're taken back out once its completion has played, instead of staying inside a finished quest.",
+      "  - **The breadcrumb names the tab you're on** (`← DAILY`), since that's where it takes you back to."
+    ]
+  },
+  {
     "version": "1.4.2",
     "build": 28,
     "lines": [
@@ -62,13 +78,6 @@
       "- **COMPLETED** shows what each task earned.",
       "- **The header is larger** (+30%), with smaller boxes around `/ ? ⊛`.",
       "- **iPhone:** the web version's offline mode is now sturdier."
-    ]
-  },
-  {
-    "version": "1.2.2",
-    "build": 23,
-    "lines": [
-      "- **Typing `@1p` no longer turns into `@1p1pm`.** The fix in 1.2.1 was incomplete: the app was still writing the text back into the box after every letter, which confused the keyboard's word suggestions. It no longer does."
     ]
   }
 ]

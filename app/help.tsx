@@ -62,6 +62,9 @@ const SECTIONS: Section[] = [
       { key: 'ALL', what: 'Every quest together.' },
       { key: 'ACTIVE · COMPLETED', what: 'The switch under the tabs: open quests, or the ones you finished, for the tab you are on.' },
       { key: 'Change category', what: 'Hold a quest and let go → Category… → DAILY, MAIN or MISC.' },
+      { key: 'Tap the tab again', what: 'Goes to the top of it: out of a zoomed-in quest first, otherwise the list scrolls up.' },
+      { key: 'Tap the title', what: 'Home: ALL quests, ACTIVE, at the top, from anywhere on the main screen.' },
+      { key: 'Your place', what: 'Each tab and zoom level remembers where you scrolled to, so switching back returns you there.' },
       {
         key: 'Back button',
         what: 'Steps out one thing at a time: selection, then search, then zoom, then COMPLETED back to ACTIVE, then back to ALL, and only then leaves the app.',
@@ -118,13 +121,14 @@ const SECTIONS: Section[] = [
     intro: 'Any task can hold subtasks. A main task with subtasks is a group, with a progress count like [2/5].',
     lines: [
       { key: 'Make a group', what: 'Use IN on a task, the + on a group, + SUB while editing, or paste an indented list.' },
+      { key: 'Capitals', what: 'Objectives (subtasks) always start with a capital letter, however you type them.' },
       {
         key: `${g.expanded.glyph} / ${g.collapsed.glyph}`,
         what: 'Tap to hide or show a group’s subtasks. Hold to do it for every group at that level.',
       },
       {
         key: `${g.zoom.glyph} Zoom into`,
-        what: 'From the hold menu: shows only that group. The path at the top (← ALL / …) takes you back; so does the back button.',
+        what: 'From the hold menu: shows only that group. The path at the top (← ALL / …, named after your tab) takes you back; so does the back button, or tapping the tab again. Complete the quest and you are taken back out.',
       },
       { key: 'Sort subtasks…', what: 'From the hold menu: order a group’s subtasks by priority, due date or A–Z, once.' },
     ],
@@ -148,10 +152,10 @@ const SECTIONS: Section[] = [
     lines: [
       {
         key: g.checkboxOff.glyph,
-        what: 'Completes the task. Checking a group completes everything in it; finishing the last subtask completes the group.',
+        what: 'Completes the task: it pops, a scan line sweeps the row and the XP you earned rises from it. Checking a group completes everything in it; finishing the last subtask completes the group.',
       },
       { key: 'Swipe right', what: 'Completes the task. Swipe left deletes it.' },
-      { key: 'COMPLETED', what: 'Finished quests move here (the switch under the tabs), newest first.' },
+      { key: 'COMPLETED', what: 'A finished quest slides out to the right and moves here (the switch under the tabs), newest first.' },
       { key: 'Restore', what: `On COMPLETED: swipe right, or tap ${g.checkboxOn.glyph}, to put a task back where it was.` },
       { key: 'Run again', what: 'On COMPLETED, hold a task: a fresh unchecked copy, great for checklists.' },
       { key: 'CLEAR…', what: 'On COMPLETED: moves old completed tasks to Trash.' },

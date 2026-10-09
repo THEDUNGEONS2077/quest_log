@@ -49,3 +49,8 @@ export function KeyboardStickyView({ offset, style, children }: StickyProps) {
   const lift = inset > 0 ? inset - (offset?.opened ?? 0) : -(offset?.closed ?? 0);
   return <View style={[style, { transform: [{ translateY: -Math.max(0, lift) }] }]}>{children}</View>;
 }
+
+/** Web: sheets don't wait for the keyboard (no native tracker to protect; see keyboard.tsx). */
+export function useAfterKeyboardCloses(visible: boolean): boolean {
+  return visible;
+}

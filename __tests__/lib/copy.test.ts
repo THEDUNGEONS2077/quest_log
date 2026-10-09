@@ -50,7 +50,8 @@ describe('duplicate', () => {
 
 describe('toOutlineText', () => {
   it('writes an indented outline with checkboxes and notes', () => {
-    expect(toOutlineText(s, 'trip')).toBe(['trip', '  // book early', '  - [x] flights', '  - [ ] hotel', '    - [ ] deposit'].join('\n'));
+    // Objectives are written as shown, with a capital first letter (lib/title.ts).
+    expect(toOutlineText(s, 'trip')).toBe(['trip', '  // book early', '  - [x] Flights', '  - [ ] Hotel', '    - [ ] Deposit'].join('\n'));
   });
 
   it('round-trips through paste', () => {

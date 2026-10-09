@@ -26,6 +26,7 @@ import { scheduleOnRN } from 'react-native-worklets';
 import { type DragRow, dropOp, dropTarget, type DropTarget } from '@/lib/dnd';
 import type { Row } from '@/lib/flatten';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import { subtreeIds } from '@/lib/tree';
 import { haptics } from '@/services/haptics';
 import type { AppStoreInstance } from '@/store/createStore';
@@ -234,7 +235,7 @@ export function useDragController({ store, list, container, rows, enabled }: Con
         });
         haptics.tick();
         state.setDragging(id);
-        setView({ title: task.title || 'Untitled task', count: subtreeIds(state.tasks, id).length - 1, indicator: null });
+        setView({ title: shownTitle(task) || 'Untitled task', count: subtreeIds(state.tasks, id).length - 1, indicator: null });
       },
       move(absY, dx) {
         const s = session.current;

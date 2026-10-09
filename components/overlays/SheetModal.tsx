@@ -13,11 +13,16 @@
  *
  * The backdrop isn't a screen-reader element: it would swallow the sheet's
  * text. Android back closes the sheet instead (onRequestClose).
+ *
+ * If the keyboard is open (a sheet opened while typing, e.g. DUE on the
+ * editing toolbar), it is closed first and the sheet appears once it's gone:
+ * see useAfterKeyboardCloses for the stuck quick-add bar this prevents.
  */
 import { type ReactNode, useEffect } from 'react';
 import { Modal, Pressable, type StyleProp, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { useAfterKeyboardCloses } from '@/components/common/keyboard';
 import { duration, easing, space } from '@/theme';
 
 /** How far below its resting place the sheet starts. */
@@ -31,20 +36,27 @@ interface Props {
   children: ReactNode;
 }
 
-/** A bottom sheet in a modal: fading backdrop, rising sheet. */
-export function SheetModal({ visible, onClose, sheetStyle, children }: Props) {
-  // 0 = hidden, 1 = shown. Replays each time the sheet opens.
+/** A bottom sheet in a modal: fading backdrop, rising sheet. Nothing is mounted while closed. */
+export function SheetModal({ visible, ...rest }: Props) {
+  // Mounted fresh for each opening, so the body's keyboard check and its
+  // entrance animation start over every time.
+  return visible ? <SheetBody {...rest} /> : null;
+}
+
+function SheetBody({ onClose, sheetStyle, children }: Omit<Props, 'visible'>) {
+  // Shown only once the keyboard is closed (immediately when it already is).
+  const ready = useAfterKeyboardCloses(true);
+  // 0 = hidden, 1 = shown.
   const shown = useSharedValue(0);
   useEffect(() => {
-    shown.set(0);
-    if (visible) shown.set(withTiming(1, { duration: duration.base, easing }));
-  }, [visible, shown]);
+    if (ready) shown.set(withTiming(1, { duration: duration.base, easing }));
+  }, [ready, shown]);
 
   const backdrop = useAnimatedStyle(() => ({ opacity: shown.get() }));
   const sheet = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: (1 - shown.get()) * RISE }] }));
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+    <Modal visible={ready} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Animated.View style={[styles.backdrop, backdrop]}>
         <Pressable style={styles.fill} onPress={onClose} accessible={false} />
       </Animated.View>

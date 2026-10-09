@@ -26,6 +26,9 @@ export const CATEGORIES: readonly { key: QuestCategory; label: string }[] = [
 /** A tab of the list: one category, or all of them. */
 export type CategoryTab = 'all' | QuestCategory;
 
+/** The quest tabs in screen order, left to right. */
+export const CATEGORY_TABS: readonly CategoryTab[] = ['all', ...CATEGORIES.map((c) => c.key)];
+
 /** The category a quest belongs to (stored, or derived for older data). */
 export function questCategory(task: Pick<Task, 'category' | 'repeat'>): QuestCategory {
   if (task.category) return task.category;

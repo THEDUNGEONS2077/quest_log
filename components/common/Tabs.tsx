@@ -10,7 +10,8 @@
  * the switch below it picks open or completed ones, for every tab (so the
  * panel never changes height between tabs). Both are remembered across
  * launches. Switching is by tap only: a horizontal pager would fight the
- * row swipes. When the COMPLETED count goes up, its number pulses brighter
+ * row swipes. Tapping the selected tab again goes to the top of its view
+ * (out of a zoom first), the usual mobile convention. When the COMPLETED count goes up, its number pulses brighter
  * (PLAN §10.4), so you see where a finished quest went.
  */
 import { useEffect, useRef } from 'react';
@@ -44,10 +45,13 @@ export function Tabs() {
           return (
             <Pressable
               key={q.key}
-              onPress={() => actions.setCategoryTab(q.key)}
+              // Tapping the selected tab again goes to the top of it (out of a zoom, or scroll up).
+              onPress={() => (selected ? actions.toTabTop() : actions.setCategoryTab(q.key))}
               style={[styles.quest, selected && styles.questOn]}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
+              // The web build reads only aria-selected (react-native-web 0.21 ignores accessibilityState).
+              aria-selected={selected}
               accessibilityLabel={`${q.a11y}, ${counts[q.key].active} open`}
             >
               <Text
@@ -98,12 +102,13 @@ function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
 
   return (
     <Pressable
-      onPress={() => actions.setTab(tab)}
+      onPress={() => (selected ? actions.toTabTop() : actions.setTab(tab))}
       // A slim switch, but still 44 pt to tap.
       hitSlop={{ top: SWITCH_SLOP, bottom: SWITCH_SLOP }}
       style={[styles.switch, selected && styles.switchOn]}
       accessibilityRole="tab"
       accessibilityState={{ selected }}
+      aria-selected={selected}
       accessibilityLabel={`${label.toLowerCase()}, ${count}`}
     >
       <Animated.Text

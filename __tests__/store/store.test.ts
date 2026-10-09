@@ -3,7 +3,7 @@
  * wiring (store/createStore.ts, store/history.ts, store/selectors.ts).
  */
 import { childIds } from '@/lib/tree';
-import { createAppStore, installPersistence } from '@/store/createStore';
+import { createAppStore, installPersistence, LINGER_MS } from '@/store/createStore';
 import { HISTORY_LIMIT } from '@/store/history';
 import { createMemoryKV } from '@/store/kv';
 import { saveTasks } from '@/store/persist';
@@ -212,6 +212,58 @@ describe('editing actions', () => {
     s.setEditing(b); // focus moved to b before a's blur arrived
     s.finishEditing(a);
     expect(store.getState().editingId).toBe(b);
+  });
+
+  it('an objective typed in lowercase is saved with a capital, in the same undo step', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'groceries');
+    const o = s.addTask(q, '');
+    s.setEditing(o);
+    s.updateTitle(o, 'milk !!');
+    s.finishEditing(o);
+    const t = store.getState().tasks;
+    expect(tk(t, o)!.title).toBe('Milk');
+    expect(tk(t, o)!.priority).toBe(2);
+    expect(tk(t, q)!.title).toBe('groceries'); // quests stay as typed (drawn in capitals)
+    s.undo();
+    expect(tk(store.getState().tasks, o)!.title).toBe('milk !!'); // the shorthand and the capital: one step
+  });
+
+  it('a check records the XP it earned on that task (the row floats "+N XP"); an uncheck clears it', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'groceries');
+    const o = s.addTask(q, 'Milk');
+    s.addTask(q, 'Eggs');
+    s.toggleDone(o);
+    const gain = store.getState().lastGain;
+    expect(gain?.id).toBe(o);
+    expect(gain?.xp).toBe(store.getState().tasks.progress.xp);
+    s.toggleDone(o);
+    expect(store.getState().lastGain).toBeNull();
+  });
+
+  it('an old lowercase objective opened and closed unchanged is not rewritten', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'groceries');
+    const o = s.addTask(q, 'eggs');
+    const steps = store.getState().history.past.length;
+    s.setEditing(o);
+    s.finishEditing(o);
+    expect(tk(store.getState().tasks, o)!.title).toBe('eggs');
+    expect(store.getState().history.past).toHaveLength(steps);
+  });
+
+  it('quick-add into a quest saves the objective with a capital', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'groceries');
+    s.setZoom(q);
+    s.quickAdd('bread');
+    const t = store.getState().tasks;
+    expect(tk(t, t.children[q]![0]!)!.title).toBe('Bread');
   });
 
   it('quickAdd adds to the end of the current view, including when zoomed', () => {
@@ -829,5 +881,88 @@ describe('navigation (pass 2026-10-09)', () => {
         .activeRows(store.getState())
         .map((r) => r.id),
     ).toEqual(['t2']);
+  });
+});
+
+describe('navigation (second pass, 2026-10-09)', () => {
+  it('the selected tab tapped again: out of a zoom, else back to the top', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'quest');
+    s.addTask(q, 'Objective');
+    s.setZoom(q);
+    s.toTabTop();
+    expect(store.getState().ui.zoomRootId).toBeNull();
+    const before = store.getState().revealTop;
+    s.toTabTop();
+    expect(store.getState().revealTop).toBe(before + 1);
+  });
+
+  it('the title goes home from anywhere: ALL, ACTIVE, top level, no search, scrolled up', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'quest');
+    s.setCategoryTab('main');
+    s.setZoom(q);
+    s.setSearch('active', { open: true, query: 'x' });
+    s.setTab('completed');
+    const before = store.getState().revealTop;
+    s.goHome();
+    const { ui, search, revealTop } = store.getState();
+    expect(ui).toMatchObject({ category: 'all', tab: 'active', zoomRootId: null });
+    expect(search.active.open).toBe(false);
+    expect(revealTop).toBe(before + 1);
+  });
+
+  it('completing the quest you are zoomed into takes you back out once it has played', () => {
+    jest.useFakeTimers();
+    try {
+      const { store } = makeStore();
+      const s = store.getState();
+      const q = s.addTask(null, 'quest');
+      const o = s.addTask(q, 'Only objective');
+      s.setZoom(q);
+      s.toggleDone(o); // the last objective completes the quest
+      expect(store.getState().lingering).toEqual([q]);
+      expect(store.getState().ui.zoomRootId).toBe(q); // the completion plays inside the quest
+      jest.advanceTimersByTime(LINGER_MS);
+      expect(store.getState().lingering).toEqual([]);
+      expect(store.getState().ui.zoomRootId).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('a completed quest leaves from where it is: the order holds until its exit has played', () => {
+    jest.useFakeTimers();
+    try {
+      const { store, advance } = makeStore();
+      const s = store.getState();
+      const a = s.addTask(null, 'a');
+      advance(1000);
+      const b = s.addTask(null, 'b'); // newer, so first
+      const order = () =>
+        makeSelectors()
+          .activeRows(store.getState())
+          .map((r) => r.id);
+      expect(order()).toEqual([b, a]);
+      advance(1000);
+      s.toggleDone(a); // a is now the most recently modified, but leaving
+      expect(order()).toEqual([b, a]);
+      jest.advanceTimersByTime(LINGER_MS);
+      expect(order()).toEqual([b]);
+      expect(store.getState().questOrderLock).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('undoing a zoomed quest away zooms out', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'quest');
+    s.setZoom(q);
+    s.undo();
+    expect(store.getState().ui.zoomRootId).toBeNull();
   });
 });

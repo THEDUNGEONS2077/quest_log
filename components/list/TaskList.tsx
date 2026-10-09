@@ -14,14 +14,22 @@
  * starts editing off-screen (a new subtask at the end of a long group) is
  * scrolled to first, so its editor can mount and take focus. Dragging the
  * list a meaningful distance ends editing (PLAN §9.3).
+ *
+ * Views: each quest tab and zoom level keeps its own scroll position and
+ * slides in from its side (useViewPlace.ts). Zooming deeper comes in from
+ * the right, zooming out from the left.
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useRef } from 'react';
+import Animated from 'react-native-reanimated';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BlockCursor } from '@/components/common/BlockCursor';
 
 import type { Row } from '@/lib/flatten';
+import type { TasksState } from '@/lib/types';
+import { CATEGORY_TABS } from '@/lib/quests';
+import { findTask } from '@/lib/taskMap';
 import { useActions, useAppStore, useSelectors, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
@@ -29,6 +37,7 @@ import { DragOverlay, DragProvider, useDragController } from './drag';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { TaskRow } from './TaskRow';
 import { useKeyboardHeight } from './useKeyboardHeight';
+import { useViewPlace } from './useViewPlace';
 
 /** Dragging the list this far (pt) while editing closes the keyboard. */
 const DISMISS_DRAG_DISTANCE = size.rowMinHeight * 3;
@@ -45,11 +54,19 @@ export function TaskList({ bottomInset }: Props) {
   const highlightId = useAppStore((s) => s.highlightId);
   const list = useRef<FlashListRef<Row>>(null);
 
-  // A new quest was added: it sorts first, so scroll up to show it (store revealTop).
+  // The view shown: a quest tab, and a zoom level within it. Each keeps its own place.
+  const category = useAppStore((s) => s.ui.category);
+  const zoomRootId = useAppStore((s) => s.ui.zoomRootId);
+  const zoomDepth = useAppStore((s) => zoomLevel(s.tasks, s.ui.zoomRootId));
+  const place = useViewPlace(list, `${category}/${zoomRootId ?? ''}`, CATEGORY_TABS.indexOf(category) * 100 + zoomDepth);
+
+  // Scroll to the top (store revealTop): a new quest was added (it sorts first), the
+  // selected tab was tapped again, or home. Only while ACTIVE is the tab on screen.
+  const { store } = useStoreBundle();
   const revealTop = useAppStore((s) => s.revealTop);
   useEffect(() => {
-    if (revealTop > 0) list.current?.scrollToOffset({ offset: 0, animated: true });
-  }, [revealTop]);
+    if (revealTop > 0 && store.getState().ui.tab === 'active') list.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [revealTop, store]);
   const container = useRef<View>(null);
   const keyboardHeight = useKeyboardHeight();
 
@@ -73,7 +90,6 @@ export function TaskList({ bottomInset }: Props) {
 
   // Drag-and-drop (drag.tsx). Rows are read through a ref: they can change mid-drag
   // when hovering opens a collapsed group. No dragging while editing.
-  const { store } = useStoreBundle();
   const rowsRef = useRef(rows);
   useEffect(() => {
     rowsRef.current = rows;
@@ -108,6 +124,7 @@ export function TaskList({ bottomInset }: Props) {
     dragStartY.current = e.nativeEvent.contentOffset.y;
   };
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    place.onScroll(e.nativeEvent.contentOffset.y);
     const start = dragStartY.current;
     if (start !== null && Math.abs(e.nativeEvent.contentOffset.y - start) > DISMISS_DRAG_DISTANCE) {
       dragStartY.current = null;
@@ -122,35 +139,44 @@ export function TaskList({ bottomInset }: Props) {
     <View ref={container} style={styles.container} collapsable={false}>
       <KeepInViewProvider value={keepInView}>
         <DragProvider value={drag.api}>
-          <FlashList
-            ref={list}
-            data={rows}
-            renderItem={renderItem}
-            keyExtractor={(r) => r.id}
-            // Separate recycling pools: group headers and plain rows differ in layout.
-            getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
-            onViewableItemsChanged={({ viewableItems }) => {
-              const indices = viewableItems.map((v) => v.index ?? 0);
-              visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };
-            }}
-            // Taps on rows work while the keyboard is open; taps on empty space dismiss it.
-            keyboardShouldPersistTaps="handled"
-            // The list stays still while a task is dragged (auto-scroll moves it instead).
-            scrollEnabled={!dragging}
-            onScrollBeginDrag={onScrollBeginDrag}
-            onScrollEndDrag={() => (dragStartY.current = null)}
-            onScroll={onScroll}
-            scrollEventThrottle={32}
-            // While the keyboard is open, pad by its height (plus the toolbar on it)
-            // so even the last row can be scrolled up to just above the toolbar.
-            contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
-            ListEmptyComponent={EmptyState}
-          />
+          <Animated.View style={[styles.container, place.style]}>
+            <FlashList
+              ref={list}
+              data={rows}
+              renderItem={renderItem}
+              keyExtractor={(r) => r.id}
+              // Separate recycling pools: group headers and plain rows differ in layout.
+              getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
+              onViewableItemsChanged={({ viewableItems }) => {
+                const indices = viewableItems.map((v) => v.index ?? 0);
+                visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };
+              }}
+              // Taps on rows work while the keyboard is open; taps on empty space dismiss it.
+              keyboardShouldPersistTaps="handled"
+              // The list stays still while a task is dragged (auto-scroll moves it instead).
+              scrollEnabled={!dragging}
+              onScrollBeginDrag={onScrollBeginDrag}
+              onScrollEndDrag={() => (dragStartY.current = null)}
+              onScroll={onScroll}
+              scrollEventThrottle={32}
+              // While the keyboard is open, pad by its height (plus the toolbar on it)
+              // so even the last row can be scrolled up to just above the toolbar.
+              contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
+              ListEmptyComponent={EmptyState}
+            />
+          </Animated.View>
           <DragOverlay view={drag.view} api={drag.api} />
         </DragProvider>
       </KeepInViewProvider>
     </View>
   );
+}
+
+/** How deep the zoom is: 0 at a tab's top level, 1 inside a quest, 2 inside one of its subtasks… */
+function zoomLevel(tasks: TasksState, zoomRootId: string | null): number {
+  let level = 0;
+  for (let id = zoomRootId; id !== null; id = findTask(tasks, id)?.parentId ?? null) level++;
+  return level;
 }
 
 /**

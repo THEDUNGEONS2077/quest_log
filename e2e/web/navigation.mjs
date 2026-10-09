@@ -61,6 +61,22 @@ const tap = (label) => page.getByLabel(label).first().click();
 const see = (text) => page.getByText(text).first().waitFor({ state: 'visible', timeout: 4000 });
 /** Asserts we're on the main screen (the quest tabs are there). */
 const onMain = () => page.getByLabel(/^all quests/i).waitFor({ state: 'visible', timeout: 4000 });
+/** Long-presses the row titled `title` (a touch hold, which opens its menu). */
+async function hold(title) {
+  const box = await page.getByText(title).first().boundingBox();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send('Input.synthesizeTapGesture', {
+    x: box.x + 30,
+    y: box.y + box.height / 2,
+    duration: 900,
+    tapCount: 1,
+    gestureSourceType: 'touch',
+  });
+}
+/** Throws unless the element labelled `label` is gone. */
+async function gone(label, message) {
+  if (await page.getByLabel(label).count()) throw new Error(message);
+}
 
 try {
   await page.goto(URL);
@@ -184,6 +200,29 @@ try {
     await shot('move-picker');
     await tap('Cancel move');
     await see(/plan the weekend/i);
+  });
+
+  await path('quest tab: the breadcrumb names the tab; tapping the tab again zooms out', async () => {
+    await tap(/^main quests/i);
+    await hold(/^groceries$/i);
+    await page.getByText('Zoom into').click();
+    await see('← MAIN');
+    await shot('zoomed-main');
+    await tap(/^main quests/i); // the selected tab, again
+    await see(/^groceries$/i);
+    await gone('Back to main quests', 'still zoomed in after tapping the selected tab');
+    await tap(/^all quests/i);
+  });
+
+  await path('the title goes home from anywhere (ALL · ACTIVE · top level)', async () => {
+    await tap(/^daily quests/i);
+    await tap(/^completed,/);
+    await see('> NOTHING COMPLETED YET.');
+    await tap(/^quest_log, level/);
+    await see(/plan the weekend/i);
+    const selected = await page.getByLabel(/^all quests/i).getAttribute('aria-selected');
+    if (selected !== 'true') throw new Error('ALL is not the selected tab after going home');
+    await gone('Close search', 'search still open after going home');
   });
 
   await path('edit a task, then switch tab: editing ends, nothing left open', async () => {

@@ -24,6 +24,7 @@ import { SheetModal } from './SheetModal';
 
 import { PRESETS, repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import type { RepeatRule } from '@/lib/types';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
@@ -68,7 +69,7 @@ function RepeatSheetBody({ id }: { id: string }) {
   return (
     <SheetModal visible onClose={close} sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
       <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} ${task.title || 'Untitled task'}`}
+        {`${glyphs.prompt.glyph} ${shownTitle(task) || 'Untitled task'}`}
       </Text>
       <Text style={[type.meta, styles.summary]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {`${glyphs.repeat.glyph} ${repeatLabel(rule)}`}

@@ -16,3 +16,7 @@ jest.mock('expo-quick-actions', () => ({
   setItems: jest.fn(() => Promise.resolve()),
   addListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
+
+// react-native-keyboard-controller is native-only: its official mock (the
+// keyboard is closed; dismiss() resolves at once).
+jest.mock('react-native-keyboard-controller', () => require('react-native-keyboard-controller/jest'));

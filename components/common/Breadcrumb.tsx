@@ -5,19 +5,24 @@
  *   2 OPEN · 1 DONE
  *
  * Layer: UI. Shown on the ACTIVE tab while zoomed into a task. Each part
- * is tappable and jumps to that level; ← ALL leaves zoom. Android back
+ * is tappable and jumps to that level; the first one leaves zoom, and is
+ * named after the quest tab you're on (← DAILY on DAILY: it goes back to
+ * that tab's list, not to ALL; second navigation pass, 2026-10-09). Android back
  * also zooms out one level (app/index.tsx). It's a small component, so it
  * simply re-renders with the tree.
  */
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { CATEGORIES, type CategoryTab } from '@/lib/quests';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import { ancestors, liveChildIds } from '@/lib/tree';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 export function Breadcrumb() {
   const zoom = useAppStore((s) => s.ui.zoomRootId);
+  const category = useAppStore((s) => s.ui.category);
   const tasks = useAppStore((s) => s.tasks);
   const actions = useActions();
   if (!zoom || !findTask(tasks, zoom)) return null;
@@ -30,9 +35,13 @@ export function Breadcrumb() {
   return (
     <View style={styles.wrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.path}>
-        <Crumb label="← ALL" onPress={() => actions.setZoom(null)} a11y="Back to all quests" />
+        <Crumb
+          label={`← ${tabLabel(category)}`}
+          onPress={() => actions.setZoom(null)}
+          a11y={`Back to ${tabLabel(category).toLowerCase()} quests`}
+        />
         {path.map((id, i) => {
-          const title = findTask(tasks, id)!.title || 'Untitled';
+          const title = shownTitle(findTask(tasks, id)!) || 'Untitled';
           const current = i === path.length - 1;
           return (
             <View key={id} style={styles.part}>
@@ -50,6 +59,11 @@ export function Breadcrumb() {
 }
 
 /** One tappable part of the path (the current level isn't a link). */
+/** The quest tab's name as its tab shows it: ALL, DAILY, MAIN, MISC. */
+function tabLabel(category: CategoryTab): string {
+  return category === 'all' ? 'ALL' : CATEGORIES.find((c) => c.key === category)!.label;
+}
+
 function Crumb({ label, onPress, current, a11y }: { label: string; onPress: () => void; current?: boolean; a11y: string }) {
   return (
     <Pressable onPress={onPress} disabled={current} style={styles.crumb} accessibilityRole="button" accessibilityLabel={a11y}>

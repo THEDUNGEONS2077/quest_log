@@ -13,8 +13,10 @@
  *
  * Completion (Phase 5): the checkbox and swipe-right check the task (with
  * cascade and auto-complete rules in lib/complete.ts); swipe-left deletes.
- * A checked top-level task stays for its strike + 500 ms hold, fades out
- * and moves to COMPLETED (PLAN §6.6). Every gesture has a screen-reader
+ * Checking plays the completion burst (CompleteBurst.tsx: the box pops, a
+ * scan line crosses the row, "+N XP" rises). A checked top-level task then
+ * holds 600 ms, slides out to the right as it fades, with its subtasks, and
+ * moves to COMPLETED (PLAN §6.6). Every gesture has a screen-reader
  * action as an alternative (PLAN §13).
  */
 import { memo, useEffect } from 'react';
@@ -32,15 +34,17 @@ import { repeatLabel } from '@/lib/recurrence';
 import { matchRange, type FoundRow } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
 import { isInSubtree } from '@/lib/tree';
+import { shownTitle } from '@/lib/title';
 import type { Task } from '@/lib/types';
 import { haptics } from '@/services/haptics';
 import { remindersAvailable } from '@/services/reminderSupport';
 import { repeatMultiplier } from '@/lib/xp';
-import { ADVANCE_MS, LINGER_MS, type ToggleOutcome } from '@/store/createStore';
+import { ADVANCE_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
 
 import { Caret } from './Caret';
+import { CheckGlyph, CompleteScan, useJustChecked, XpFloat } from './CompleteBurst';
 import { FocusGlow } from './FocusGlow';
 import { NestingGuides } from './NestingGuides';
 import { QuestMeter } from './QuestMeter';
@@ -79,10 +83,15 @@ export const TaskRow = memo(
     const context = 'context' in row && (row as FoundRow).context;
     // Only rows with a due date subscribe to the clock (for the spoken "due …, overdue").
     const now = useMinuteIf(task?.dueAt != null);
-    const lingering = useAppStore((s) => s.lingering.includes(row.id));
+    // A just-completed quest, or a row inside one: they leave ACTIVE together.
+    const lingering = useAppStore((s) => s.lingering.some((l) => isInSubtree(s.tasks, row.id, l)));
     // A repeating task just checked: struck for a moment, then back with its next date (PLAN §10.5).
     const advancing = useAppStore((s) => s.advancing.includes(row.id));
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
+    // The XP this row's check just earned (only this row re-renders for it).
+    const gain = useAppStore((s) => (s.lastGain?.id === row.id ? s.lastGain.xp : 0));
+    // Goes up each time this task is checked here: plays the completion burst.
+    const fire = useJustChecked(row.id, !!task?.done || advancing);
     const actions = useActions();
     useEffect(() => {
       if (!advancing) return;
@@ -90,18 +99,22 @@ export const TaskRow = memo(
       return () => clearTimeout(t);
     }, [advancing, actions, row.id]);
 
-    // A just-completed top-level task: hold while the strike plays, fade, then leave ACTIVE.
+    // A just-completed top-level task: hold while the burst plays, then slide out to the
+    // right while fading, with its subtask rows. The store lets it leave ACTIVE after
+    // LINGER_MS (toggleDone).
     const opacity = useSharedValue(1);
+    const slide = useSharedValue(0);
     useEffect(() => {
       if (!lingering) {
         opacity.value = 1;
+        slide.value = 0;
         return;
       }
-      opacity.value = withDelay(timing.completeHold, withTiming(0, { duration: duration.base, easing }));
-      const t = setTimeout(() => actions.releaseLingering(row.id), LINGER_MS);
-      return () => clearTimeout(t);
-    }, [lingering, opacity, actions, row.id]);
-    const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+      const out = { duration: duration.base, easing };
+      opacity.value = withDelay(timing.completeHold, withTiming(0, out));
+      slide.value = withDelay(timing.completeHold, withTiming(EXIT_SLIDE, out));
+    }, [lingering, opacity, slide]);
+    const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateX: slide.value }] }));
 
     if (!task) return null; // removed between flatten and render
 
@@ -170,6 +183,8 @@ export const TaskRow = memo(
             {editing && <FocusGlow />}
             {/* Flashes when the task is opened from a notification or link. */}
             <HighlightFlash rowId={row.id} />
+            {/* The completion scan, behind the content. */}
+            <CompleteScan fire={fire} />
             <NestingGuides levels={visualDepth} />
 
             {/* Caret: tap collapses/expands; long-press does it for all siblings. */}
@@ -195,12 +210,12 @@ export const TaskRow = memo(
               accessibilityState={{ checked: task.done }}
               accessibilityLabel={`${task.done ? 'Uncheck' : 'Complete'} ${task.title || 'task'}`}
             >
-              <Text
-                style={[type.glyph, styles.checkboxText, { color: task.done ? colors.textDim : colors.text }]}
-                maxFontSizeMultiplier={maxFontSizeMultiplier}
-              >
-                {task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
-              </Text>
+              <CheckGlyph
+                fire={fire}
+                done={task.done}
+                glyph={task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
+                style={[type.glyph, styles.checkboxText]}
+              />
             </Pressable>
 
             {/* Title (editor or text), then chips and notes while editing, or notes when expanded.
@@ -212,7 +227,8 @@ export const TaskRow = memo(
                 <InlineEditor id={task.id} title={task.title} variant={variant} />
               ) : (
                 <StrikeText
-                  text={task.title}
+                  id={task.id}
+                  text={shownTitle(task)}
                   struck={task.done || advancing}
                   color={isQuest ? colors.textBright : colors.text}
                   style={titleStyle}
@@ -262,6 +278,8 @@ export const TaskRow = memo(
                 </Text>
               </Pressable>
             ) : null}
+            {/* "+N XP" from this check, over everything (left of a quest's "+"). */}
+            <XpFloat fire={fire} xp={gain} inset={isQuest ? QUEST_PLUS_WIDTH : 0} />
           </Pressable>
         </SwipeableRow>
         {menu && <ContextMenu id={task.id} onClose={actions.closeMenu} />}
@@ -277,6 +295,12 @@ export const TaskRow = memo(
     a.row.progress.total === b.row.progress.total &&
     a.first === b.first,
 );
+
+/** The room a quest's "+" button takes at the row's right edge (its width plus its gap). */
+const QUEST_PLUS_WIDTH = size.hitTarget + space.sm * 2;
+
+/** How far a completed quest slides right as it leaves ACTIVE (pt). */
+const EXIT_SLIDE = space.xl * 2;
 
 /** Screen-reader alternatives to the row's gestures (PLAN §13). */
 const ROW_ACTIONS = [

@@ -21,8 +21,12 @@ export const duration = {
 export const timing = {
   /** Block cursor `█` on/off interval. */
   cursorBlink: 530,
-  /** Hold after strikethrough before a top-level task leaves ACTIVE. */
-  completeHold: 500,
+  /**
+   * Hold after a top-level task is checked, before it slides out of ACTIVE:
+   * the strike, scan and "+N XP" play in it (500 → 600 ms, 2026-10-09, so
+   * the XP can be read).
+   */
+  completeHold: 600,
   /** Hold between strike and un-strike when a repeating task advances. */
   repeatHold: 300,
   /** Boot sequence fade-out. */

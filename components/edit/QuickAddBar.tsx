@@ -24,6 +24,7 @@ import { BlockCursor } from '@/components/common/BlockCursor';
 import { ShorthandChips, useShorthand } from '@/components/edit/ParsedChips';
 import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
@@ -42,7 +43,10 @@ export function QuickAddBar({ onHeight }: Props) {
   const [focused, setFocused] = useState(false);
   const parsed = useShorthand(text);
   // The #Group target's title, if quick-add is currently adding into a group.
-  const target = useAppStore((s) => (s.quickAddParent ? (findTask(s.tasks, s.quickAddParent)?.title ?? null) : null));
+  const target = useAppStore((s) => {
+    const parent = s.quickAddParent ? findTask(s.tasks, s.quickAddParent) : undefined;
+    return parent ? shownTitle(parent) : null;
+  });
 
   const onChangeText = (next: string) => {
     // One line break added to the same text = Enter (the web build inserts it

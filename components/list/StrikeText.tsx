@@ -10,7 +10,9 @@
  * setting is on (PLAN §8.3).
  *
  * Rows that mount already done (scrolling, relaunch) show the final state
- * with no animation.
+ * with no animation, and so does a row the list reuses for another task
+ * (FlashList recycles rows while scrolling): only a change of the same
+ * task's state animates.
  */
 import { useEffect, useRef, useState } from 'react';
 import { type NativeSyntheticEvent, StyleSheet, Text, type TextLayoutEventData, type TextStyle, View } from 'react-native';
@@ -19,6 +21,8 @@ import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTimin
 import { colors, duration, easing, maxFontSizeMultiplier, platformText, shape } from '@/theme';
 
 interface Props {
+  /** The task shown: a different one means the row was reused, not checked. */
+  id: string;
   text: string;
   struck: boolean;
   /** Undone text color (struck text fades to textDim). */
@@ -38,19 +42,19 @@ interface Line {
   height: number;
 }
 
-export function StrikeText({ text, struck, color, style, onPress, onLongPress, highlight }: Props) {
+export function StrikeText({ id, text, struck, color, style, onPress, onLongPress, highlight }: Props) {
   // 0 = plain, 1 = fully struck. Starts at the final state: mounting isn't a change.
   const progress = useSharedValue(struck ? 1 : 0);
-  const mounted = useRef(false);
+  const shown = useRef({ id, struck });
   const [lines, setLines] = useState<Line[]>([]);
 
   useEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
-    progress.value = withTiming(struck ? 1 : 0, { duration: duration.base, easing });
-  }, [struck, progress]);
+    const before = shown.current;
+    shown.current = { id, struck };
+    if (before.id !== id)
+      progress.value = struck ? 1 : 0; // reused for another task: jump
+    else if (before.struck !== struck) progress.value = withTiming(struck ? 1 : 0, { duration: duration.base, easing });
+  }, [id, struck, progress]);
 
   const textStyle = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [color, colors.textDim]),

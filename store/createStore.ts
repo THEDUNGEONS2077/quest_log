@@ -30,7 +30,7 @@ import * as bulk from '@/lib/bulk';
 import * as dnd from '@/lib/dnd';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
-import { questOrder } from '@/lib/flatten';
+import { questOrder, shownZoom } from '@/lib/flatten';
 import { parse, type ParseResult } from '@/lib/parser';
 import { firstOccurrence, PRESETS } from '@/lib/recurrence';
 import { CATEGORIES, type CategoryTab, categoryForNew, onTab, questCategory } from '@/lib/quests';
@@ -38,6 +38,7 @@ import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { SAMPLE_OUTLINE } from '@/lib/sample';
 import { findTask, taskCount } from '@/lib/taskMap';
+import { titleFor } from '@/lib/title';
 import { ancestors, childIds, getTask, liveChildIds, toDocument } from '@/lib/tree';
 import type { Filter } from '@/lib/search';
 import type { ID, Priority, QuestCategory, RepeatRule, Task, TaskFields, TasksDocument, TasksState } from '@/lib/types';
@@ -86,8 +87,12 @@ export type ToggleOutcome = 'checked' | 'unchecked' | 'parent-completed' | 'move
 /** How long a repeating task shows its strike before un-striking with the new date (PLAN §10.5). */
 export const ADVANCE_MS = 500;
 
-/** How long a just-checked top-level task stays on ACTIVE: strike (200 ms) + hold (500 ms). */
-export const LINGER_MS = 700;
+/**
+ * How long a just-checked top-level task stays on ACTIVE: the strike, scan
+ * and "+N XP" play (theme timing.completeHold, 600 ms), then it slides out
+ * (200 ms). Long enough to read the XP, short enough not to wait on.
+ */
+export const LINGER_MS = 800;
 
 /** `dueSheetFor` value meaning "the whole multi-select selection" (PLAN §9.14 DUE). */
 export const SELECTION = '*selection*';
@@ -162,6 +167,11 @@ export interface AppStore {
    * un-strikes with the new date (PLAN §10.5). Not persisted.
    */
   advancing: ID[];
+  /**
+   * The XP the last checkbox / swipe completion earned, and on which task:
+   * that row floats "+N XP" (components/list/CompleteBurst.tsx). Not persisted.
+   */
+  lastGain: { id: ID; xp: number } | null;
   /** The toast on screen, if any. Not persisted. */
   toast: Toast | null;
   /** First-run tips seen and the last "What's new" shown. Persisted (store/onboarding.ts). */
@@ -172,15 +182,18 @@ export interface AppStore {
    */
   quickAddFocus: number;
   /**
-   * Bumped when a new quest is added at the top (quick-add, paste), so the
-   * list scrolls up to show it. FlashList otherwise keeps the rows you were
-   * looking at in place, leaving the new quest just above the screen.
+   * Bumped to scroll the visible list to its top: a new quest was added at
+   * the top (quick-add, paste; FlashList otherwise keeps the rows you were
+   * looking at in place, leaving the new quest just above the screen), the
+   * selected tab was tapped again, or the title was tapped (home).
    */
   revealTop: number;
   /**
    * The quest order locked while a task is being edited (lib/flatten.ts
-   * questOrder), so the list can't re-sort under the editor; released when
-   * editing ends. Not persisted.
+   * questOrder), so the list can't re-sort under the editor, and while a
+   * completed quest plays its exit (it would otherwise jump to the top as
+   * "just modified" and leave from there). Released when neither is going
+   * on. Not persisted.
    */
   questOrderLock: ID[] | null;
   /** How the tasks were loaded at startup (for diagnostics and recovery messages). */
@@ -291,6 +304,17 @@ export interface AppStore {
   backStep(): boolean;
   /** Shows a quest tab (ALL / DAILY / MAIN / MISC); leaves zoom and the #Group target. */
   setCategoryTab(category: CategoryTab): void;
+  /**
+   * The selected tab (a quest tab or ACTIVE / COMPLETED) tapped again: back
+   * to the top of that view. Zoomed in, out to the tab's top level first;
+   * otherwise the list scrolls to its top.
+   */
+  toTabTop(): void;
+  /**
+   * The title tapped: home, i.e. ALL quests, ACTIVE, top level, no search,
+   * scrolled to the top. From anywhere on the main screen, one tap.
+   */
+  goHome(): void;
   /** Hold menu → Category: moves a quest to another tab (one undo step, with a toast). */
   setQuestCategory(id: ID, category: QuestCategory): void;
   setZoom(id: ID | null): void;
@@ -431,6 +455,8 @@ export function createAppStore(deps: StoreDeps) {
    *     one undo step. Only newly typed words count (the words of the title
    *     when editing started stay literal), and dates amend the existing due
    *     date: "@5pm" keeps its day, "@mon" keeps its time;
+   *   - an objective (subtask) whose title was changed gets a capital first
+   *     letter (lib/title.ts), in the same undo step;
    *   - a task left empty with no children is discarded (undoable).
    * `startTitle` is the title when editing started (null: no shorthand pass).
    */
@@ -439,11 +465,18 @@ export function createAppStore(deps: StoreDeps) {
     let task = findTask(s.tasks, id);
     if (task && startTitle !== null && task.title !== startTitle) {
       const r = s.parseShorthand(task.title, new Set(startTitle.split(/\s+/).filter(Boolean)), task.dueAt);
+      let fields: Partial<TaskFields> = {};
       if (r.chips.length) {
         // Typing only shorthand ("!!") must not empty the title (which would delete the task).
-        const fields = { ...shorthandFields(r, task.dueAt), title: r.title || startTitle };
+        fields = { ...shorthandFields(r, task.dueAt), title: r.title || startTitle };
         // `//` appends to existing notes rather than replacing them.
         if (r.notes !== undefined && task.notes) fields.notes = `${task.notes}\n${r.notes}`;
+      }
+      // Only when the title was edited: opening and closing an old lowercase
+      // objective changes nothing (it's capitalized on display instead).
+      const title = fields.title ?? task.title;
+      if (titleFor(task.parentId, title) !== title) fields.title = titleFor(task.parentId, title);
+      if (Object.keys(fields).length) {
         s.dispatch(ops.editTask(s.tasks, id, fields, now()));
         task = findTask(store.getState().tasks, id);
       }
@@ -495,6 +528,7 @@ export function createAppStore(deps: StoreDeps) {
       settings,
       lingering: [],
       advancing: [],
+      lastGain: null,
       toast: null,
       onboarding: loadJSON(kv, KEYS.onboarding, DEFAULT_ONBOARDING),
       quickAddFocus: 0,
@@ -599,7 +633,7 @@ export function createAppStore(deps: StoreDeps) {
         if (target !== null && !targetOk) set({ quickAddParent: null });
         const parent = targetOk ? target : get().ui.zoomRootId;
         const id = newId();
-        const task: Task = { ...ops.newTask(id, parent, r.title.slice(0, TITLE_MAX), now()), ...shorthandFields(r) };
+        const task: Task = { ...ops.newTask(id, parent, titleFor(parent, r.title.slice(0, TITLE_MAX)), now()), ...shorthandFields(r) };
         // A new quest (top level) joins the tab it was added on (lib/quests.ts). On DAILY
         // it repeats daily unless the shorthand said otherwise: a daily quest resets each
         // day, and earns the repeat and day streaks (lib/xp.ts).
@@ -664,13 +698,24 @@ export function createAppStore(deps: StoreDeps) {
         const task = getTask(tasks, id);
         if (task.done) {
           get().dispatch(complete.uncheck(tasks, id, now()));
+          set({ lastGain: null });
           return 'unchecked';
         }
         const r = complete.check(tasks, id, now());
         const xpBefore = tasks.progress.xp;
+        // A quest leaving ACTIVE lingers while its completion plays (TaskRow), then goes.
+        // Marked before the change lands, so a zoom into it holds until then (shownZoom).
+        // Timed here, not by its row: zoomed into the quest, that row isn't on screen.
+        const leaving = r.advanced ? null : r.completedTopLevel;
+        if (leaving) {
+          // The order as it was: the quest leaves from where it is (questOrderLock).
+          set({ lingering: [...get().lingering, leaving], questOrderLock: get().questOrderLock ?? questOrder(tasks) });
+          setTimeout(() => get().releaseLingering(leaving), LINGER_MS);
+        }
         get().dispatch(r.op);
         // XP feedback (lib/xp.ts): what this earned, and a new level if one was reached.
         const xpAfter = get().tasks.progress.xp;
+        set({ lastGain: xpAfter > xpBefore ? { id, xp: xpAfter - xpBefore } : null });
         const newLevel = levelInfo(xpAfter).level > levelInfo(xpBefore).level ? levelInfo(xpAfter).level : null;
         const xpNote = `${xpAfter > xpBefore ? ` · +${xpAfter - xpBefore} XP` : ''}${newLevel !== null ? ` · LEVEL ${newLevel}!` : ''}`;
         if (r.advanced) {
@@ -680,8 +725,6 @@ export function createAppStore(deps: StoreDeps) {
           return 'repeated';
         }
         if (r.completedTopLevel) {
-          // Keep it visible while the strike plays; TaskRow releases it after LINGER_MS.
-          set({ lingering: [...get().lingering, r.completedTopLevel] });
           get().showToast(`${r.completedTopLevel === id ? 'COMPLETED' : 'COMPLETED · GROUP DONE'}${xpNote}`, true);
           return 'moved-to-completed';
         }
@@ -698,7 +741,11 @@ export function createAppStore(deps: StoreDeps) {
       },
 
       releaseLingering(id) {
-        if (get().lingering.includes(id)) set({ lingering: get().lingering.filter((x) => x !== id) });
+        if (!get().lingering.includes(id)) return;
+        const lingering = get().lingering.filter((x) => x !== id);
+        // The last exit done and nothing being edited: the list may re-sort again.
+        const unlock = lingering.length === 0 && get().editingId === null;
+        set({ lingering, ...(unlock && { questOrderLock: null }) });
       },
 
       restoreTask(id) {
@@ -820,6 +867,26 @@ export function createAppStore(deps: StoreDeps) {
         set({ ui: { ...get().ui, tab } });
       },
 
+      toTabTop() {
+        const s = get();
+        if (s.ui.tab === 'active' && s.ui.zoomRootId !== null) {
+          leaveListModes();
+          s.setZoom(null);
+          return;
+        }
+        set({ revealTop: s.revealTop + 1 });
+      },
+
+      goHome() {
+        const s = get();
+        if (s.editingId !== null) s.finishEditing(s.editingId);
+        s.setCategoryTab('all');
+        s.setTab('active');
+        leaveListModes();
+        if (get().search.active.open) s.closeSearch('active');
+        set({ ui: { ...get().ui, zoomRootId: null }, quickAddParent: null, revealTop: get().revealTop + 1 });
+      },
+
       setCategoryTab(category) {
         if (category === get().ui.category) return;
         // Leave modes tied to quests the new tab may not show.
@@ -863,9 +930,11 @@ export function createAppStore(deps: StoreDeps) {
         const prev = get().editingId;
         if (prev !== null && prev !== editingId) commitEdit(prev, get().editingStartTitle);
         // A new editing session starts a new undo step for typing. The quest order locks
-        // when editing starts and unlocks when it ends (not when moving between tasks).
+        // when editing starts and unlocks when it ends (not when moving between tasks),
+        // unless a completed quest is still leaving (releaseLingering unlocks it then).
+        const holdOrder = editingId !== null || get().lingering.length > 0;
         set({
-          questOrderLock: editingId === null ? null : (get().questOrderLock ?? questOrder(get().tasks)),
+          questOrderLock: holdOrder ? (get().questOrderLock ?? questOrder(get().tasks)) : null,
           editingId,
           editingCaret: caret,
           editingField: field,
@@ -1083,6 +1152,16 @@ export function createAppStore(deps: StoreDeps) {
 
       updateSettings: (patch) => set({ settings: { ...get().settings, ...patch } }),
     })),
+  );
+
+  // Zoomed into a quest that leaves the view (completed, deleted, undone away):
+  // step back out to where it still is (lib/flatten.ts shownZoom). Cheap: a
+  // walk up a few parents, and nothing at all when not zoomed.
+  store.subscribe(
+    (s) => shownZoom(s.tasks, s.ui.zoomRootId, s.ui.category, s.lingering),
+    (zoom) => {
+      if (zoom !== store.getState().ui.zoomRootId) store.getState().setZoom(zoom);
+    },
   );
 
   return Object.assign(store, {

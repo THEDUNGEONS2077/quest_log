@@ -18,14 +18,25 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { router } from 'expo-router';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  type AccessibilityActionEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { formatRelative } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
+import { CATEGORY_TABS } from '@/lib/quests';
 import type { FoundRow } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import { haptics } from '@/services/haptics';
-import { useActions, useAppStore, useSelectors } from '@/store/react';
+import { useActions, useAppStore, useSelectors, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { useMinute } from '@/components/common/useMinute';
@@ -39,6 +50,7 @@ import { HighlightFlash } from './HighlightFlash';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { NestingGuides } from './NestingGuides';
 import { useKeyboardHeight } from './useKeyboardHeight';
+import { useViewPlace } from './useViewPlace';
 import { SwipeableRow } from './SwipeableRow';
 import { titleStyles, titleVariant } from './titleStyle';
 
@@ -57,6 +69,18 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
     if (keyboardHeight > 0 && editing) keepInView.ensure();
   }, [keyboardHeight, editing, keepInView]);
 
+  // Each quest tab keeps its own place here too, and slides in from its side (useViewPlace.ts).
+  const category = useAppStore((s) => s.ui.category);
+  const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category));
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => place.onScroll(e.nativeEvent.contentOffset.y);
+
+  // The COMPLETED switch tapped again (store revealTop): back to the top, if it's on screen.
+  const { store } = useStoreBundle();
+  const revealTop = useAppStore((s) => s.revealTop);
+  useEffect(() => {
+    if (revealTop > 0 && store.getState().ui.tab === 'completed') list.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [revealTop, store]);
+
   // A task opened from a notification or link: scroll to it.
   const highlightId = useAppStore((s) => s.highlightId);
   useEffect(() => {
@@ -68,17 +92,21 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
   return (
     <View ref={container} style={styles.container} collapsable={false}>
       <KeepInViewProvider value={keepInView}>
-        <FlashList
-          ref={list}
-          data={rows}
-          renderItem={renderItem}
-          keyExtractor={(r) => r.id}
-          getItemType={(r) => (r.depth === 0 ? 'top' : 'sub')}
-          keyboardShouldPersistTaps="handled"
-          ListHeaderComponent={<ListHeader hasRows={rows.length > 0} />}
-          ListEmptyComponent={Empty}
-          contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
-        />
+        <Animated.View style={[styles.container, place.style]}>
+          <FlashList
+            ref={list}
+            data={rows}
+            renderItem={renderItem}
+            keyExtractor={(r) => r.id}
+            getItemType={(r) => (r.depth === 0 ? 'top' : 'sub')}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={<ListHeader hasRows={rows.length > 0} />}
+            ListEmptyComponent={Empty}
+            contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
+            onScroll={onScroll}
+            scrollEventThrottle={32}
+          />
+        </Animated.View>
       </KeepInViewProvider>
     </View>
   );
@@ -229,7 +257,7 @@ const CompletedRow = memo(
                     suppressHighlighting
                     maxFontSizeMultiplier={maxFontSizeMultiplier}
                   >
-                    {task.title}
+                    {shownTitle(task)}
                   </Text>
                 )}
                 {/* Details under the title, as on ACTIVE: ↻ for an archived repeat, and when it was last changed. */}

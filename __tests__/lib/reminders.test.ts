@@ -27,7 +27,7 @@ describe('desiredReminders', () => {
   it('includes only open, live, future tasks with notify on, soonest first', () => {
     const r = desiredReminders(s, NOW);
     expect(r.map((x) => x.taskId)).toEqual(['soon', 'ship']);
-    expect(r[1]).toMatchObject({ identifier: `task:ship:${NOW + 60_000}`, title: 'ship', body: 'work' });
+    expect(r[1]).toMatchObject({ identifier: `task:ship:${NOW + 60_000}`, title: 'Ship', body: 'work' }); // objectives show capitalized (lib/title.ts)
   });
 
   it('caps the count (iOS limit)', () => {

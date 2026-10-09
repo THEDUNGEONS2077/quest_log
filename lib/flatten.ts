@@ -161,3 +161,36 @@ function countProgress(state: TasksState, ids: readonly ID[]): { done: number; t
   }
   return { done, total };
 }
+
+/**
+ * Where a zoomed-in view should be, given the tree as it is now (second
+ * navigation pass, 2026-10-09). Zoomed into a task that has left this view,
+ * you're taken back out to the nearest level that's still there:
+ *   - its quest was completed (once its completion has played: `keep`, the
+ *     lingering quests) or moved to another quest tab → the tab's top level;
+ *   - it, or a task above it, was deleted or undone away → the level above
+ *     the highest one that's gone.
+ * Returns `zoomRootId` itself when nothing changed.
+ */
+export function shownZoom(state: TasksState, zoomRootId: ID | null, category: CategoryTab, keep: readonly ID[] = []): ID | null {
+  if (zoomRootId === null) return null;
+  // The zoomed task and its ancestors, innermost first (stopping at a missing link).
+  const chain: ID[] = [];
+  for (let id: ID | null = zoomRootId; id !== null;) {
+    const task = findTask(state, id);
+    if (!task) break;
+    chain.push(id);
+    id = task.parentId;
+  }
+  const quest = chain.length ? findTask(state, chain[chain.length - 1]!) : undefined;
+  // No quest at the top (the zoomed task itself or a link above it is gone).
+  if (!quest || quest.parentId !== null) return null;
+  if (quest.deletedAt !== null || !onTab(quest, category)) return null;
+  if (quest.done && !keep.includes(quest.id)) return null;
+  // Below the quest: step out of every deleted level.
+  let shown: ID = zoomRootId;
+  for (let i = 0; i < chain.length - 1; i++) {
+    if (findTask(state, chain[i]!)!.deletedAt !== null) shown = chain[i + 1]!;
+  }
+  return shown;
+}

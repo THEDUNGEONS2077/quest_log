@@ -1,7 +1,7 @@
 /**
  * __tests__/lib/flatten.test.ts: ACTIVE and COMPLETED row derivation (lib/flatten.ts).
  */
-import { flattenActive, flattenCompleted, questOrder } from '@/lib/flatten';
+import { flattenActive, flattenCompleted, questOrder, shownZoom } from '@/lib/flatten';
 
 import { build, outline } from '../helpers/tree';
 
@@ -119,5 +119,37 @@ describe('quest order: priority, then newest (user request 2026-10-09)', () => {
     const locked = ['low', 'new', 'med'];
     expect(questOrder(s, 'all', locked).slice(2)).toEqual(['low', 'new', 'med']);
     expect(outline(flattenActive(s, { order: locked })).slice(2)).toEqual(['low', 'new', 'med']);
+  });
+});
+
+describe('shownZoom (zoomed into a task that leaves the view)', () => {
+  const tree = (fields: Record<string, object> = {}) =>
+    build([['q', { category: 'main', ...fields.q }, [['s', fields.s ?? {}, [['deep', fields.deep ?? {}]]]]], ['other']]);
+
+  it('stays where it is while the task is still there', () => {
+    expect(shownZoom(tree(), 'deep', 'all')).toBe('deep');
+    expect(shownZoom(tree(), 's', 'main')).toBe('s');
+    expect(shownZoom(tree(), null, 'all')).toBeNull();
+  });
+
+  it('a completed quest: out to the top level, once its completion has played', () => {
+    const done = tree({ q: { done: true } });
+    expect(shownZoom(done, 's', 'all', ['q'])).toBe('s'); // still lingering
+    expect(shownZoom(done, 's', 'all')).toBeNull();
+  });
+
+  it('a done subtask stays on ACTIVE (struck), so the zoom stays', () => {
+    expect(shownZoom(tree({ s: { done: true } }), 's', 'all')).toBe('s');
+  });
+
+  it('a deleted level: out to the level above the highest one gone', () => {
+    expect(shownZoom(tree({ deep: { deletedAt: 1 } }), 'deep', 'all')).toBe('s');
+    expect(shownZoom(tree({ s: { deletedAt: 1 }, deep: { deletedAt: 1 } }), 'deep', 'all')).toBe('q');
+    expect(shownZoom(tree({ q: { deletedAt: 1 } }), 'deep', 'all')).toBeNull();
+  });
+
+  it('a task that no longer exists, or a quest on another tab: out to the top level', () => {
+    expect(shownZoom(tree(), 'missing', 'all')).toBeNull();
+    expect(shownZoom(tree(), 's', 'daily')).toBeNull();
   });
 });

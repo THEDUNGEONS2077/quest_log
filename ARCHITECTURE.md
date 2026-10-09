@@ -208,6 +208,7 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 - **Order:** quests (true top level) display by **priority first** (!!! → none), then **newest-modified first** (`questOrder`). `updatedAt` bubbles up from any change inside a quest, so a new quest is at the top of its priority and active ones rise.
   - Collapsing and expanding a quest are view changes, so they don't touch `updatedAt`.
   - **Locked while editing:** `questOrderLock` is captured when editing starts and released when it ends, so structural changes made while editing (PRI, DUE, SUB, shorthand) can't move the row under the editor. When editing ends, TaskList scrolls to the edited task if the re-sort moved it.
+  - **Locked while a completed quest leaves:** completing bumps `updatedAt`, which would send the quest to the top for its exit. `toggleDone` takes the lock too, and `releaseLingering` drops it once no exit is playing and nothing is being edited.
   - The stored `children` order is untouched. Below the top level, the manual order still applies, and zooming into a quest shows its objectives in manual order.
   - Like COMPLETED, the order refreshes on structural changes, never while typing.
   - Quick-add bumps `revealTop` so the list scrolls up to the new quest. FlashList otherwise holds the visible rows in place.
@@ -222,6 +223,13 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
   - **Returning to the main screen** (notification tap, shortcut) uses `dismissAll`, and the task link goes back rather than stacking a second main screen.
   - **A quest is `parentId === null`**, never "depth 0 in this view", so zoomed-in objectives stay objectives.
   - `npm run web:nav` (`e2e/web/navigation.mjs`) walks every screen and exit in a local browser build.
+- **Navigation rules (second pass, 2026-10-09):**
+  - **Home:** tapping the title runs `goHome()`: ALL, ACTIVE, top level, search closed, scrolled up.
+  - **Re-tapping the selected tab** (a quest tab or the switch) runs `toTabTop()`: out of a zoom to the tab's top level, otherwise scroll to the top. Scrolling to the top is one signal, `revealTop`, which each list honours only while it's the one on screen.
+  - **Each view keeps its place.** A view is a quest tab plus a zoom level on ACTIVE, or a quest tab on COMPLETED. `useViewPlace` remembers each view's scroll offset and restores it when you return (unseen views start at the top). The new view slides in 16 pt from its side (`rank`: tabs left to right, deeper zoom to the right), and ACTIVE ↔ COMPLETED does the same (`useViewEntrance` in app/index.tsx).
+  - **The zoom follows the tree:** a store subscription runs `shownZoom()` (lib/flatten.ts) on every change. Zoomed into a quest that is completed (after its exit has played), deleted, undone away or no longer on this tab, you're taken out to the nearest level still there.
+  - **Lingering is timed by the store** (`toggleDone` → `releaseLingering` after `LINGER_MS`), not by the quest's row, which isn't mounted when you're zoomed into it.
+  - **The breadcrumb's first part is the tab's name** (`← DAILY`), because that's where it leads.
 - **View state:** `ui.category` (`all` / a category) picks the quest tab, and `ui.tab` (`active` / `completed`) is the switch under it.
   - Both lists filter by the category.
   - `tabCounts` gives the badges in one pass per structure change.
@@ -271,7 +279,8 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 ## 6c. Completion flow *(built: `lib/complete.ts`, `store.toggleDone`)*
 
 1. **Check** completes the task's live subtree. Parents whose live children are all done auto-complete, chaining upward. It's one op, so one undo step.
-2. If a **top-level** task became done, its ID goes into `store.lingering`. `flattenActive({ keep })` keeps it on ACTIVE while the strike draws (200 ms) and holds (500 ms) and the row fades. Then `releaseLingering` lets it move to COMPLETED.
+2. If a **top-level** task became done, its ID goes into `store.lingering` (before the op lands) and the quest order locks. `flattenActive({ keep })` keeps it on ACTIVE, in place, while the burst plays and holds (600 ms), then the quest and its subtask rows slide right and fade (200 ms). After `LINGER_MS` (800 ms) the store's timer calls `releaseLingering` and it moves to COMPLETED.
+   - **The burst** (`components/list/CompleteBurst.tsx`, on every real check): the checkbox pops and flashes accent, a scan line sweeps the row behind its content, and `+N XP` rises from the right edge. The XP comes from `store.lastGain`, which only the checked row subscribes to. `useJustChecked` ignores rows that mount done or that FlashList recycles onto another task; `StrikeText` takes the task `id` for the same reason.
 3. A toast `COMPLETED · UNDO` appears. UNDO undoes the most recent step, which is always the one the toast describes.
 4. **Uncheck** clears the task and every done ancestor. **Restore** (COMPLETED) also clears the subtree.
 5. Haptics: light for check/uncheck, success when a group or top-level task completes, medium for delete, and a tick when a swipe crosses its threshold.
@@ -291,6 +300,16 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
   - With the app open, the response listener does the same.
   - Both paths are idempotent, so if both fire it doesn't matter.
 - **Tapping the notification body** calls `revealTask` (tab, expand, scroll, flash).
+
+## 6h. Keyboard and sheets *(built: `components/common/keyboard.tsx`)*
+
+- **Sheets open only after the keyboard has closed** (`useAfterKeyboardCloses`, used by `SheetModal` and `MovePicker`).
+  - The reason: while an RN `Modal` is showing, react-native-keyboard-controller pauses its main-window tracker (`ModalAttachedWatcher`). A keyboard that closes during that time leaves the tracker believing it's still open.
+  - Its focus listener isn't paused. The next time focus lands on a text field with no keyboard (the row editor closing hands focus to quick-add), it reports "keyboard open, full height" from that stale state, and the sticky `> new quest` bar floats mid-screen. This was the stuck-bar bug of 2026-10-09.
+  - `KeyboardController.dismiss()` resolves once the keyboard is gone, so the tracker sees it close. There's a 450 ms fallback.
+- **The sticky bars ignore a phantom keyboard:** this is the second line of defence. The `KeyboardStickyView` wrapper turns itself off when the library reports a keyboard that React Native's own events (which read the window directly) haven't confirmed 700 ms later. The next real keyboard opening or closing turns it back on.
+- **Components import keyboard pieces from `components/common/keyboard`, never from the library**, so the web build can swap in its own (`keyboard.web.tsx`).
+- **Objective titles** (`lib/title.ts`) start with a capital letter. They're stored that way when typed (`commitEdit`, only if the title changed), quick-added or pasted. `shownTitle()` capitalizes on display for older titles and for quests moved under another quest. Search highlights stay aligned because the capital is always the same length.
 
 ## 7. Side effects
 

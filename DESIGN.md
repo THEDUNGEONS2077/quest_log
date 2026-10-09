@@ -176,6 +176,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **Title:** `<level>_quest_log` in the `title` role (29 / 38 bold, 30% larger than `display`). The brackets are `textDim`, the level `textBright`, the name `accent`. It shrinks to fit (down to 70%); the buttons never move.
 - **Buttons:** 34 pt glyph boxes, 4 apart, at the top right; `hitSlop` keeps them 44 pt to tap.
 - **Status line:** `meta`, `textDim`, items joined with ` · `. The day streak appears from 2 days.
+- **Tapping the title goes home:** the default view (ALL, ACTIVE, top level, no search), scrolled to the top.
 
 ### Tabs: quest categories plus a view switch
 ```
@@ -189,6 +190,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **View switch:** two equal halves, 25 pt drawn (44 to tap), with no frame, just a 2 pt bottom bar (`line`, or `accent` when selected). Label `LABEL · n` at 12 / 16 (10% under `meta`). It reads as secondary to the tabs above.
 - **The panel never changes height** between tabs: every tab has the switch.
 - **New item:** when the COMPLETED count goes up, its number pulses to `textBright` (120 ms in, 320 ms out), so you see where the item went.
+- **Tapping the selected tab again** goes to the top of that view: out of a zoomed-in group first, otherwise the list scrolls up.
 
 ### XP bar (under the tabs)
 ```
@@ -331,7 +333,9 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 
 | Moment | Spec |
 |---|---|
-| Complete an item | Strikethrough draws across each line (200 ms) as the color fades to `textDim`. A top-level item holds 500 ms, fades (200 ms), then moves to COMPLETED, and the tab count pulses |
+| Complete an item | All at once, on the UI thread: the checkbox swells to ×1.3 (120 ms) and settles (200 ms) while flashing `accent` back to `textDim`; a scan line sweeps the row behind its content (an `accent` wash at 14% led by a bright 2 pt edge with the glow, 320 ms, then fades over 400 ms); `+N XP` in bold `accent` with a soft glow rises 24 pt from the row's right edge and fades (about 900 ms); the strikethrough draws across each line (200 ms) as the text fades to `textDim` |
+| A top-level item completes | It stays **in place** (the order is held) while the above plays and holds (600 ms), then slides 48 pt right while fading (200 ms) with its children, and moves to COMPLETED. The tab count pulses |
+| Change view (tab, zoom, ACTIVE ↔ COMPLETED) | The new view slides in 16 pt from the side it's on (tabs left to right; deeper levels on the right) while fading in from 30%, 200 ms. Each view keeps its own scroll position |
 | Repeating item | Strike (200), hold (300), un-strike with the new date |
 | Collapse / expand | ▸ rotates 90° over 120 ms. It's instant for groups of more than 50 children, and when a recycled list cell starts showing a different item |
 | Focus | The glow fades in over 120 ms |
@@ -363,6 +367,10 @@ These are the rules that make the app feel good. Most were refined through devic
    - drag sideways to change nesting
    Every one also has a visible button or menu entry **and** a screen-reader action.
 7. **The back button steps out of the innermost mode first:** selection, then search, then zoom (one level at a time), then leaves the app.
+   - **Places are kept:** every view (each tab, each zoom level) returns to where it was scrolled, so moving around never loses your spot.
+   - **Re-tap a tab for its top; tap the title for home.**
+   - **A view never shows something that has left it:** zoomed into a group that gets completed or deleted, you're taken out to the nearest level still there (after the completion has played).
+   - **Sheets wait for the keyboard to close** before they open: never show a sheet over a closing keyboard (on Android it can leave keyboard-tracking views stranded mid-screen).
 8. **Shorthand while typing:** `!!!` priority, `@fri 9am` due date, `*weekly` repeat, `// note`, `#Group`. Live chips preview what will be applied. Words already saved stay literal when you edit later.
 9. **Progressive disclosure:**
    - **First-run tips** are one-line toasts, each shown **once**, in order, only when relevant (for example the Enter tip only while editing). A tip never replaces an UNDO toast.

@@ -31,6 +31,7 @@ import { useMinute } from '@/components/common/useMinute';
 import { addDays, atTimeOfDay, duePresets, formatDue, minutesOfDay, nudgeDue, startOfDay, withDay } from '@/lib/dates';
 import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import { hasDialogPicker, pickDate, pickDateTime, pickTime } from '@/services/datePicker';
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
 import { SELECTION } from '@/store/createStore';
@@ -126,7 +127,7 @@ function DueSheetBody({ id }: { id: string }) {
       sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md, maxHeight: height * MAX_HEIGHT_SHARE }]}
     >
       <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : task.title || 'Untitled task'}`}
+        {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : shownTitle(task) || 'Untitled task'}`}
       </Text>
       {task.dueAt !== null && (
         <Text style={[type.meta, styles.current]} maxFontSizeMultiplier={maxFontSizeMultiplier}>

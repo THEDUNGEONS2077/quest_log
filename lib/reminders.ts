@@ -11,6 +11,7 @@
  *   - tasks don't need to store OS notification handles.
  */
 import { findTask, forEachTask } from './taskMap';
+import { shownTitle } from './title';
 import { ancestors } from './tree';
 import type { ID, Task, TasksState } from './types';
 
@@ -57,12 +58,12 @@ export function desiredReminders(state: TasksState, now: number, limit = Infinit
     if (ancestors(state, t.id).some((a) => findTask(state, a)!.done)) return;
     const path = ancestors(state, t.id)
       .reverse()
-      .map((a) => findTask(state, a)!.title);
+      .map((a) => shownTitle(findTask(state, a)!));
     out.push({
       identifier: reminderId(t.id, t.dueAt),
       taskId: t.id,
       at: t.dueAt,
-      title: t.title || 'Untitled task',
+      title: shownTitle(t) || 'Untitled task',
       body: path.join(' / '),
     });
   });

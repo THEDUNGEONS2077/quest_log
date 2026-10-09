@@ -17,6 +17,11 @@
  * Both lists stay mounted once visited and are only hidden, so each tab
  * keeps its own scroll position and switching is instant (PLAN §5 tab
  * switch < 50 ms). The COMPLETED list mounts the first time it's opened.
+ * Switching slides the list in from its side (COMPLETED is on the right),
+ * as the quest tabs and zoom levels do inside each list (useViewPlace.ts).
+ *
+ * Tapping the title goes home; tapping the selected tab again goes to the
+ * top of it (store goHome / toTabTop).
  *
  * Android back steps out of the innermost mode first: selection, then
  * search, then zoom (one level at a time), then COMPLETED → ACTIVE, then a
@@ -24,6 +29,7 @@
  */
 import { useEffect, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Breadcrumb } from '@/components/common/Breadcrumb';
@@ -37,6 +43,7 @@ import { QuickAddBar } from '@/components/edit/QuickAddBar';
 import { SelectionBar } from '@/components/edit/SelectionBar';
 import { CompletedList } from '@/components/list/CompletedList';
 import { TaskList } from '@/components/list/TaskList';
+import { useViewEntrance } from '@/components/list/useViewPlace';
 import { DueSheet } from '@/components/overlays/DueSheet';
 import { MovePicker } from '@/components/overlays/MovePicker';
 import { RepeatSheet } from '@/components/overlays/RepeatSheet';
@@ -58,6 +65,9 @@ export default function ListScreen() {
   useOnboarding();
 
   // Mount COMPLETED lazily, then keep it (its scroll position survives tab switches).
+  // ACTIVE ↔ COMPLETED: the list slides in from its side (COMPLETED is on the right).
+  const entrance = useViewEntrance(tab, tab === 'active' ? 0 : 1);
+
   const [completedMounted, setCompletedMounted] = useState(tab === 'completed');
   if (tab === 'completed' && !completedMounted) setCompletedMounted(true);
 
@@ -86,14 +96,16 @@ export default function ListScreen() {
           {searchOpen && <SearchBar key={tab} tab={tab} />}
           {tab === 'active' && zoomed && <Breadcrumb />}
         </View>
-        <View style={[styles.list, tab !== 'active' && styles.hidden]}>
-          <TaskList bottomInset={listInset} />
-        </View>
-        {completedMounted && (
-          <View style={[styles.list, tab !== 'completed' && styles.hidden]}>
-            <CompletedList bottomInset={listInset} />
+        <Animated.View style={[styles.list, entrance]}>
+          <View style={[styles.list, tab !== 'active' && styles.hidden]}>
+            <TaskList bottomInset={listInset} />
           </View>
-        )}
+          {completedMounted && (
+            <View style={[styles.list, tab !== 'completed' && styles.hidden]}>
+              <CompletedList bottomInset={listInset} />
+            </View>
+          )}
+        </Animated.View>
       </View>
       <Toast bottom={bottomBar + space.sm} />
       {/* Overlays render themselves when open. */}

@@ -19,8 +19,11 @@ import { useMemo, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAfterKeyboardCloses } from '@/components/common/keyboard';
+
 import { normalize } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import { childIds, isInSubtree } from '@/lib/tree';
 import type { ID, TasksState } from '@/lib/types';
 import { useActions, useAppStore } from '@/store/react';
@@ -41,7 +44,7 @@ function destinations(tasks: TasksState, moving: readonly ID[]): Dest[] {
     for (const id of childIds(tasks, parent)) {
       const t = findTask(tasks, id);
       if (!t || t.deletedAt !== null || (depth === 0 && t.done)) continue;
-      out.push({ id, title: t.title || 'Untitled task', depth, disabled: moving.some((m) => isInSubtree(tasks, id, m)) });
+      out.push({ id, title: shownTitle(t) || 'Untitled task', depth, disabled: moving.some((m) => isInSubtree(tasks, id, m)) });
       walk(id, depth + 1);
     }
   };
@@ -63,10 +66,23 @@ function MovePickerBody({ moving }: { moving: ID[] }) {
   const q = normalize(query.trim());
   const shown = q ? all.filter((d) => normalize(d.title).includes(q)) : all;
 
-  const what = moving.length === 1 ? `"${findTask(tasks, moving[0]!)?.title || 'task'}"` : `${moving.length} TASKS`;
+  const what =
+    moving.length === 1
+      ? `"${shownTitle(findTask(tasks, moving[0]!) ?? { title: '', parentId: null }) || 'task'}"`
+      : `${moving.length} TASKS`;
+
+  // Opens once the keyboard is closed (see useAfterKeyboardCloses).
+  const ready = useAfterKeyboardCloses(true);
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={actions.closeMovePicker} statusBarTranslucent navigationBarTranslucent>
+    <Modal
+      visible={ready}
+      transparent
+      animationType="fade"
+      onRequestClose={actions.closeMovePicker}
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
       <View style={[styles.sheet, { paddingTop: insets.top + space.md, paddingBottom: insets.bottom }]}>
         <View style={styles.head}>
           <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>

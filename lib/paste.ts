@@ -15,6 +15,7 @@
  * a tab counts as one unit), so 2-space, 4-space and tab outlines all work.
  */
 import { newTask, type Op, receiveChildChanges } from './ops';
+import { titleFor } from './title';
 import type { ID, TasksState } from './types';
 
 /** One parsed line. */
@@ -106,7 +107,13 @@ export function pasteOp(
   for (const line of lines) {
     const parent = line.depth === 0 ? parentId : stack[line.depth - 1]!;
     const id = newId();
-    const task = { ...newTask(id, parent, line.title, at), done: line.done, doneAt: line.done ? at : null, notes: line.notes };
+    // Objectives get a capital first letter (lib/title.ts).
+    const task = {
+      ...newTask(id, parent, titleFor(parent, line.title), at),
+      done: line.done,
+      doneAt: line.done ? at : null,
+      notes: line.notes,
+    };
     if (line.depth === 0) {
       ops.push({ type: 'insert', parentId: parent, index: nextIndex++, tasks: [task], children: {} });
     } else {

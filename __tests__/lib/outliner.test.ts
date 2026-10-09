@@ -65,7 +65,7 @@ describe('pasteOp', () => {
     const next = run(s, op);
     expect(ids).toHaveLength(4);
     expect(outline(flattenActive(next))).toEqual(['work', '  existing', '  p0', '    p1', '    p2', '  p3', 'home']);
-    expect(tk(next, 'p0')!.title).toBe('a');
+    expect(tk(next, 'p0')!.title).toBe('A'); // pasted objectives get a capital first letter (lib/title.ts)
     expect(tk(next, 'work')!.updatedAt).toBe(5);
   });
 });

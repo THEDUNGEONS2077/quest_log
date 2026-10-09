@@ -24,6 +24,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES, questCategory } from '@/lib/quests';
 import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
+import { shownTitle } from '@/lib/title';
 import type { Priority } from '@/lib/types';
 import { haptics } from '@/services/haptics';
 import { useActions, useAppStore } from '@/store/react';
@@ -72,7 +73,7 @@ export function ContextMenu({ id, onClose }: Props) {
     return (
       <ActionSheet
         visible
-        title={`Sort subtasks of ${task.title || 'task'}`}
+        title={`Sort subtasks of ${shownTitle(task) || 'task'}`}
         onClose={onClose}
         actions={[
           { glyph: glyphs.priority.glyph, label: 'By priority (high first)', onPress: sort('priority') },
@@ -136,7 +137,7 @@ export function ContextMenu({ id, onClose }: Props) {
   ];
 
   return (
-    <ActionSheet visible title={task.title || 'Untitled task'} actions={items} onClose={onClose}>
+    <ActionSheet visible title={shownTitle(task) || 'Untitled task'} actions={items} onClose={onClose}>
       <PrioritySelector value={task.priority} onChange={(p) => actions.setPriority(id, p)} />
     </ActionSheet>
   );

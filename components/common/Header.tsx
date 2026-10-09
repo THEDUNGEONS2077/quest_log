@@ -6,8 +6,9 @@
  *
  * Layer: UI. Top right: `/` opens search on the current tab, `?` opens the
  * user guide (app/help.tsx), ⊛ opens Settings (app/settings.tsx).
- * Long-pressing the title opens the developer screen (theme check and test
- * data), a deliberately hidden gesture.
+ * Tapping the title goes home: ALL quests, ACTIVE, top level, scrolled up
+ * (second navigation pass, 2026-10-09). Long-pressing it opens the developer screen
+ * (theme check and test data), a deliberately hidden gesture.
  */
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -44,10 +45,13 @@ export function Header() {
         {/* `<7>_quest_log`: the level in brackets, 30% larger than before (user request 2026-10-09).
             It shrinks to fit rather than pushing the buttons off-screen. */}
         <Pressable
+          // Tap: home (ALL quests, ACTIVE, top level, scrolled up), from anywhere on this screen.
+          onPress={actions.goHome}
           onLongPress={() => router.push('/dev')}
           delayLongPress={1500}
           accessibilityRole="header"
           accessibilityLabel={`quest_log, level ${level}`}
+          accessibilityHint="Goes to all active quests, at the top"
           style={styles.titleBox}
         >
           <Text
