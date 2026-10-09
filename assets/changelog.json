@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.2.2",
+    "build": 23,
+    "lines": [
+      "- **Typing `@1p` no longer turns into `@1p1pm`.** The fix in 1.2.1 was incomplete: the app was still writing the text back into the box after every letter, which confused the keyboard's word suggestions. It no longer does."
+    ]
+  },
+  {
     "version": "1.2.1",
     "build": 22,
     "lines": [
@@ -65,26 +72,6 @@
       "  - **Restore a daily snapshot:** the app keeps a copy of your tasks from each of the last 3 days.",
       "- **Auto-clear completed** now works: when it's on, completed tasks older than 30 or 90 days move to Trash when the app starts.",
       "- **The home screen widget has been removed.** If you added it, it disappears from your home screen."
-    ]
-  },
-  {
-    "version": "0.10.0",
-    "build": 16,
-    "lines": [
-      "Polish: the finishing touches.",
-      "- **The ▸ caret is bigger** (another 20%) with more room before the checkbox, and it **turns** smoothly to open or close a group.",
-      "- **Boot screen:** a short terminal start-up on launch. Tap to skip it. It doesn't show when animations are reduced.",
-      "- **Blinking block cursor** `█` on the empty list and in the idle new-task bar.",
-      "- **A soft green glow** around the task you're editing.",
-      "- **Empty list:** a **LOAD EXAMPLE TASKS** button adds a few tasks to try things out (UNDO removes them). Search and empty groups get their own messages.",
-      "- **Tips:** short one-time hints at the bottom while you learn the app.",
-      "- **What's new:** after each update, this page shows what changed. Open it any time from the end of the `?` guide.",
-      "- **App icon shortcut:** hold the quest_log icon and choose **New task** to open straight into typing.",
-      "- **Accessibility:**",
-      "  - TalkBack reads repeat rules on tasks and offers **Move to…** in each task's actions.",
-      "  - The COMPLETED tab's buttons are now labeled.",
-      "  - Pop-up sheets read their contents properly.",
-      "- **Reduce motion** now applies to every animation."
     ]
   }
 ]

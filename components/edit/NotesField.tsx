@@ -30,7 +30,7 @@ export function NotesEditor({ id, notes }: { id: string; notes: string }) {
   const focus = useEditorFocus(id);
   const input = useRef<TextInput>(null);
   // The field owns its text while typing; outside changes remount it (useOwnedText.ts).
-  const { epoch, typed } = useOwnedText(notes);
+  const { epoch, initial, typed } = useOwnedText(notes);
 
   // Focus on mount (and after an outside change), caret at the end (continue writing).
   useEffect(() => {
@@ -44,7 +44,7 @@ export function NotesEditor({ id, notes }: { id: string; notes: string }) {
       // Uncontrolled: see useOwnedText.ts (Android keyboard suggestions).
       key={epoch}
       ref={input}
-      defaultValue={notes}
+      defaultValue={initial}
       onChangeText={(text) => {
         const next = text.slice(0, NOTES_MAX);
         typed(next);

@@ -2,6 +2,10 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.2.2 (build 23)
+
+- **Typing `@1p` no longer turns into `@1p1pm`.** The fix in 1.2.1 was incomplete: the app was still writing the text back into the box after every letter, which confused the keyboard's word suggestions. It no longer does.
+
 ## 1.2.1 (build 22)
 
 Fixes for typing shorthand and changing dates.

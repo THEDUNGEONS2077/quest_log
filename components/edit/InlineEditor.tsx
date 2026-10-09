@@ -75,7 +75,7 @@ export function InlineEditor({ id, title, variant }: Props) {
   const input = useRef<TextInput>(null);
   const caret = useRef({ start: title.length, end: title.length });
   // The field owns its text while typing; outside changes remount it (useOwnedText.ts).
-  const { epoch, typed } = useOwnedText(title);
+  const { epoch, initial, typed } = useOwnedText(title);
 
   // On mount: focus, and put the caret where the action asked (default: end).
   // After an outside change (new epoch): refocus with the caret at the end.
@@ -119,7 +119,9 @@ export function InlineEditor({ id, title, variant }: Props) {
       // breaks Android keyboards' word suggestions ("@1pm" → "@1p1pm").
       key={epoch}
       ref={input}
-      defaultValue={title}
+      // The text when this field (re)mounted, never the live title: Android re-sends
+      // defaultValue on every render too (useOwnedText.ts).
+      defaultValue={initial}
       onChangeText={onChangeText}
       onSelectionChange={(e) => (caret.current = e.nativeEvent.selection)}
       onKeyPress={onKeyPress}
