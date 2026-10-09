@@ -101,7 +101,10 @@ function insertSubtree(doc: TasksDocument, rootId: ID, parentId: ID | null, inde
 export function replaceOp(state: TasksState, doc: TasksDocument): Op | null {
   const removes: Op[] = [...childIds(state, null)].reverse().map((id) => ({ type: 'remove', id }) as Op);
   const inserts: Op[] = (doc.children[ROOT] ?? []).map((id, i) => insertSubtree(doc, id, null, i, () => false));
-  const ops = [...removes, ...inserts];
+  // XP comes along when the backup has more (moving to a new phone), but a
+  // restore never lowers it (an older snapshot doesn't undo levels earned since).
+  const xp: Op[] = doc.progress && doc.progress.xp > state.progress.xp ? [{ type: 'progress', progress: doc.progress }] : [];
+  const ops = [...removes, ...inserts, ...xp];
   return ops.length ? { type: 'batch', ops } : null;
 }
 

@@ -173,3 +173,9 @@ export function nudgeDue(due: number, by: 'hour' | 'day' | 'week'): number {
 export function withDay(due: number, day: number): number {
   return atTimeOfDay(day, minutesOfDay(due));
 }
+
+/** Local calendar day of `ts` as YYYY-MM-DD (the day streak in lib/xp.ts counts these). */
+export function dayKey(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}

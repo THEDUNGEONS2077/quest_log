@@ -15,6 +15,7 @@ import { findTask } from '@/lib/taskMap';
 import { ROOT, type TasksState } from '@/lib/types';
 
 import type { Filter } from '@/lib/search';
+import { liveSubtaskCount } from '@/lib/xp';
 
 import type { UiState } from './uiState';
 
@@ -78,7 +79,25 @@ export function makeSelectors() {
   // `minute` (not `now`) is the key, so counts refresh at most once a minute.
   const counts = memoLast((_version: number, minute: number): Counts => computeCounts(countTasks, minute * 60_000));
 
+  // Live subtask counts (any depth) for the quest XP preview: filled lazily,
+  // one entry per asked-for task, and dropped whenever the structure changes.
+  let subtaskCache = { version: -1, counts: new Map<string, number>() };
+
   return {
+    /**
+     * Live subtasks under `id`, any depth (lib/xp.ts quest bonus). Cached per
+     * structureVersion, so group rows can ask on every render (typing never
+     * changes the structure).
+     */
+    subtaskCount(s: SelectorInput, id: string): number {
+      if (subtaskCache.version !== s.tasks.structureVersion) subtaskCache = { version: s.tasks.structureVersion, counts: new Map() };
+      let n = subtaskCache.counts.get(id);
+      if (n === undefined) {
+        n = liveSubtaskCount(s.tasks, id);
+        subtaskCache.counts.set(id, n);
+      }
+      return n;
+    },
     /** Rows for the ACTIVE tab (respects zoom; search/filter results when searching). */
     activeRows(s: SelectorInput): Row[] {
       activeTasks = s.tasks;

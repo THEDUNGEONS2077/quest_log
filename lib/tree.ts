@@ -6,11 +6,17 @@
  * store's selectors.
  */
 import { bucketsFromRecord, emptyBuckets, findTask, recordFromBuckets } from './taskMap';
-import { type ID, type ParentKey, ROOT, type Task, type TasksDocument, type TasksState, SCHEMA_VERSION } from './types';
+import { EMPTY_PROGRESS, type ID, type ParentKey, ROOT, type Task, type TasksDocument, type TasksState, SCHEMA_VERSION } from './types';
 
 /** An empty tree: no tasks, ROOT present with no children. */
 export function createEmptyState(): TasksState {
-  return { buckets: emptyBuckets(), children: { [ROOT]: [] }, structureVersion: 0, schemaVersion: SCHEMA_VERSION };
+  return {
+    buckets: emptyBuckets(),
+    children: { [ROOT]: [] },
+    structureVersion: 0,
+    schemaVersion: SCHEMA_VERSION,
+    progress: EMPTY_PROGRESS,
+  };
 }
 
 /** The tree as one flat document (snapshots, backup, migrations). */
@@ -20,6 +26,7 @@ export function toDocument(state: TasksState): TasksDocument {
     children: state.children,
     structureVersion: state.structureVersion,
     schemaVersion: state.schemaVersion,
+    progress: state.progress,
   };
 }
 
@@ -30,6 +37,8 @@ export function fromDocument(doc: TasksDocument): TasksState {
     children: doc.children,
     structureVersion: doc.structureVersion,
     schemaVersion: doc.schemaVersion,
+    // Data from before XP existed has none: start from zero.
+    progress: doc.progress ?? EMPTY_PROGRESS,
   };
 }
 

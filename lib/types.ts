@@ -71,7 +71,37 @@ export interface Task {
   createdAt: number;
   /** Bubbles up to every ancestor on any change; drives the COMPLETED sort. */
   updatedAt: number;
+  /**
+   * XP this task earned when it was completed (lib/xp.ts); unchecking it
+   * takes exactly this back. Absent (0) on open tasks and on data from
+   * before XP existed (added 2026-10-09 as an optional field: no migration).
+   */
+  xp?: number;
+  /**
+   * Repeating tasks: occurrences completed on time in a row. Each one raises
+   * the task's XP multiplier (lib/xp.ts); a late completion resets it.
+   */
+  streak?: number;
 }
+
+/**
+ * XP and streaks (lib/xp.ts). Part of the tree, so every change is an op
+ * with an exact inverse: UNDO a completion and its XP is taken back.
+ * Never lowered by clearing or purging tasks: XP belongs to the person.
+ */
+export interface Progress {
+  /** Total XP ever earned. The level is derived from it. */
+  xp: number;
+  /** Consecutive days with at least one completion, as of `lastDay`. */
+  dayStreak: number;
+  /** The longest day streak so far. */
+  bestDayStreak: number;
+  /** Local date (YYYY-MM-DD) of the last completion, or null. */
+  lastDay: string | null;
+}
+
+/** Progress before anything was completed (also for data from before XP existed). */
+export const EMPTY_PROGRESS: Progress = { xp: 0, dayStreak: 0, bestDayStreak: 0, lastDay: null };
 
 /** The whole task tree, in memory. */
 export interface TasksState {
@@ -90,6 +120,8 @@ export interface TasksState {
   structureVersion: number;
   /** Data format version; drives migrations (PLAN §7.3). */
   schemaVersion: number;
+  /** XP and streaks. */
+  progress: Progress;
 }
 
 /**
@@ -102,6 +134,8 @@ export interface TasksDocument {
   children: Record<ParentKey, ID[]>;
   structureVersion: number;
   schemaVersion: number;
+  /** Optional: absent in data from before XP existed (read as EMPTY_PROGRESS). */
+  progress?: Progress;
 }
 
 /** Fields an `update` op may change. Structure (`id`, `parentId`) changes only via move/insert/remove. */

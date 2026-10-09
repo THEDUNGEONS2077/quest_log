@@ -12,6 +12,8 @@
  *   - Unchecking a task also unchecks every done ancestor (a done parent
  *     with an open child would be a contradiction).
  *   - Restore (from COMPLETED) unchecks the task *and* its whole subtree.
+ *   - XP (lib/xp.ts): checking earns XP and unchecking takes it back, inside
+ *     the same op, so UNDO and every way of completing treat XP alike.
  *   - Repeating tasks (PLAN §9.9): if the checked task, or a parent it
  *     would auto-complete, repeats, that task *advances* instead of staying
  *     done. Its due date moves to the next occurrence and its subtree resets
@@ -22,6 +24,7 @@
  */
 import { mergeChanges, type FieldChange, newTask, type Op, touchChanges } from './ops';
 import { nextOccurrence } from './recurrence';
+import { awardXp, revokeXp } from './xp';
 import { findTask } from './taskMap';
 import { ancestors, childIds, getTask, liveChildIds } from './tree';
 import { type ID, ROOT, type Task, type TasksState } from './types';
@@ -62,8 +65,15 @@ function liveSubtree(state: TasksState, id: ID): Task[] {
 /**
  * Checks task `id`: the task and its live subtree become done, then
  * ancestors whose children are now all done auto-complete (chaining up).
+ * The op includes the XP earned (lib/xp.ts awardXp).
  */
 export function check(state: TasksState, id: ID, at: number): CompleteResult {
+  const r = checkWithoutXp(state, id, at);
+  return { ...r, op: awardXp(state, r, archiveId, at) };
+}
+
+/** check() without XP: which tasks complete, auto-complete or advance. */
+function checkWithoutXp(state: TasksState, id: ID, at: number): CompleteResult {
   const changes: FieldChange[] = [];
   const doneNow = new Set<ID>();
 
@@ -162,7 +172,8 @@ export function uncheck(state: TasksState, id: ID, at: number, opts: { subtree?:
   if (opts.subtree) liveSubtree(state, id).forEach(reset);
   else reset(getTask(state, id));
   for (const a of ancestors(state, id)) reset(getTask(state, a));
-  return { type: 'update', changes: mergeChanges([...touchChanges(state, [id], at), ...changes]) };
+  // Unchecked tasks give back the XP they earned (lib/xp.ts).
+  return revokeXp(state, { type: 'update', changes: mergeChanges([...touchChanges(state, [id], at), ...changes]) });
 }
 
 /**

@@ -233,7 +233,7 @@ const CompletedRow = memo(
                   </Text>
                 )}
                 {/* Details under the title, as on ACTIVE: ↻ for an archived repeat, and when it was last changed. */}
-                {!editing && (task.repeatSourceId !== null || row.depth === 0) && (
+                {!editing && (task.repeatSourceId !== null || row.depth === 0 || !!task.xp) && (
                   <View style={styles.details}>
                     {task.repeatSourceId !== null && (
                       <Text
@@ -245,6 +245,12 @@ const CompletedRow = memo(
                       </Text>
                     )}
                     {row.depth === 0 && <Modified at={task.updatedAt} />}
+                    {/* What completing it earned (lib/xp.ts). */}
+                    {!!task.xp && (
+                      <Text style={[type.meta, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                        {`+${task.xp} XP`}
+                      </Text>
+                    )}
                   </View>
                 )}
                 {/* Notes can still be added or fixed after the fact. */}

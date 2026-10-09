@@ -33,8 +33,10 @@ type Role = Pick<TextStyle, 'fontFamily' | 'fontSize' | 'lineHeight' | 'letterSp
  * test asked for better readability (2026-10-07): body 15 → 17.
  */
 export const type = {
-  /** `> quest_log` header. Lowercase as styled. */
+  /** `> settings`-style screen titles. Lowercase as styled. */
   display: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 30 },
+  /** The main header `<7>_quest_log`: display +30% (user request 2026-10-09). */
+  title: { fontFamily: fonts.bold, fontSize: 29, lineHeight: 38 },
   /** Tab labels: uppercase, +1 letter spacing. */
   tab: { fontFamily: fonts.bold, fontSize: 14, lineHeight: 20, letterSpacing: 1, textTransform: 'uppercase' },
   /** Top-level group headers: uppercase, drawn in textBright. */

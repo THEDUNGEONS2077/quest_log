@@ -35,6 +35,7 @@ import { isInSubtree } from '@/lib/tree';
 import type { Task } from '@/lib/types';
 import { haptics } from '@/services/haptics';
 import { remindersAvailable } from '@/services/reminderSupport';
+import { repeatMultiplier } from '@/lib/xp';
 import { ADVANCE_MS, LINGER_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
@@ -42,6 +43,7 @@ import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, 
 import { Caret } from './Caret';
 import { FocusGlow } from './FocusGlow';
 import { NestingGuides } from './NestingGuides';
+import { QuestMeter } from './QuestMeter';
 import { StrikeText } from './StrikeText';
 import { titleStyles, titleVariant } from './titleStyle';
 import { useRowDragGesture } from './drag';
@@ -50,7 +52,8 @@ import { SwipeableRow } from './SwipeableRow';
 
 /** The haptic for each checkbox outcome (PLAN §9.18). */
 export function hapticFor(outcome: ToggleOutcome): void {
-  if (outcome === 'moved-to-completed' || outcome === 'parent-completed' || outcome === 'repeated') haptics.success();
+  if (outcome === 'moved-to-completed' || outcome === 'parent-completed' || outcome === 'repeated' || outcome === 'level-up')
+    haptics.success();
   else haptics.check();
 }
 
@@ -296,6 +299,7 @@ function rowLabel(task: Task, row: Row, now: number): string {
   if (task.notify && task.dueAt !== null && remindersAvailable) parts.push('reminder on');
   parts.push(task.done ? 'done' : 'not done');
   if (row.hasChildren) parts.push(`${row.progress.done} of ${row.progress.total} subtasks done`);
+  if (task.repeat && task.streak) parts.push(`on time ${task.streak} in a row`);
   if (task.collapsed && row.hasChildren) parts.push('collapsed');
   if (task.notes) parts.push('has notes');
   return parts.join(', ');
@@ -310,7 +314,10 @@ function RowMeta({ task, row, onNotes }: { task: Task; row: Row; onNotes: () => 
   if (task.priority > 0)
     parts.push({ text: glyphs.priority.glyph.repeat(task.priority), color: PRIORITY_COLOR[task.priority], icon: true });
   // ≡ is drawn separately below: it's a button that shows/hides the notes.
-  const progress = row.hasChildren ? `[${row.progress.done}/${row.progress.total}]` : null;
+  // Repeating tasks on an on-time streak show their XP multiplier (lib/xp.ts).
+  if (task.repeat && (task.streak ?? 0) > 0)
+    parts.push({ text: `×${repeatMultiplier(task.streak!).toFixed(1)}`, color: colors.accent, icon: false });
+  const progress = row.hasChildren;
   if (!parts.length && task.dueAt === null && !progress && !task.notes) return null;
   return (
     <View style={styles.meta}>
@@ -331,11 +338,8 @@ function RowMeta({ task, row, onNotes }: { task: Task; row: Row; onNotes: () => 
         </Pressable>
       )}
       {task.dueAt !== null && <DueChip task={task} dueAt={task.dueAt} />}
-      {progress && (
-        <Text style={[type.meta, styles.text, { color: colors.textDim }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {progress}
-        </Text>
-      )}
+      {/* Subtask progress and the XP the quest will earn (QuestMeter.tsx). */}
+      {progress && <QuestMeter task={task} done={row.progress.done} total={row.progress.total} />}
     </View>
   );
 }

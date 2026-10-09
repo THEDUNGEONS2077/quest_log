@@ -3,6 +3,7 @@
  *
  *   header      > quest_log · counts · [/] [?]
  *   tabs        [ ACTIVE QUESTS · 12 ][ COMPLETED · 34 ]
+ *   XP bar      [■■■■■■□□□□]  340/425 XP (both tabs)
  *   search      search field (+ filter chips on ACTIVE), when open
  *   breadcrumb  ← ALL / WORK / …, when zoomed in (ACTIVE)
  *   list        the selected tab's list
@@ -27,6 +28,7 @@ import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { Header } from '@/components/common/Header';
 import { SearchBar } from '@/components/common/SearchBar';
 import { Tabs } from '@/components/common/Tabs';
+import { XpBar } from '@/components/common/XpBar';
 import { useOnboarding } from '@/components/common/useOnboarding';
 import { EditToolbar } from '@/components/edit/EditToolbar';
 import { QuickAddBar } from '@/components/edit/QuickAddBar';
@@ -89,6 +91,7 @@ export default function ListScreen() {
       <View style={styles.content}>
         <Header />
         <Tabs />
+        <XpBar />
         {searchOpen && <SearchBar key={tab} tab={tab} />}
         {tab === 'active' && zoomed && <Breadcrumb />}
         <View style={[styles.list, tab !== 'active' && styles.hidden]}>

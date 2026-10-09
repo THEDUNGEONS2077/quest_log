@@ -22,6 +22,7 @@ import { subscribeWithSelector } from 'zustand/middleware';
 
 import * as complete from '@/lib/complete';
 import { formatDue } from '@/lib/dates';
+import { levelInfo } from '@/lib/xp';
 import * as copy from '@/lib/copy';
 import * as backup from '@/lib/backup';
 import type { DocCounts } from '@/lib/backup';
@@ -77,7 +78,8 @@ export interface Toast {
 }
 
 /** What a checkbox tap did, so the UI can pick the haptic (PLAN §9.18). */
-export type ToggleOutcome = 'checked' | 'unchecked' | 'parent-completed' | 'moved-to-completed' | 'repeated';
+/** What a checkbox tap did ('level-up': a plain check that also reached a new level). */
+export type ToggleOutcome = 'checked' | 'unchecked' | 'parent-completed' | 'moved-to-completed' | 'repeated' | 'level-up';
 
 /** How long a repeating task shows its strike before un-striking with the new date (PLAN §10.5). */
 export const ADVANCE_MS = 500;
@@ -598,18 +600,28 @@ export function createAppStore(deps: StoreDeps) {
           return 'unchecked';
         }
         const r = complete.check(tasks, id, now());
+        const xpBefore = tasks.progress.xp;
         get().dispatch(r.op);
+        // XP feedback (lib/xp.ts): what this earned, and a new level if one was reached.
+        const xpAfter = get().tasks.progress.xp;
+        const newLevel = levelInfo(xpAfter).level > levelInfo(xpBefore).level ? levelInfo(xpAfter).level : null;
+        const xpNote = `${xpAfter > xpBefore ? ` · +${xpAfter - xpBefore} XP` : ''}${newLevel !== null ? ` · LEVEL ${newLevel}!` : ''}`;
         if (r.advanced) {
           // Repeat: strike, hold, then un-strike with the new date chip.
           set({ advancing: [...get().advancing, r.advanced.id] });
-          get().showToast(`NEXT: ${formatDue(r.advanced.nextDue, now())}`, true);
+          get().showToast(`NEXT: ${formatDue(r.advanced.nextDue, now())}${xpNote}`, true);
           return 'repeated';
         }
         if (r.completedTopLevel) {
           // Keep it visible while the strike plays; TaskRow releases it after LINGER_MS.
           set({ lingering: [...get().lingering, r.completedTopLevel] });
-          get().showToast(r.completedTopLevel === id ? 'COMPLETED' : 'COMPLETED · GROUP DONE', true);
+          get().showToast(`${r.completedTopLevel === id ? 'COMPLETED' : 'COMPLETED · GROUP DONE'}${xpNote}`, true);
           return 'moved-to-completed';
+        }
+        // A subtask: no toast unless it brought a new level (the XP bar shows the gain).
+        if (newLevel !== null) {
+          get().showToast(`+${xpAfter - xpBefore} XP · LEVEL ${newLevel}!`, true);
+          return 'level-up';
         }
         return r.autoCompleted.length ? 'parent-completed' : 'checked';
       },

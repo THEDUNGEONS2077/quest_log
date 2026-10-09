@@ -22,7 +22,7 @@
  */
 import { findTask, withTasks, withoutTasks } from './taskMap';
 import { childIds, getTask, isInSubtree, parentKey, ancestors, liveChildIds, subtreeIds } from './tree';
-import { type ID, type ParentKey, type Task, type TaskFields, type TasksState, ROOT } from './types';
+import { type ID, type ParentKey, type Progress, type Task, type TaskFields, type TasksState, ROOT } from './types';
 
 // ---------------------------------------------------------------------------
 // Op types
@@ -48,7 +48,9 @@ export type Op =
   /** Change fields on one or more tasks. */
   | { type: 'update'; changes: FieldChange[] }
   /** Several ops as one undo step (cascade complete, paste, bulk actions). */
-  | { type: 'batch'; ops: Op[] };
+  | { type: 'batch'; ops: Op[] }
+  /** Set XP and streaks (lib/xp.ts). Inverse: set the previous progress back. */
+  | { type: 'progress'; progress: Progress };
 
 /** Result of applying an op. */
 export interface Applied {
@@ -103,6 +105,9 @@ function applyInner(state: TasksState, op: Op): Applied {
       return applyMove(state, op);
     case 'update':
       return applyUpdate(state, op.changes);
+    case 'progress':
+      // Not structural: XP never changes which rows are shown.
+      return { state: { ...state, progress: op.progress }, inverse: { type: 'progress', progress: state.progress }, structural: false };
     case 'batch': {
       // Apply in order; the inverse undoes them in reverse order.
       let current = state;

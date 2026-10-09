@@ -81,7 +81,8 @@ Components use a **role**, never a raw size.
 
 | Role | Size / line height | Weight | Case | Use |
 |---|---|---|---|---|
-| `display` | 22 / 30 | Bold | as written (lowercase `> quest_log`) | Screen titles |
+| `title` | 29 / 38 | Bold | as written (`<7>_quest_log`) | The main header (display +30%) |
+| `display` | 22 / 30 | Bold | as written (lowercase `> settings`) | Screen titles |
 | `tab` | 14 / 20 | Bold, +1 letter spacing | UPPERCASE | Tabs, buttons, setting values (`[ON ]`) |
 | `group` | 14 / 20 | Bold | UPPERCASE | Top-level item titles, section headings |
 | `body` | 17 / 24 | Regular | as written | Inputs, primary text, sheet titles |
@@ -169,12 +170,12 @@ All measurements are in pt (dp on Android, px on the web).
 
 ### Header
 ```
-> quest_log                    [/] [?] [⊛]
-12 ACTIVE · 4 DONE TODAY · 1 OVERDUE
+<7>_quest_log                   [/][?][⊛]
+12 ACTIVE · 4 DONE TODAY · 3-DAY STREAK
 ```
-- **Title:** `display`, `accent`, with a `>` prompt and lowercase name. It may shrink or truncate; the buttons never move.
-- **Buttons:** square 44 pt glyph boxes, 8 apart, at the top right.
-- **Status line:** `meta`, `textDim`, items joined with ` · `.
+- **Title:** `<level>_quest_log` in the `title` role (29 / 38 bold, 30% larger than `display`). The brackets are `textDim`, the level `textBright`, the name `accent`. It shrinks to fit (down to 70%); the buttons never move.
+- **Buttons:** 34 pt glyph boxes, 4 apart, at the top right; `hitSlop` keeps them 44 pt to tap.
+- **Status line:** `meta`, `textDim`, items joined with ` · `. The day streak appears from 2 days.
 
 ### Tabs (segmented)
 ```
@@ -184,6 +185,24 @@ All measurements are in pt (dp on Android, px on the web).
 - **Selected segment:** `accent` border on `surface`, label in `textBright`, takes 3/5 of the width, and shows the full name.
 - **Unselected segment:** 2/5 of the width and a short name, so both fit at large text sizes.
 - **New item:** when a count goes up, the number pulses to `accent` (120 ms in, 320 ms out), so you see where the item went.
+
+### XP bar (under the tabs)
+```
+[■■■■■■■■■■■■■■□□□□□□□□□□]  340/425 XP
+```
+- **Track:** 6 pt tall, hairline `line` frame, `surface` inside, radius 2.
+- **Fill:** `accent` with the outset glow, split into 10 segments by 1 pt `bg` separators (a terminal gauge).
+- **Label:** `into/needed XP` in `meta` `textDim`.
+- **Gain:** the fill eases forward (320 ms), and a `+18` in `accent` floats up 12 pt and fades (1.2 s). On a level-up the fill runs to the end, then restarts from empty.
+- **Screen readers:** `role=progressbar`, "Level 7: 340 of 425 XP to level 8".
+
+### Quest meter (on a row with subtasks)
+```
+[▓▓▓▓▓░░░░ 3/5 · +58 XP]
+```
+- Replaces the plain `[3/5]`. A hairline frame (radius 2) whose background fills with `xpWash` (`#092903`: accent at 16% over black) as subtasks are checked.
+- The count is in `textDim`, and the reward preview (`+58 XP`) in `text`, on top of the fill.
+- The fill eases to each new value (320 ms).
 
 ### List row (the core component)
 ```

@@ -2,6 +2,22 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.3.0 (build 24)
+
+XP and levels.
+
+- **Earn XP by completing tasks.** Your level is at the top: `<7>_quest_log`. It starts at 0. Level 1 takes 50 XP, and each level after needs 25 XP more than the one before.
+- **What tasks are worth:** 10 XP each, +2 / +5 / +10 for `!` / `!!` / `!!!`, and +5 for finishing before the due time.
+- **Quests pay more the bigger they are:** +8 XP for every subtask when the quest is completed. The `[3/5]` count is now a small meter that fills as you go and shows the reward: `3/5 · +58 XP`.
+- **Streaks:**
+  - **Day streak:** complete something every day for +5% XP per day in a row (up to +50%). It shows as `3-DAY STREAK` at the top.
+  - **Repeat streak:** a repeating task done on time again and again earns ×1.1, ×1.2… up to ×2.0 (the multiplier shows on the task). Finishing late resets it.
+- **A slim XP bar** under the tabs fills as you earn. A `+18` floats up with each gain, and the bar sweeps full on a level-up.
+- **The completion message shows what you earned:** `COMPLETED · +18 XP · LEVEL 3!`. **UNDO** takes the XP back. Clearing or deleting finished tasks never does.
+- **COMPLETED** shows what each task earned.
+- **The header is larger** (+30%), with smaller boxes around `/ ? ⊛`.
+- **iPhone:** the web version's offline mode is now sturdier.
+
 ## 1.2.2 (build 23)
 
 - **Typing `@1p` no longer turns into `@1p1pm`.** The fix in 1.2.1 was incomplete: the app was still writing the text back into the box after every letter, which confused the keyboard's word suggestions. It no longer does.

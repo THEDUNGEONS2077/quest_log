@@ -1,5 +1,23 @@
 [
   {
+    "version": "1.3.0",
+    "build": 24,
+    "lines": [
+      "XP and levels.",
+      "- **Earn XP by completing tasks.** Your level is at the top: `<7>_quest_log`. It starts at 0. Level 1 takes 50 XP, and each level after needs 25 XP more than the one before.",
+      "- **What tasks are worth:** 10 XP each, +2 / +5 / +10 for `!` / `!!` / `!!!`, and +5 for finishing before the due time.",
+      "- **Quests pay more the bigger they are:** +8 XP for every subtask when the quest is completed. The `[3/5]` count is now a small meter that fills as you go and shows the reward: `3/5 · +58 XP`.",
+      "- **Streaks:**",
+      "  - **Day streak:** complete something every day for +5% XP per day in a row (up to +50%). It shows as `3-DAY STREAK` at the top.",
+      "  - **Repeat streak:** a repeating task done on time again and again earns ×1.1, ×1.2… up to ×2.0 (the multiplier shows on the task). Finishing late resets it.",
+      "- **A slim XP bar** under the tabs fills as you earn. A `+18` floats up with each gain, and the bar sweeps full on a level-up.",
+      "- **The completion message shows what you earned:** `COMPLETED · +18 XP · LEVEL 3!`. **UNDO** takes the XP back. Clearing or deleting finished tasks never does.",
+      "- **COMPLETED** shows what each task earned.",
+      "- **The header is larger** (+30%), with smaller boxes around `/ ? ⊛`.",
+      "- **iPhone:** the web version's offline mode is now sturdier."
+    ]
+  },
+  {
     "version": "1.2.2",
     "build": 23,
     "lines": [
@@ -55,23 +73,6 @@
       "- **Crash safety net:** if a screen ever fails, the app says **SOMETHING WENT WRONG**, reassures you that your tasks are safe, and offers **TRY AGAIN** and **COPY ERROR DETAILS**.",
       "- **Report a problem** (Settings → Help) opens a pre-filled GitHub page in your browser. The app itself still never goes online.",
       "- New install, backup and update guides for testers (`INSTALL.md`), and a README on GitHub."
-    ]
-  },
-  {
-    "version": "0.12.0",
-    "build": 18,
-    "lines": [
-      "Settings and backup.",
-      "- **Settings** (⊛ at the top right):",
-      "  - **Behavior:** reminders on by default, default time, swipe actions, auto-clear of old completed tasks.",
-      "  - **Feel:** boot screen, haptics, reduce motion.",
-      "  - **Notifications:** whether reminders are allowed, with a shortcut to Android's settings.",
-      "- **Backups:**",
-      "  - **Save backup** puts every task (Trash too) in a file, in a folder you choose. **Share backup** sends it to any app you like.",
-      "  - **Import** shows what a backup holds, then lets you **Merge** (add tasks you don't have) or **Replace** everything. **UNDO** works for both.",
-      "  - **Restore a daily snapshot:** the app keeps a copy of your tasks from each of the last 3 days.",
-      "- **Auto-clear completed** now works: when it's on, completed tasks older than 30 or 90 days move to Trash when the app starts.",
-      "- **The home screen widget has been removed.** If you added it, it disappears from your home screen."
     ]
   }
 ]

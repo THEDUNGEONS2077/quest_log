@@ -170,7 +170,7 @@ apply(state, op) → { state: nextState, inverse: Op, structural: boolean }
 
 | MMKV key | Contents |
 |---|---|
-| `tasks.v1.meta` | `children`, `structureVersion`, `schemaVersion` |
+| `tasks.v1.meta` | `children`, `structureVersion`, `schemaVersion`, `progress` (XP and streaks) |
 | `tasks.v1.b.<n>` | One task bucket (only if non-empty) |
 | `snapshot.premigration.v<N>` | Exact data before a migration ran |
 | `corrupt.<time>` | Raw bytes of anything that failed to load (never overwritten) |
@@ -202,6 +202,30 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 5. Startup snapshots the data **before** running any migration.
 
 ---
+
+## 6f. XP, levels and streaks *(built: `lib/xp.ts`, in `lib/complete.ts`)*
+
+- **Where it lives:**
+  - `TasksState.progress` holds the total XP, the day streak, the best streak and the last active day. It's saved in `tasks.v1.meta`.
+  - Each completed task records the XP it earned (`task.xp`). A repeating task keeps its on-time `streak`.
+  - All of these are optional in saved data (absent = 0), so there was no migration.
+- **Changed only by ops:**
+  - `check()` returns the completion op plus the XP (`awardXp`): `xp` field changes and a `progress` op.
+  - `uncheck()` adds `revokeXp`.
+  - The `progress` op's inverse restores the previous record exactly, so UNDO takes XP back and REDO gives it again.
+  - Every way of completing goes through `check()`: checkbox, swipe, multi-select, a notification's DONE.
+- **Never lowered by cleanups:** clearing, deleting and purging tasks leave `progress` alone.
+  - Duplicates carry no XP.
+  - **Replace** from a backup takes the backup's progress only when it's higher, so moving phones brings your level, and restoring an old snapshot never lowers it.
+- **Rules** (the file header of `lib/xp.ts` has the full list):
+  - per task: base 10, a priority bonus, +8 per subtask for quests, +5 on time
+  - multipliers: the repeat streak (×1.1 per step, up to ×2) and the day streak (+5% per day, up to +50%)
+  - each level needs `50 + 25·level` XP
+- **UI:**
+  - the level is in the header title
+  - `XpBar` sits under the tabs
+  - `QuestMeter` on group rows uses the `subtaskCount` selector, cached per structureVersion
+  - the toast reports XP gained and new levels
 
 ## 6a. Backup, import and restore *(built: `lib/backup.ts`, `store/backup.ts`, `services/backup.ts`)*
 

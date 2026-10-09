@@ -22,6 +22,8 @@ const backgrounds = {
 /** Non-text decoration: dividers, nesting guides, idle borders. */
 const decoration = {
   line: '#12301A',
+  /** The quest meter's fill behind its text: accent at 16% over black, as a solid color. */
+  xpWash: '#092903',
 } as const;
 
 /** Text and icon tokens, dimmest to brightest. */

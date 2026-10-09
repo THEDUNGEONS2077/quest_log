@@ -150,6 +150,24 @@ describe('persistence wiring', () => {
   });
 });
 
+describe('XP (lib/xp.ts) through the store', () => {
+  it('is saved and loaded with the tasks, and a new level is announced', () => {
+    const kv = createMemoryKV();
+    const { store } = makeStore(kv);
+    const stop = installPersistence(store, kv);
+    const s = store.getState();
+    const ids = Array.from({ length: 5 }, (_, i) => s.addTask(null, `t${i}`));
+    for (const id of ids.slice(0, 4)) s.toggleDone(id);
+    expect(store.getState().tasks.progress.xp).toBe(40);
+    // The fifth reaches 50 XP: level 1, with the success outcome and a toast.
+    expect(s.toggleDone(ids[4]!)).toBe('moved-to-completed');
+    expect(store.getState().toast?.message).toBe('COMPLETED · +10 XP · LEVEL 1!');
+    stop.flush();
+    stop();
+    expect(makeStore(kv).store.getState().tasks.progress).toMatchObject({ xp: 50, dayStreak: 1 });
+  });
+});
+
 describe('selectors', () => {
   it('memoizes rows by structureVersion: typing does not re-flatten', () => {
     const { store } = makeStore();
@@ -260,7 +278,8 @@ describe('completion actions', () => {
     const sel = makeSelectors();
     // Still visible on ACTIVE while the strike plays…
     expect(sel.activeRows(store.getState()).map((r) => r.id)).toEqual([a]);
-    expect(store.getState().toast).toMatchObject({ message: 'COMPLETED', undo: true });
+    // The toast says what it earned (lib/xp.ts: a plain task is 10 XP).
+    expect(store.getState().toast).toMatchObject({ message: 'COMPLETED · +10 XP', undo: true });
     // …then gone from ACTIVE and shown on COMPLETED.
     s.releaseLingering(a);
     expect(sel.activeRows(store.getState())).toEqual([]);

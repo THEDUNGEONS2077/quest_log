@@ -43,7 +43,8 @@ export function duplicate(state: TasksState, id: ID, at: number, newId: () => ID
     const copyId = newId();
     ids.set(task.id, copyId);
     const parentId = task.id === id ? original.parentId : ids.get(task.parentId!)!;
-    tasks.push({ ...task, id: copyId, parentId, notificationIds: [], createdAt: at, updatedAt: at });
+    // A copy hasn't earned anything: no XP record or streak carried over.
+    tasks.push({ ...task, id: copyId, parentId, notificationIds: [], createdAt: at, updatedAt: at, xp: 0, streak: 0 });
     if (task.id !== id) (children[parentId!] ??= []).push(copyId);
   }
   const index = childIds(state, original.parentId).indexOf(id) + 1;

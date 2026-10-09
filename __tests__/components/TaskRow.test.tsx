@@ -50,7 +50,8 @@ describe('TaskRow', () => {
     await setup();
     expect(screen.getByText('a')).toBeTruthy();
     expect(screen.getByText('g')).toBeTruthy();
-    expect(screen.getByText('[0/1]')).toBeTruthy();
+    // The quest meter: progress plus the XP completing it earns (10 + 8 per subtask).
+    expect(screen.getByLabelText('0 of 1 subtasks done. Completing it earns 18 XP')).toBeTruthy();
   });
 
   it('typing in one row re-renders only that row', async () => {

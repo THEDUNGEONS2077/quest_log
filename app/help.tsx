@@ -164,6 +164,30 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    title: 'XP & LEVELS',
+    intro: 'Completing tasks earns XP. XP raises your level, shown at the top as <7>_quest_log.',
+    lines: [
+      { key: 'Each task', what: '10 XP. Priority adds 2 / 5 / 10 for ! / !! / !!!. Done before its due time: +5.' },
+      {
+        key: 'Quests',
+        what: 'A task with subtasks earns +8 XP per subtask when it completes. Its meter (3/5 · +58 XP) shows the progress and the reward.',
+      },
+      {
+        key: 'Levels',
+        what: 'Level 1 takes 50 XP, then each level needs 25 more than the last. The bar under the tabs shows how far along you are.',
+      },
+      {
+        key: 'Day streak',
+        what: 'Complete something every day: each day in a row adds 5% to all XP (up to +50%). Shown as 3-DAY STREAK at the top.',
+      },
+      {
+        key: 'Repeat streak',
+        what: 'A repeating task done on time again and again gets ×1.1, ×1.2… up to ×2.0 (shown on the task). Late resets it.',
+      },
+      { key: 'UNDO', what: 'Unchecking a task or UNDO takes its XP back. Clearing or deleting finished tasks never does.' },
+    ],
+  },
+  {
     title: 'TYPING SHORTCUTS',
     intro: 'Type these anywhere you type a task; chips under the text show what they’ll do.',
     lines: [

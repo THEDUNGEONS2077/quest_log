@@ -19,12 +19,18 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const shots = join(root, 'e2e/web/screenshots');
 mkdirSync(shots, { recursive: true });
 const PORT = 8137;
-const URL = `http://localhost:${PORT}/`;
+const URL = `http://127.0.0.1:${PORT}/`;
 
 // Static server for web-dist (SPA fallback, like GitHub Pages' 404.html).
 // Restartable: the offline check stops it for real.
+// The serve binary itself, not `npx serve`: npx runs it as a child process, and
+// stopping npx would leave the real server listening (a port left open).
+// Bound to 127.0.0.1 only.
 const startServer = () =>
-  spawn('npx', ['serve', '-s', 'web-dist', '-l', String(PORT), '--no-port-switching'], { cwd: root, stdio: 'ignore' });
+  spawn(join(root, 'node_modules/.bin/serve'), ['-s', 'web-dist', '-l', `tcp://127.0.0.1:${PORT}`, '--no-port-switching'], {
+    cwd: root,
+    stdio: 'ignore',
+  });
 let server = startServer();
 const stop = () => server.kill();
 /** Resolves once the server answers. */

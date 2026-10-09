@@ -5,7 +5,7 @@
  *
  * Storage layout for tasks (changed from PLAN's single key on 2026-10-07,
  * for the §5 budgets):
- *   tasks.v1.meta      { children, structureVersion, schemaVersion }
+ *   tasks.v1.meta      { children, structureVersion, schemaVersion, progress }
  *   tasks.v1.b.<n>     one bucket of tasks (lib/taskMap.ts), only if non-empty
  * A save re-serializes only the buckets whose contents changed (identity
  * check), so a keystroke writes about 30 tasks instead of all of them.
@@ -130,15 +130,16 @@ export function createTasksSaver(kv: KV, written: TasksState | null) {
       if (Object.keys(bucket).length === 0) kv.remove(`${BUCKET_PREFIX}${i}`);
       else kv.set(`${BUCKET_PREFIX}${i}`, JSON.stringify(bucket));
     }
-    // Meta changes only with structure (children or versions), never on keystrokes.
+    // Meta changes only with structure (children or versions) or XP, never on keystrokes.
     if (
       !lastMeta ||
       lastMeta.children !== state.children ||
       lastMeta.structureVersion !== state.structureVersion ||
-      lastMeta.schemaVersion !== state.schemaVersion
+      lastMeta.schemaVersion !== state.schemaVersion ||
+      lastMeta.progress !== state.progress
     ) {
-      const { children, structureVersion, schemaVersion } = state;
-      kv.set(META_KEY, JSON.stringify({ children, structureVersion, schemaVersion }));
+      const { children, structureVersion, schemaVersion, progress } = state;
+      kv.set(META_KEY, JSON.stringify({ children, structureVersion, schemaVersion, progress }));
     }
     lastBuckets = state.buckets;
     lastMeta = state;
