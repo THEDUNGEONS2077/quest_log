@@ -215,6 +215,13 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
   - It's a structural field.
   - A quest added on a tab takes its category (`categoryForNew`). On DAILY it also gets a daily repeat.
   - Change it from the hold menu (`setQuestCategory`, undoable).
+- **Navigation rules (pass 2026-10-09):**
+  - **Android back** is `store.backStep()`, one mode per press: selection → search → zoom → COMPLETED→ACTIVE → tab→ALL → leave.
+  - **Switching tabs** first commits an edit in progress and ends selection (`leaveListModes`).
+  - **`revealTask`** picks a tab that lists the task.
+  - **Returning to the main screen** (notification tap, shortcut) uses `dismissAll`, and the task link goes back rather than stacking a second main screen.
+  - **A quest is `parentId === null`**, never "depth 0 in this view", so zoomed-in objectives stay objectives.
+  - `npm run web:nav` (`e2e/web/navigation.mjs`) walks every screen and exit in a local browser build.
 - **View state:** `ui.category` (`all` / a category) picks the quest tab, and `ui.tab` (`active` / `completed`) is the switch under it.
   - Both lists filter by the category.
   - `tabCounts` gives the badges in one pass per structure change.

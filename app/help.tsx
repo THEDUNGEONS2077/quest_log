@@ -63,6 +63,10 @@ const SECTIONS: Section[] = [
       { key: 'ACTIVE · COMPLETED', what: 'The switch under the tabs: open quests, or the ones you finished, for the tab you are on.' },
       { key: 'Change category', what: 'Hold a quest and let go → Category… → DAILY, MAIN or MISC.' },
       {
+        key: 'Back button',
+        what: 'Steps out one thing at a time: selection, then search, then zoom, then COMPLETED back to ACTIVE, then back to ALL, and only then leaves the app.',
+      },
+      {
         key: 'Order',
         what: 'Priority first (!!! then !! then !), then the newest or most recently changed. Nothing moves while you edit; when you finish, the list follows your quest. Opening or closing a quest is not a change. Objectives keep the order you give them.',
       },

@@ -42,6 +42,9 @@ Android only installs an update over an existing app if **both are signed with t
    - the APK is arm64 only, under 25 MB, with a JS bundle under 4 MB
 5. Send testers the link: `https://github.com/THEDUNGEONS2077/quest_log/releases/latest`.
 
+## Navigation walk (local browser)
+`npm run web:export && npm run web:nav` drives the app's screens (the same code as Android, built for the web) in headless Chromium at the test phone's size. It checks every screen-to-screen path and exit, and saves `e2e/web/screenshots/nav-*.png` for a visual comparison of headers. It runs on this machine only and deploys nothing. The Android back-button logic is covered by Jest (`store.backStep`).
+
 ## End-to-end tests (Maestro)
 Flows live in `e2e/android/`. They cover first run and example tasks, adding, editing, completing and undoing, subtasks and shorthand, search, settings and help.
 

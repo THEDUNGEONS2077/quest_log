@@ -2,6 +2,18 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.4.2 (build 28)
+
+A pass over navigation.
+
+- **The back button knows the tabs now.** It steps out of selection, then search, then zoom, then COMPLETED back to ACTIVE, then back to ALL, and only then leaves the app.
+- **Switching tabs closes what was open:** an edit in progress is saved, and selection ends, instead of being left behind on rows the new tab doesn't show.
+- **Search follows the tab you're on** and the same order as the list.
+- **Opening a task from a reminder** switches to a tab that shows it.
+- **Opening a task from a link while the app is open** no longer stacks a second main screen, so back leaves the app as expected.
+- **Zoomed into a quest, its objectives look and act like objectives,** not like quests.
+- **Consistent screens:** Trash has the same header divider as the other screens, and Move to… has the same framed close button.
+
 ## 1.4.1 (build 27)
 
 - **Editing stays put.** While you edit a task, the list no longer re-sorts under you, even when you change its priority, date or subtasks. When you finish, the list re-sorts once and follows your task so it stays in view.

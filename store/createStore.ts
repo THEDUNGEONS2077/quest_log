@@ -33,7 +33,7 @@ import * as outliner from '@/lib/outliner';
 import { questOrder } from '@/lib/flatten';
 import { parse, type ParseResult } from '@/lib/parser';
 import { firstOccurrence, PRESETS } from '@/lib/recurrence';
-import { CATEGORIES, type CategoryTab, categoryForNew } from '@/lib/quests';
+import { CATEGORIES, type CategoryTab, categoryForNew, onTab, questCategory } from '@/lib/quests';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { SAMPLE_OUTLINE } from '@/lib/sample';
@@ -280,7 +280,15 @@ export interface AppStore {
   dismissToast(key: number): void;
 
   // --- UI actions ---
+  /** The ACTIVE / COMPLETED switch. Ends editing and selection first (the rows change). */
   setTab(tab: Tab): void;
+  /**
+   * Android back on the main screen: steps out of the innermost mode, one
+   * per press: selection, search, zoom (a level), COMPLETED → ACTIVE, a
+   * category tab → ALL. Returns false when there's nothing left (the app
+   * then closes).
+   */
+  backStep(): boolean;
   /** Shows a quest tab (ALL / DAILY / MAIN / MISC); leaves zoom and the #Group target. */
   setCategoryTab(category: CategoryTab): void;
   /** Hold menu → Category: moves a quest to another tab (one undo step, with a toast). */
@@ -443,6 +451,19 @@ export function createAppStore(deps: StoreDeps) {
     if (task && task.title === '' && liveChildIds(store.getState().tasks, id).length === 0) {
       store.getState().dispatch({ type: 'remove', id });
     }
+  };
+
+  /**
+   * Before the list changes underneath (switching the quest tab or the
+   * ACTIVE / COMPLETED switch): end editing (committing it, as Enter would),
+   * selection and the open menu, so no editor or selection is left on rows
+   * the new view doesn't show.
+   */
+  const leaveListModes = () => {
+    const s = store.getState();
+    if (s.editingId !== null) s.setEditing(null);
+    if (s.selection) s.clearSelection();
+    if (s.menuFor) store.setState({ menuFor: null });
   };
 
   /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
@@ -793,11 +814,42 @@ export function createAppStore(deps: StoreDeps) {
         set({ tasks: { ...next, structureVersion }, history: EMPTY_HISTORY, ui: { ...get().ui, zoomRootId: null } });
       },
 
-      setTab: (tab) => set({ ui: { ...get().ui, tab } }),
+      setTab(tab) {
+        if (tab === get().ui.tab) return;
+        leaveListModes();
+        set({ ui: { ...get().ui, tab } });
+      },
 
       setCategoryTab(category) {
+        if (category === get().ui.category) return;
         // Leave modes tied to quests the new tab may not show.
-        set({ ui: { ...get().ui, category, zoomRootId: null }, quickAddParent: null, menuFor: null });
+        leaveListModes();
+        set({ ui: { ...get().ui, category, zoomRootId: null }, quickAddParent: null });
+      },
+
+      backStep() {
+        const s = get();
+        if (s.selection) {
+          s.clearSelection();
+          return true;
+        }
+        if (s.search[s.ui.tab].open) {
+          s.closeSearch(s.ui.tab);
+          return true;
+        }
+        if (s.ui.tab === 'active' && s.ui.zoomRootId) {
+          s.zoomOut();
+          return true;
+        }
+        if (s.ui.tab === 'completed') {
+          s.setTab('active');
+          return true;
+        }
+        if (s.ui.category !== 'all') {
+          s.setCategoryTab('all');
+          return true;
+        }
+        return false;
       },
 
       setQuestCategory(id, category) {
@@ -893,17 +945,21 @@ export function createAppStore(deps: StoreDeps) {
         const chain = ancestors(tasks, id); // nearest first
         const top = chain.length ? chain[chain.length - 1]! : id;
         if (getTask(tasks, top).done) {
-          // On COMPLETED: expand the completed ancestors (the tab's own expanded set).
+          // On COMPLETED: expand the completed ancestors (the tab's own expanded set), on a
+          // quest tab that lists it.
           const expanded = new Set([...get().ui.completedExpanded, ...chain]);
-          set({ ui: { ...get().ui, tab: 'completed', completedExpanded: [...expanded] }, highlightId: id });
+          const category = onTab(getTask(tasks, top), get().ui.category) ? get().ui.category : questCategory(getTask(tasks, top));
+          set({ ui: { ...get().ui, tab: 'completed', completedExpanded: [...expanded], category }, highlightId: id });
           return;
         }
         // On ACTIVE: expand collapsed ancestors. Not an undo step (it's navigation).
+        // Show it on a tab that lists it: stay if the current one does, else its own.
+        const shownOn = onTab(getTask(tasks, top), get().ui.category) ? get().ui.category : questCategory(getTask(tasks, top));
         const collapsed = chain.filter((a) => getTask(tasks, a).collapsed);
         if (collapsed.length) {
           get().dispatch({ type: 'update', changes: collapsed.map((a) => ({ id: a, fields: { collapsed: false } })) }, { undoable: false });
         }
-        set({ ui: { ...get().ui, tab: 'active', zoomRootId: null }, highlightId: id });
+        set({ ui: { ...get().ui, tab: 'active', zoomRootId: null, category: shownOn }, highlightId: id });
       },
 
       clearHighlight: () => set({ highlightId: null }),

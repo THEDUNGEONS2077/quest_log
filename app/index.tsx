@@ -19,7 +19,8 @@
  * switch < 50 ms). The COMPLETED list mounts the first time it's opened.
  *
  * Android back steps out of the innermost mode first: selection, then
- * search, then zoom (one level at a time), and only then leaves the app.
+ * search, then zoom (one level at a time), then COMPLETED → ACTIVE, then a
+ * quest tab → ALL, and only then leaves the app (store backStep).
  */
 import { useEffect, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
@@ -62,22 +63,8 @@ export default function ListScreen() {
 
   // Android back: leave the innermost mode first (see file header).
   useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      const s = store.getState();
-      if (s.selection) {
-        s.clearSelection();
-        return true;
-      }
-      if (s.search[s.ui.tab].open) {
-        s.closeSearch(s.ui.tab);
-        return true;
-      }
-      if (s.ui.tab === 'active' && s.ui.zoomRootId) {
-        s.zoomOut();
-        return true;
-      }
-      return false; // default: leave the app
-    });
+    // One mode per press (store backStep); nothing left → default: leave the app.
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => store.getState().backStep());
     return () => sub.remove();
   }, [store]);
 

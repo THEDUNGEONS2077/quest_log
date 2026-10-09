@@ -10,6 +10,8 @@
  *     dimmed). Collapsed groups are opened in results, since a match hidden
  *     inside one would be useless.
  */
+import { questOrder } from './flatten';
+import { type CategoryTab, onTab } from './quests';
 import type { Row } from './flatten';
 import { findTask } from './taskMap';
 import { childIds } from './tree';
@@ -55,7 +57,12 @@ export function matcher(query: string, filter: Filter, now: number): ((t: Task) 
  * in tree order, under `rootId` (zoom). Done top-level tasks are excluded
  * (they're on COMPLETED), as are deleted ones.
  */
-export function searchActive(state: TasksState, matches: (t: Task) => boolean, rootId: ID | null = null): FoundRow[] {
+export function searchActive(
+  state: TasksState,
+  matches: (t: Task) => boolean,
+  rootId: ID | null = null,
+  category: CategoryTab = 'all',
+): FoundRow[] {
   const rows: FoundRow[] = [];
   // Returns true if `id` or anything below it matches; appends rows in order.
   const visit = (id: ID, depth: number): boolean => {
@@ -72,7 +79,9 @@ export function searchActive(state: TasksState, matches: (t: Task) => boolean, r
     rows.splice(at, 0, { id, depth, hasChildren: kids.length > 0, progress: { done, total: kids.length }, context: !self });
     return true;
   };
-  for (const id of childIds(state, rootId)) visit(id, 0);
+  // Quests in the list's order (priority, then newest) and only the selected tab's;
+  // a zoomed-in quest's objectives in their manual order.
+  for (const id of rootId === null ? questOrder(state, category) : childIds(state, rootId)) visit(id, 0);
   return rows;
 }
 
@@ -81,10 +90,10 @@ export function searchActive(state: TasksState, matches: (t: Task) => boolean, r
  * matches, newest first, each with its matching descendants (and their
  * ancestors) shown.
  */
-export function searchCompleted(state: TasksState, matches: (t: Task) => boolean): FoundRow[] {
+export function searchCompleted(state: TasksState, matches: (t: Task) => boolean, category: CategoryTab = 'all'): FoundRow[] {
   const tops = (state.children[ROOT] ?? [])
     .map((id) => findTask(state, id))
-    .filter((t): t is Task => !!t && t.done && t.deletedAt === null)
+    .filter((t): t is Task => !!t && t.done && t.deletedAt === null && onTab(t, category))
     .sort((a, b) => b.updatedAt - a.updatedAt);
   const out: FoundRow[] = [];
   for (const top of tops) {

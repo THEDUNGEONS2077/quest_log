@@ -98,10 +98,12 @@ export function makeSelectors() {
 
   // Search results, memoized on the tree version and the search inputs.
   // (Titles aren't structural, but a search re-runs when the query changes.)
-  const found = memoLast((_v: number, zoom: string | null, query: string, filter: Filter, minute: number) =>
-    searchActive(activeTasks, matcher(query, filter, minute * 60_000)!, zoom),
+  const found = memoLast((_v: number, zoom: string | null, query: string, filter: Filter, minute: number, category: CategoryTab) =>
+    searchActive(activeTasks, matcher(query, filter, minute * 60_000)!, zoom, category),
   );
-  const foundCompleted = memoLast((_v: number, query: string) => searchCompleted(completedTasks, matcher(query, 'all', 0)!));
+  const foundCompleted = memoLast((_v: number, query: string, category: CategoryTab) =>
+    searchCompleted(completedTasks, matcher(query, 'all', 0)!, category),
+  );
 
   let countTasks: TasksState;
   // `minute` (not `now`) is the key, so counts refresh at most once a minute.
@@ -132,7 +134,7 @@ export function makeSelectors() {
       const q = s.search?.active;
       if (q && (q.query.trim() || q.filter !== 'all')) {
         // Overdue depends on the time: results refresh at most once a minute.
-        return found(s.tasks.structureVersion, s.ui.zoomRootId, q.query, q.filter, Math.floor(Date.now() / 60_000));
+        return found(s.tasks.structureVersion, s.ui.zoomRootId, q.query, q.filter, Math.floor(Date.now() / 60_000), s.ui.category ?? 'all');
       }
       return active(
         s.tasks.structureVersion,
@@ -146,7 +148,7 @@ export function makeSelectors() {
     completedRows(s: SelectorInput): Row[] {
       completedTasks = s.tasks;
       const q = s.search?.completed;
-      if (q && q.query.trim()) return foundCompleted(s.tasks.structureVersion, q.query);
+      if (q && q.query.trim()) return foundCompleted(s.tasks.structureVersion, q.query, s.ui.category ?? 'all');
       return completed(s.tasks.structureVersion, s.ui.completedExpanded, s.ui.category ?? 'all');
     },
     /** Open and done quests on each quest tab (lib/quests.ts). */

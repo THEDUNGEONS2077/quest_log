@@ -133,11 +133,13 @@ export const TaskRow = memo(
       run[e.nativeEvent.actionName]?.();
     };
 
-    // A quest: any top-level task, with or without subtasks yet.
-    const isQuest = row.depth === 0;
+    // A quest: a true top-level task (no parent), with or without subtasks yet. Not
+    // "depth 0 in this view": zoomed into a quest, its objectives are at depth 0 but
+    // must still look and act like objectives (navigation pass 2026-10-09).
+    const isQuest = task.parentId === null;
     const visualDepth = Math.min(row.depth, size.maxVisualDepth);
     // Group / subtask / top-level title size, shared with COMPLETED and the editor.
-    const variant = titleVariant(row.depth, row.hasChildren);
+    const variant = titleVariant(isQuest ? 0 : Math.max(1, row.depth), row.hasChildren);
     const titleStyle = titleStyles[variant];
 
     return (
@@ -154,14 +156,14 @@ export const TaskRow = memo(
               styles.row,
               { paddingLeft: space.lg + visualDepth * size.indent },
               // The first quest sits right under the fixed header divider: no second line.
-              row.depth === 0 && !first && styles.topLevel,
+              isQuest && !first && styles.topLevel,
               editing && styles.editing,
               selected && styles.selected,
             ]}
             accessible={!editing}
             accessibilityLabel={rowLabel(task, row, now)}
             // Quests are ordered by recent activity, so Move up / down only apply below them.
-            accessibilityActions={row.depth === 0 ? QUEST_ACTIONS : ROW_ACTIONS}
+            accessibilityActions={isQuest ? QUEST_ACTIONS : ROW_ACTIONS}
             onAccessibilityAction={onAccessibilityAction}
           >
             {/* The soft green glow on the row being edited (PLAN §10.9). */}
@@ -212,7 +214,7 @@ export const TaskRow = memo(
                 <StrikeText
                   text={task.title}
                   struck={task.done || advancing}
-                  color={row.depth === 0 ? colors.textBright : colors.text}
+                  color={isQuest ? colors.textBright : colors.text}
                   style={titleStyle}
                   onPress={tapTitle}
                   highlight={query ? matchRange(task.title, query) : null}
@@ -300,7 +302,7 @@ const QUEST_ACTIONS = ROW_ACTIONS.filter((a) => a.name !== 'moveUp' && a.name !=
 /** What a screen reader announces for a row, e.g. "Ship v2 build, high priority, repeats weekly, not done, 2 of 5 subtasks done". */
 function rowLabel(task: Task, row: Row, now: number): string {
   const parts = [task.title || 'Untitled task'];
-  if (row.depth === 0 && row.hasChildren) parts.push('group');
+  if (task.parentId === null && row.hasChildren) parts.push('quest');
   if (task.priority > 0) parts.push(['', 'low', 'medium', 'high'][task.priority] + ' priority');
   if (task.dueAt !== null) {
     parts.push(`due ${formatDue(task.dueAt, now).toLowerCase()}${isOverdue(task.dueAt, task.done, now) ? ', overdue' : ''}`);

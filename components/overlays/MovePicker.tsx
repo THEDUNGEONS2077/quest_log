@@ -138,7 +138,16 @@ const styles = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: colors.bg },
   head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, gap: space.md },
   title: { flex: 1, color: colors.accent, ...platformText },
-  close: { width: size.hitTarget, height: size.hitTarget, alignItems: 'center', justifyContent: 'center' },
+  // Framed like every other screen's close button.
+  close: {
+    width: size.hitTarget,
+    height: size.hitTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: shape.hairline,
+    borderColor: colors.line,
+    borderRadius: shape.radius,
+  },
   search: {
     color: colors.text,
     marginHorizontal: space.lg,

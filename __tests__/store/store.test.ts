@@ -754,3 +754,80 @@ describe('editing keeps the list still (bug 2026-10-09)', () => {
     expect(sel.activeRows(store.getState()).map((r) => r.id)).toEqual([b, a]);
   });
 });
+
+describe('navigation (pass 2026-10-09)', () => {
+  it('Android back steps out one mode per press, ending at ALL / ACTIVE, then leaves', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'quest');
+    s.addTask(q, 'objective');
+    s.setCategoryTab('main');
+    s.setTab('completed');
+    s.setTab('active');
+    s.setZoom(q);
+    s.setSearch('active', { open: true });
+    s.startSelection(q);
+    const steps: string[] = [];
+    while (s.backStep()) {
+      const st = store.getState();
+      steps.push(
+        `${st.selection ? 'sel' : '-'} ${st.search.active.open ? 'search' : '-'} ${st.ui.zoomRootId ? 'zoom' : '-'} ${st.ui.tab} ${st.ui.category}`,
+      );
+    }
+    expect(steps).toEqual([
+      '- search zoom active main', // selection closed
+      '- - zoom active main', // search closed
+      '- - - active main', // zoomed out
+      '- - - active all', // back to ALL
+    ]);
+    // On COMPLETED, back returns to ACTIVE first.
+    s.setTab('completed');
+    expect(s.backStep()).toBe(true);
+    expect(store.getState().ui.tab).toBe('active');
+    expect(s.backStep()).toBe(false); // nothing left: the app closes
+  });
+
+  it('switching tabs ends editing (applying its shorthand) and selection', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'quest');
+    s.setEditing(q);
+    s.updateTitle(q, 'quest !!!');
+    s.setTab('completed');
+    expect(store.getState().editingId).toBeNull();
+    expect(tk(store.getState().tasks, q)).toMatchObject({ title: 'quest', priority: 3 });
+    s.setTab('active');
+    s.startSelection(q);
+    s.setCategoryTab('misc');
+    expect(store.getState().selection).toBeNull();
+  });
+
+  it('revealing a task (notification, link) switches to a tab that lists it', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.setCategoryTab('daily');
+    s.quickAdd('Stretch');
+    s.setCategoryTab('misc');
+    s.revealTask('t1');
+    expect(store.getState().ui).toMatchObject({ category: 'daily', tab: 'active' });
+    // Already listed by the current tab (ALL): stays there.
+    s.setCategoryTab('all');
+    s.revealTask('t1');
+    expect(store.getState().ui.category).toBe('all');
+  });
+
+  it('search follows the quest tab', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.setCategoryTab('misc');
+    s.quickAdd('call bank');
+    s.setCategoryTab('main');
+    s.quickAdd('call mom');
+    s.setSearch('active', { open: true, query: 'call' });
+    expect(
+      makeSelectors()
+        .activeRows(store.getState())
+        .map((r) => r.id),
+    ).toEqual(['t2']);
+  });
+});

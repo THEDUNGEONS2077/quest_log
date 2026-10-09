@@ -3,7 +3,8 @@
  *
  * Layer: UI (Expo Router screen). Has no UI of its own: it asks the store
  * to reveal the task (switch tab, expand ancestors, scroll and flash), then
- * replaces itself with the list. Notification taps use the same reveal.
+ * returns to the list (going back to it if it's already open).
+ * Notification taps use the same reveal.
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect } from 'react';
@@ -16,7 +17,10 @@ export default function TaskLink() {
 
   useEffect(() => {
     if (id) actions.revealTask(id);
-    router.replace('/');
+    // Back to the main screen already underneath (opened while the app was running),
+    // instead of stacking a second one; at a cold start there's none: replace this one.
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
   }, [id, actions]);
 
   return null;

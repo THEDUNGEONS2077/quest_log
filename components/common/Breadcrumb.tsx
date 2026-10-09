@@ -30,7 +30,7 @@ export function Breadcrumb() {
   return (
     <View style={styles.wrap}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.path}>
-        <Crumb label="← ALL" onPress={() => actions.setZoom(null)} a11y="Back to all tasks" />
+        <Crumb label="← ALL" onPress={() => actions.setZoom(null)} a11y="Back to all quests" />
         {path.map((id, i) => {
           const title = findTask(tasks, id)!.title || 'Untitled';
           const current = i === path.length - 1;

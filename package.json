@@ -1,6 +1,6 @@
 {
   "name": "quest_log",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "main": "expo-router/entry",
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
@@ -67,7 +67,8 @@
     "e2e": "maestro test e2e/android",
     "web:export": "node scripts/web-export.mjs",
     "web:serve": "serve -s web-dist -l 8080",
-    "web:test": "node e2e/web/smoke.mjs"
+    "web:test": "node e2e/web/smoke.mjs",
+    "web:nav": "node e2e/web/navigation.mjs"
   },
   "private": true,
   "allowScripts": {

@@ -127,6 +127,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: space.lg,
     paddingTop: space.md,
+    // Same header as Help, Settings and What's new: a hairline divider under it.
+    paddingBottom: space.sm,
+    borderBottomWidth: shape.hairline,
+    borderBottomColor: colors.line,
   },
   title: { color: colors.accent, ...platformText },
   close: {

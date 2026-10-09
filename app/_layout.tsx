@@ -49,6 +49,16 @@ import { colors } from '@/theme';
  */
 export { CrashScreen as ErrorBoundary } from '@/components/common/CrashScreen';
 
+/**
+ * Back to the main screen, wherever the app is: closes Settings, Help and
+ * the like by popping them, so the main screen is never stacked twice (one
+ * Android back then leaves the app, as expected). At a cold start it's
+ * already there.
+ */
+function toMainScreen(): void {
+  if (router.canDismiss()) router.dismissAll();
+}
+
 export default function RootLayout() {
   // Keep the haptics service in step with the "Haptics" setting.
   useEffect(() => {
@@ -63,7 +73,7 @@ export default function RootLayout() {
     () =>
       startReminders(appBundle.store, kv, (taskId) => {
         appBundle.store.getState().revealTask(taskId);
-        router.navigate('/');
+        toMainScreen();
       }),
     [],
   );
@@ -72,8 +82,7 @@ export default function RootLayout() {
   useEffect(
     () =>
       startQuickActions(() => {
-        // Back to the main screen if another one is open (at a cold start it already is).
-        if (router.canDismiss()) router.dismissAll();
+        toMainScreen();
         appBundle.store.getState().requestQuickAdd();
       }),
     [],
