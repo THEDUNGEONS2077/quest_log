@@ -2,6 +2,18 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.5.2 (build 31)
+
+- **Fixed: completed daily quests now show on DAILY · COMPLETED.** A daily quest from before the quest tabs existed dropped to MAIN once completed. Ones already filed there move back to DAILY by themselves. **Run again** also puts a quest back on its own tab now, instead of on MAIN.
+- **Switching between ALL · DAILY · MAIN · MISC always shows the list from the top.** Inside a tab, zooming out of a quest still takes you back to where you were.
+- **Smoother, more consistent animations:**
+  - The `+18` on the XP bar now floats in step with the `+18 XP` on the task you completed, in the same style.
+  - The toast slides away instead of vanishing, and its UNDO can't be tapped by accident while it leaves.
+  - A dragged task lifts smoothly instead of jumping up.
+  - The editing glow fades in the same way everywhere.
+  - Progress meters no longer fill or drain on their own while you scroll.
+  - A "found it" flash no longer carries over onto another task.
+
 ## 1.5.1 (build 30)
 
 - **Objectives show every word with a capital:** `buy oat milk` reads **Buy Oat Milk**. Only the display changes: what you typed is kept as it is, and it's what you see when you edit or copy. Words you wrote with capitals of their own (`iPhone`, `NASA`) are left alone.

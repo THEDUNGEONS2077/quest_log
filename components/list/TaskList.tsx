@@ -15,9 +15,10 @@
  * scrolled to first, so its editor can mount and take focus. Dragging the
  * list a meaningful distance ends editing (PLAN §9.3).
  *
- * Views: each quest tab and zoom level keeps its own scroll position and
- * slides in from its side (useViewPlace.ts). Zooming deeper comes in from
- * the right, zooming out from the left.
+ * Views: a quest tab always opens at the top; within it, each zoom level
+ * keeps its own scroll position. Views slide in from their side
+ * (useViewPlace.ts): zooming deeper comes in from the right, zooming out
+ * from the left.
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useCallback, useEffect, useRef } from 'react';
@@ -54,11 +55,15 @@ export function TaskList({ bottomInset }: Props) {
   const highlightId = useAppStore((s) => s.highlightId);
   const list = useRef<FlashListRef<Row>>(null);
 
-  // The view shown: a quest tab, and a zoom level within it. Each keeps its own place.
+  // The view shown: a quest tab (opens at the top), and a zoom level within it (keeps its place).
   const category = useAppStore((s) => s.ui.category);
   const zoomRootId = useAppStore((s) => s.ui.zoomRootId);
   const zoomDepth = useAppStore((s) => zoomLevel(s.tasks, s.ui.zoomRootId));
-  const place = useViewPlace(list, `${category}/${zoomRootId ?? ''}`, CATEGORY_TABS.indexOf(category) * 100 + zoomDepth);
+  const shown = useAppStore((s) => s.ui.tab === 'active');
+  const place = useViewPlace(list, `${category}/${zoomRootId ?? ''}`, CATEGORY_TABS.indexOf(category) * 100 + zoomDepth, {
+    group: category,
+    visible: shown,
+  });
 
   // Scroll to the top (store revealTop): a new quest was added (it sorts first), the
   // selected tab was tapped again, or home. Only while ACTIVE is the tab on screen.

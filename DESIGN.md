@@ -328,24 +328,34 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 | `slow` | 320 ms | Larger transitions, pulse decay |
 | easing | `Easing.out(Easing.cubic)` | The only curve |
 | cursor blink | 530 ms on / 530 ms off | All `█` cursors share one animated value (they blink in step, at the cost of one animation) |
+| float | in `fast`, hold 450 ms, out `slow`, rising throughout | Every floating `+N XP` (the row and the XP bar move in step) |
+| `distance.nudge` | 16 pt | Small arrivals: the toast, a view sliding in, the XP bar's `+N` |
+| `distance.float` | 24 pt | `+N XP` rising from a completed row |
+| `distance.exit` | 48 pt | A completed quest sliding out |
+| `distance.sheet` | 72 pt | A bottom sheet rising into place |
+| `scale.lift` / `scale.pop` | 1.02 / 1.3 | The lifted drag row / the checkbox's pop |
+| glow | `glowShadow.inset` / `outset` (35%), `bright` and `glowText` (60%) | The soft glow; the stronger one only for thin marks and small floating text |
 
 ### Choreography
 
 | Moment | Spec |
 |---|---|
-| Complete an item | All at once, on the UI thread: the checkbox swells to ×1.3 (120 ms) and settles (200 ms) while flashing `accent` back to `textDim`; a scan line sweeps the row behind its content (an `accent` wash at 14% led by a bright 2 pt edge with the glow, 320 ms, then fades over 400 ms); `+N XP` in bold `accent` with a soft glow rises 24 pt from the row's right edge and fades (about 900 ms); the strikethrough draws across each line (200 ms) as the text fades to `textDim` |
+| Complete an item | All at once, on the UI thread: the checkbox swells to `scale.pop` (`fast`) and settles (`base`) while flashing `accent` back to `textDim` (`slow`, ending with the swell); a scan line sweeps the row behind its content (an `accent` wash at 14% led by a bright 2 pt edge with the glow, `slow`, then fades, `slow`); `+N XP` in bold `accent` with the glow floats up `distance.float` (the float rhythm), in step with the XP bar's `+N`; the strikethrough draws across each line (`base`) as the text fades to `textDim` |
 | A top-level item completes | It stays **in place** (the order is held) while the above plays and holds (600 ms), then slides 48 pt right while fading (200 ms) with its children, and moves to COMPLETED. The tab count pulses |
-| Change view (tab, zoom, ACTIVE ↔ COMPLETED) | The new view slides in 16 pt from the side it's on (tabs left to right; deeper levels on the right) while fading in from 30%, 200 ms. Each view keeps its own scroll position |
+| Change view (tab, zoom, ACTIVE ↔ COMPLETED) | The new view slides in `distance.nudge` from the side it's on (tabs left to right; deeper levels on the right) while fading in from 30%, `base`. A quest tab opens at the top; zoom levels keep their scroll position |
 | Repeating item | Strike (200), hold (300), un-strike with the new date |
 | Collapse / expand | ▸ rotates 90° over 120 ms. It's instant for groups of more than 50 children, and when a recycled list cell starts showing a different item |
 | Focus | The glow fades in over 120 ms |
-| Drag | Lift: scale 1.02, `surfaceRaised`, outer glow, haptic. Hovering a collapsed parent for 600 ms expands it |
+| Drag | Lift: grows to `scale.lift` over `fast`, `surfaceRaised`, outer glow, haptic. Hovering a collapsed parent for 600 ms expands it |
 | Sheets | Backdrop fade plus a 72 pt rise and fade, 200 ms |
-| Toast | 16 pt rise plus fade, 200 ms, hold 5 s |
+| Toast | `distance.nudge` rise plus fade, `base`, hold 5 s, then leaves the way it came (sink plus fade, `base`; UNDO can't be tapped while it leaves) |
 | Highlight on open | The background flashes to `surfaceRaised` twice over 800 ms (from a notification or link) |
 
 ### Rules
 - **Animate on the UI thread** (Reanimated worklets, or CSS transforms and opacity on the web). Never animate through React state.
+- **Every number comes from the motion tokens** (durations, the one easing, timings, distances, scales, the glow). Similar moves match: every small arrival travels the same distance, every `+N` floats with the same rhythm. A test fails on a literal duration or glow color in a component.
+- **What appears animates out the way it came** when it leaves by itself (the toast). Things the user dismisses (sheets, menus) close at once: the response to a choice should be immediate.
+- **List rows animate only real changes.** A recycling list reuses rows for other items while scrolling; a row that now shows another item jumps to its state instead of animating a change nobody made.
 - **Reduce Motion is global:** with the OS setting or the app setting on, every animation jumps to its end state (Reanimated's `ReducedMotionConfig`). Multi-step effects check it themselves: the boot screen is skipped, and the cursor stays solid.
 - **Inside modals, prefer plain value animations** (opacity and translate on a shared value) over layout or "entering" animations, which are less reliable there.
 
@@ -367,7 +377,7 @@ These are the rules that make the app feel good. Most were refined through devic
    - drag sideways to change nesting
    Every one also has a visible button or menu entry **and** a screen-reader action.
 7. **The back button steps out of the innermost mode first:** selection, then search, then zoom (one level at a time), then leaves the app.
-   - **Places are kept:** every view (each tab, each zoom level) returns to where it was scrolled, so moving around never loses your spot.
+   - **A tab opens at the top; depth keeps its place:** switching quest tab always shows the list from the top, while zooming out of a group returns to where you were.
    - **Re-tap a tab for its top; tap the title for home.**
    - **A view never shows something that has left it:** zoomed into a group that gets completed or deleted, you're taken out to the nearest level still there (after the completion has played).
    - **Sheets wait for the keyboard to close** before they open: never show a sheet over a closing keyboard (on Android it can leave keyboard-tracking views stranded mid-screen).

@@ -8,13 +8,15 @@
  *
  * Layer: UI. Three small pieces, all UI-thread animations that start
  * together with the strikethrough (StrikeText):
- *   - CheckGlyph: the [x] pops (×1.3, back in 200 ms) and flashes accent
- *     before settling to the dim "done" color;
+ *   - CheckGlyph: the [x] pops (scale.pop, fast up and base back) and
+ *     flashes accent before settling to the dim "done" color, both over slow;
  *   - CompleteScan: a faint accent wash sweeps across the row behind its
- *     content, led by a bright 2 pt line, then fades (a terminal scan line);
+ *     content (slow), led by a bright 2 pt line, then fades (slow): a
+ *     terminal scan line;
  *   - XpFloat: "+N XP", the XP the check earned (store `lastGain`), rises
- *     from the row's right edge and fades, so the reward is seen where it
- *     happened (the XP bar fills at the same time).
+ *     from the row's right edge and fades, with the same motion as the XP
+ *     bar's "+N" (useFloatUp), so the reward is seen where it happened.
+ * All numbers are theme/motion.ts tokens.
  * A top-level task then slides out of ACTIVE (TaskRow).
  *
  * Only a real check plays it: a row that mounts already done (scrolling,
@@ -26,16 +28,25 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, type TextStyle } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 
-import { colors, duration, easing, fonts, maxFontSizeMultiplier, platformText, space, type } from '@/theme';
+import { useFloatUp } from '@/components/common/motion';
+import {
+  colors,
+  distance,
+  duration,
+  easing,
+  fonts,
+  glowShadow,
+  glowText,
+  maxFontSizeMultiplier,
+  platformText,
+  scale,
+  shape,
+  space,
+  type,
+} from '@/theme';
 
-/** How long the scan line takes to cross the row, then to fade. */
-const SCAN_MS = duration.slow;
-const SCAN_FADE_MS = 400;
 /** The wash's strength at its brightest: a hint of green, the text stays readable. */
 const SCAN_WASH = 0.14;
-/** How far "+N XP" rises (pt) and how long it stays fully visible. */
-const FLOAT_RISE = space.xl;
-const FLOAT_HOLD_MS = 450;
 
 /**
  * Counts the times task `id` went from not done to done while this row
@@ -57,18 +68,19 @@ export function useJustChecked(id: string, done: boolean): number {
 /** The checkbox glyph: pops and flashes accent on each check (`fire` going up). */
 export function CheckGlyph({ fire, done, glyph, style }: { fire: number; done: boolean; glyph: string; style: TextStyle[] }) {
   const flash = useSharedValue(0);
-  const scale = useSharedValue(1);
+  const swell = useSharedValue(1);
   useEffect(() => {
     if (fire === 0) return;
-    // Accent at once, easing back to the resting color; the glyph swells and settles.
+    // Accent at once, easing back to the resting color while the glyph swells (fast)
+    // and settles (base): both end together, at fast + base = slow.
     flash.set(1);
-    flash.set(withTiming(0, { duration: duration.slow + duration.base, easing }));
-    scale.set(withSequence(withTiming(1.3, { duration: duration.fast, easing }), withTiming(1, { duration: duration.base, easing })));
-  }, [fire, flash, scale]);
+    flash.set(withTiming(0, { duration: duration.slow, easing }));
+    swell.set(withSequence(withTiming(scale.pop, { duration: duration.fast, easing }), withTiming(1, { duration: duration.base, easing })));
+  }, [fire, flash, swell]);
   const rest = done ? colors.textDim : colors.text;
   const animated = useAnimatedStyle(() => ({
     color: interpolateColor(flash.get(), [0, 1], [rest, colors.accent]),
-    transform: [{ scale: scale.get() }],
+    transform: [{ scale: swell.get() }],
   }));
   return (
     <Animated.Text style={[...style, animated]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
@@ -83,10 +95,11 @@ export function CompleteScan({ fire }: { fire: number }) {
   const shown = useSharedValue(0);
   useEffect(() => {
     if (fire === 0) return;
+    // Crosses the row, then fades: slow each.
     sweep.set(0);
-    sweep.set(withTiming(1, { duration: SCAN_MS, easing }));
+    sweep.set(withTiming(1, { duration: duration.slow, easing }));
     shown.set(1);
-    shown.set(withDelay(SCAN_MS, withTiming(0, { duration: SCAN_FADE_MS, easing })));
+    shown.set(withDelay(duration.slow, withTiming(0, { duration: duration.slow, easing })));
   }, [fire, sweep, shown]);
   const wash = useAnimatedStyle(() => ({ width: `${sweep.get() * 100}%`, opacity: shown.get() * SCAN_WASH }));
   const head = useAnimatedStyle(() => ({ left: `${sweep.get() * 100}%`, opacity: shown.get() }));
@@ -105,20 +118,9 @@ export function CompleteScan({ fire }: { fire: number }) {
  * (a quest's "+" button).
  */
 export function XpFloat({ fire, xp, inset = 0 }: { fire: number; xp: number; inset?: number }) {
-  const rise = useSharedValue(0);
-  const shown = useSharedValue(0);
-  useEffect(() => {
-    if (fire === 0 || xp <= 0) return;
-    rise.set(0);
-    rise.set(withTiming(1, { duration: duration.fast + FLOAT_HOLD_MS + duration.slow, easing }));
-    shown.set(
-      withSequence(
-        withTiming(1, { duration: duration.fast, easing }),
-        withDelay(FLOAT_HOLD_MS, withTiming(0, { duration: duration.slow, easing })),
-      ),
-    );
-  }, [fire, xp, rise, shown]);
-  const style = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: -FLOAT_RISE * rise.get() }] }));
+  // The same rhythm as the XP bar's "+N" (useFloatUp); replays for each check, and
+  // again if the amount arrives a render after the check.
+  const style = useFloatUp(fire > 0 && xp > 0 ? `${fire}:${xp}` : '', distance.float);
   if (fire === 0 || xp <= 0) return null;
   return (
     <Animated.View
@@ -141,17 +143,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     bottom: 0,
-    width: 2,
-    marginLeft: -2,
+    width: shape.dropIndicator,
+    marginLeft: -shape.dropIndicator,
     backgroundColor: colors.accent,
-    boxShadow: '0 0 6px 0 rgba(57, 255, 20, 0.6)',
+    boxShadow: glowShadow.bright,
   },
   float: { position: 'absolute', top: space.sm },
   floatText: {
     color: colors.accent,
     fontFamily: fonts.bold,
-    textShadowColor: 'rgba(57, 255, 20, 0.6)',
-    textShadowRadius: 6,
+    ...glowText,
     ...platformText,
   },
 });

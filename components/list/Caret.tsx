@@ -10,10 +10,11 @@
  * List rows are recycled: when this caret starts showing a different task,
  * it jumps straight to that task's state instead of animating.
  */
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { type StyleProp, type TextStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { useSameItem } from '@/components/common/motion';
 import type { ID } from '@/lib/types';
 import { duration, easing, glyphs, maxFontSizeMultiplier, type } from '@/theme';
 
@@ -32,14 +33,13 @@ interface Props {
 /** The rotating caret glyph (wrap it in the row's caret button). */
 export function Caret({ id, open, childCount, style }: Props) {
   const turn = useSharedValue(open ? 1 : 0);
-  const shownFor = useRef(id);
+  const sameItem = useSameItem(id);
   useEffect(() => {
     const target = open ? 1 : 0;
     // Same task: animate the change. A recycled row (new task): jump.
-    const animate = shownFor.current === id && childCount <= ANIMATE_MAX_CHILDREN;
-    shownFor.current = id;
+    const animate = sameItem() && childCount <= ANIMATE_MAX_CHILDREN;
     turn.set(animate ? withTiming(target, { duration: duration.fast, easing }) : target);
-  }, [id, open, childCount, turn]);
+  }, [open, childCount, turn, sameItem]);
 
   const rotate = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get() * 90}deg` }] }));
   return (

@@ -92,13 +92,13 @@ function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
   const previous = useRef(count);
   useEffect(() => {
     if (count > previous.current) {
-      pulse.value = withSequence(withTiming(1, { duration: duration.fast, easing }), withTiming(0, { duration: duration.slow, easing }));
+      pulse.set(withSequence(withTiming(1, { duration: duration.fast, easing }), withTiming(0, { duration: duration.slow, easing })));
     }
     previous.current = count;
   }, [count, pulse]);
 
   const base = selected ? colors.accent : colors.textDim;
-  const countStyle = useAnimatedStyle(() => ({ color: interpolateColor(pulse.value, [0, 1], [base, colors.textBright]) }));
+  const countStyle = useAnimatedStyle(() => ({ color: interpolateColor(pulse.get(), [0, 1], [base, colors.textBright]) }));
 
   return (
     <Pressable

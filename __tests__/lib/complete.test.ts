@@ -110,6 +110,12 @@ describe('runAgain', () => {
     expect(tk(next, rootId)).toMatchObject({ title: 'list', done: false, notes: 'n', priority: 2, createdAt: 7 });
     expect(tk(next, 'c1')).toMatchObject({ title: 'x', done: false, parentId: 'c0' });
   });
+
+  it("goes back to the quest's tab, not to MAIN", () => {
+    const s = build([['chores', { done: true, category: 'misc' }]]);
+    const { op, rootId } = runAgain(s, 'chores', 7, () => 'c0');
+    expect(tk(run(s, op), rootId)!.category).toBe('misc');
+  });
 });
 
 describe('clearCompleted', () => {
@@ -148,6 +154,8 @@ describe('repeating tasks (PLAN §9.9)', () => {
     // Archived copy on COMPLETED, marked with its source, no repeat or reminder.
     const copy = tk(next, archiveId('standup', due))!;
     expect(copy).toMatchObject({ done: true, repeatSourceId: 'standup', repeat: null, notify: false, parentId: null });
+    // It stays on its quest's tab: DAILY came from the daily repeat, so it's stored now (bug 2026-10-09).
+    expect(copy.category).toBe('daily');
     expect(outline(flattenCompleted(next, new Set([copy.id])))).toEqual([
       copy.id,
       `  ${archiveId('notes', due)}`,

@@ -9,7 +9,7 @@
  * The level itself is in the header (`<7>_quest_log`).
  *
  * When XP is earned the fill eases forward and a small "+18" floats up and
- * fades. On a level-up the fill runs to the end, then starts again from
+ * fades, in step with the "+18 XP" on the completed row (useFloatUp). On a level-up the fill runs to the end, then starts again from
  * empty. With Reduce Motion every change is instant (global config).
  */
 import { useEffect, useRef, useState } from 'react';
@@ -18,7 +18,22 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } 
 
 import { levelInfo } from '@/lib/xp';
 import { useAppStore } from '@/store/react';
-import { colors, duration, easing, glowShadow, maxFontSizeMultiplier, platformText, shape, space, type } from '@/theme';
+import {
+  colors,
+  distance,
+  duration,
+  easing,
+  fonts,
+  glowShadow,
+  glowText,
+  maxFontSizeMultiplier,
+  platformText,
+  shape,
+  space,
+  type,
+} from '@/theme';
+
+import { useFloatUp } from './motion';
 
 /** Segments in the meter (purely visual). */
 const SEGMENTS = 10;
@@ -72,16 +87,12 @@ export function XpBar() {
   );
 }
 
-/** "+18" that floats up from the XP count and fades (mounted fresh for each gain). */
+/**
+ * "+18" that floats up from the XP count and fades (mounted fresh for each
+ * gain), with the same motion as the row's "+N XP" (useFloatUp).
+ */
 function GainLabel({ amount }: { amount: number }) {
-  const t = useSharedValue(0);
-  useEffect(() => {
-    t.set(withTiming(1, { duration: 1200, easing }));
-  }, [t]);
-  const style = useAnimatedStyle(() => ({
-    opacity: t.get() < 0.15 ? t.get() / 0.15 : 1 - (t.get() - 0.15) / 0.85,
-    transform: [{ translateY: -space.md * t.get() }],
-  }));
+  const style = useFloatUp(1, distance.nudge);
   return (
     <Animated.Text
       style={[type.meta, styles.gain, style]}
@@ -120,5 +131,5 @@ const styles = StyleSheet.create({
   fill: { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: colors.accent, boxShadow: glowShadow.outset },
   tick: { position: 'absolute', top: 0, bottom: 0, width: shape.hairline, backgroundColor: colors.bg },
   label: { color: colors.textDim, ...platformText },
-  gain: { position: 'absolute', right: 0, top: -space.sm, color: colors.accent, ...platformText },
+  gain: { position: 'absolute', right: 0, top: -space.sm, color: colors.accent, fontFamily: fonts.bold, ...glowText, ...platformText },
 });

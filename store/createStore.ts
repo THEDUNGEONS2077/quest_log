@@ -33,7 +33,7 @@ import * as outliner from '@/lib/outliner';
 import { questOrder, shownZoom } from '@/lib/flatten';
 import { parse, type ParseResult } from '@/lib/parser';
 import { firstOccurrence, PRESETS } from '@/lib/recurrence';
-import { CATEGORIES, type CategoryTab, categoryForNew, onTab, questCategory } from '@/lib/quests';
+import { CATEGORIES, type CategoryTab, categoryForNew, onTab, pinArchivedCategories, questCategory } from '@/lib/quests';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { SAMPLE_OUTLINE } from '@/lib/sample';
@@ -422,6 +422,11 @@ export function createAppStore(deps: StoreDeps) {
   const purge = purgeExpiredTrash(tasks, now());
   if (purge) tasks = ops.apply(tasks, purge).state;
 
+  // Launch repair: completed copies of daily quests that fell to MAIN go back to
+  // their quest's tab (lib/quests.ts pinArchivedCategories). Not undoable either.
+  const pinned = pinArchivedCategories(tasks);
+  if (pinned) tasks = ops.apply(tasks, pinned).state;
+
   // Launch auto-clear (setting "Auto-clear completed"): completed tasks older
   // than 30 or 90 days move to Trash, where they stay restorable for 7 days.
   const settings = loadJSON(kv, KEYS.settings, DEFAULT_SETTINGS);
@@ -497,6 +502,15 @@ export function createAppStore(deps: StoreDeps) {
     if (s.editingId !== null) s.setEditing(null);
     if (s.selection) s.clearSelection();
     if (s.menuFor) store.setState({ menuFor: null });
+  };
+
+  /**
+   * An import's op plus the launch repair for what it brings in (an older
+   * backup can hold completed daily copies filed under MAIN), as one undo step.
+   */
+  const withRepair = (op: ops.Op): ops.Op => {
+    const repair = pinArchivedCategories(ops.apply(store.getState().tasks, op).state);
+    return repair ? { type: 'batch', ops: [op, repair] } : op;
   };
 
   /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
@@ -800,12 +814,12 @@ export function createAppStore(deps: StoreDeps) {
         set({ ui: { ...get().ui, zoomRootId: null }, menuFor: null });
         if (mode === 'replace') {
           const op = backup.replaceOp(get().tasks, doc);
-          if (op) get().dispatch(op);
+          if (op) get().dispatch(withRepair(op));
           get().showToast('REPLACED FROM BACKUP', true);
           return taskCount(get().tasks);
         }
         const { op, added } = backup.mergeOp(get().tasks, doc);
-        if (op) get().dispatch(op);
+        if (op) get().dispatch(withRepair(op));
         get().showToast(added ? `ADDED ${added} TASK${added === 1 ? '' : 'S'}` : 'NOTHING NEW TO ADD', added > 0);
         return added;
       },
@@ -1173,8 +1187,8 @@ export function createAppStore(deps: StoreDeps) {
      * first save must be a full rewrite.
      */
     onDisk: loaded.status === 'loaded' || loaded.status === 'fresh' ? loaded.state : null,
-    /** The launch purge changed the tree, so it must be saved. */
-    dirtyAtStart: purge !== null,
+    /** A launch step (purge, repair, auto-clear) changed the tree, so it must be saved. */
+    dirtyAtStart: tasks !== loaded.state,
     /** Only cleanly loaded data becomes a daily snapshot. */
     snapshotEligible: loaded.writable && (loaded.status === 'loaded' || loaded.status === 'migrated' || loaded.status === 'repaired'),
     now,

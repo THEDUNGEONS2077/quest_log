@@ -73,6 +73,23 @@ async function hold(title) {
     gestureSourceType: 'touch',
   });
 }
+/** How far the list on screen is scrolled down (px); 0 at its top. */
+const listScroll = () =>
+  page.evaluate(() => Math.max(0, ...[...document.querySelectorAll('div')].filter((d) => d.offsetParent !== null).map((d) => d.scrollTop)));
+/** Scrolls the list on screen down by `px` (the tallest scrollable box on the page). */
+const scrollListBy = (px) =>
+  page.evaluate((by) => {
+    const boxes = [...document.querySelectorAll('div')].filter((d) => d.offsetParent !== null && d.scrollHeight > d.clientHeight + 50);
+    const box = boxes.sort((a, b) => b.clientHeight - a.clientHeight)[0];
+    if (box) box.scrollTop += by;
+  }, px);
+/** Throws unless the list on screen is at its top. */
+async function atTop(where) {
+  await page.waitForTimeout(250);
+  const y = await listScroll();
+  if (y > 2) throw new Error(`${where}: the list opened ${y}px down, not at the top`);
+}
+
 /** Throws unless the element labelled `label` is gone. */
 async function gone(label, message) {
   if (await page.getByLabel(label).count()) throw new Error(message);
@@ -223,6 +240,20 @@ try {
     const selected = await page.getByLabel(/^all quests/i).getAttribute('aria-selected');
     if (selected !== 'true') throw new Error('ALL is not the selected tab after going home');
     await gone('Close search', 'search still open after going home');
+  });
+
+  await path('a quest tab always opens at the top (also when switched while COMPLETED shows)', async () => {
+    await tap(/^all quests/i);
+    await scrollListBy(400);
+    await page.waitForTimeout(250);
+    if ((await listScroll()) < 50) throw new Error('could not scroll the list to set up the check');
+    await tap(/^main quests/i); // the same quests as ALL: the list must not keep its place
+    await atTop('ALL → MAIN');
+    await scrollListBy(400);
+    await tap(/^completed,/);
+    await tap(/^all quests/i); // changed while ACTIVE is hidden
+    await tap(/^active,/);
+    await atTop('MAIN (scrolled) → COMPLETED → ALL → ACTIVE');
   });
 
   await path('edit a task, then switch tab: editing ends, nothing left open', async () => {

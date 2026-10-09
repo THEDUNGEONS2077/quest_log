@@ -69,9 +69,10 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
     if (keyboardHeight > 0 && editing) keepInView.ensure();
   }, [keyboardHeight, editing, keepInView]);
 
-  // Each quest tab keeps its own place here too, and slides in from its side (useViewPlace.ts).
+  // Each quest tab opens at the top and slides in from its side (useViewPlace.ts).
   const category = useAppStore((s) => s.ui.category);
-  const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category));
+  const shown = useAppStore((s) => s.ui.tab === 'completed');
+  const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category), { group: category, visible: shown });
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => place.onScroll(e.nativeEvent.contentOffset.y);
 
   // The COMPLETED switch tapped again (store revealTop): back to the top, if it's on screen.

@@ -64,7 +64,7 @@ const SECTIONS: Section[] = [
       { key: 'Change category', what: 'Hold a quest and let go → Category… → DAILY, MAIN or MISC.' },
       { key: 'Tap the tab again', what: 'Goes to the top of it: out of a zoomed-in quest first, otherwise the list scrolls up.' },
       { key: 'Tap the title', what: 'Home: ALL quests, ACTIVE, at the top, from anywhere on the main screen.' },
-      { key: 'Your place', what: 'Each tab and zoom level remembers where you scrolled to, so switching back returns you there.' },
+      { key: 'Your place', what: 'A tab always opens at the top. Zoom out of a quest and you are back where you were.' },
       {
         key: 'Back button',
         what: 'Steps out one thing at a time: selection, then search, then zoom, then COMPLETED back to ACTIVE, then back to ALL, and only then leaves the app.',

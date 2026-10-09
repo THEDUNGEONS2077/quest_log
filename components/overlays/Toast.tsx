@@ -4,54 +4,67 @@
  *
  *   COMPLETED · UNDO
  *
- * Layer: UI. Shows the store's current toast: slides up 16 pt with a fade
- * (200 ms), holds 5 s, then hides. A new toast (new key) restarts the
- * timer. UNDO undoes the most recent step, which is the one the toast
- * describes, because the toast appears right after it.
+ * Layer: UI. Shows the store's current toast: slides up `distance.nudge`
+ * with a fade (base), holds 5 s, then leaves the way it came (slides down
+ * and fades, base) rather than vanishing. A new toast (new key) restarts
+ * the timer. UNDO undoes the most recent step, which is the one the toast
+ * describes, because the toast appears right after it; it can't be tapped
+ * while the toast is leaving.
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useActions, useAppStore } from '@/store/react';
-import { colors, duration, easing, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
-
-/** Toast slide distance (PLAN §10.10). */
-const SLIDE = space.lg;
+import { colors, distance, duration, easing, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
 
 export function Toast({ bottom }: { bottom: number }) {
   const toast = useAppStore((s) => s.toast);
   const actions = useActions();
   const shown = useSharedValue(0);
+  // The toast drawn: the store's, or the last one while it's leaving.
+  const [drawn, setDrawn] = useState(toast);
+  if (toast && toast !== drawn) setDrawn(toast);
+  const leaving = !toast && drawn !== null;
 
   // Animate in on each new toast; auto-hide after the hold time.
   useEffect(() => {
-    if (!toast) {
-      shown.value = withTiming(0, { duration: duration.base, easing });
-      return;
-    }
-    shown.value = 0;
-    shown.value = withTiming(1, { duration: duration.base, easing });
+    if (!toast) return;
+    shown.set(0);
+    shown.set(withTiming(1, { duration: duration.base, easing }));
     const t = setTimeout(() => actions.dismissToast(toast.key), timing.toastHold);
     return () => clearTimeout(t);
   }, [toast, shown, actions]);
 
+  // Leave the way it came, then unmount.
+  useEffect(() => {
+    if (!leaving) return;
+    shown.set(withTiming(0, { duration: duration.base, easing }));
+    const t = setTimeout(() => setDrawn(null), duration.base);
+    return () => clearTimeout(t);
+  }, [leaving, shown]);
+
   const style = useAnimatedStyle(() => ({
-    opacity: shown.value,
-    transform: [{ translateY: (1 - shown.value) * SLIDE }],
+    opacity: shown.get(),
+    transform: [{ translateY: (1 - shown.get()) * distance.nudge }],
   }));
 
-  if (!toast) return null;
+  if (!drawn) return null;
   return (
-    <Animated.View style={[styles.toast, { bottom }, style]} accessibilityLiveRegion="polite">
+    <Animated.View
+      style={[styles.toast, { bottom }, style]}
+      pointerEvents={leaving ? 'none' : 'auto'}
+      accessibilityLiveRegion="polite"
+      testID="toast"
+    >
       <Text style={[type.meta, styles.message]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {toast.message}
+        {drawn.message}
       </Text>
-      {toast.undo && (
+      {drawn.undo && (
         <Pressable
           onPress={() => {
             actions.undo();
-            actions.dismissToast(toast.key);
+            actions.dismissToast(drawn.key);
           }}
           style={styles.undo}
           hitSlop={space.sm}

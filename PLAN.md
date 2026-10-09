@@ -799,9 +799,9 @@ Checking a parent always completes its subtasks, parents always auto-complete, a
 | 10.5 | **Repeat advance** | Strike draws (200 ms), holds 300 ms, un-draws (200 ms), and the date chip crossfades to the new date. |
 | 10.6 | **Row insert / delete** | 120 ms height expand or collapse with fade. |
 | 10.7 | **Collapse / expand** | Caret rotates 90° over 120 ms. With more than 50 children, skip the animation. |
-| 10.8 | **Drag** | Lift 120 ms (scale 1.02 + glow). Rows shift 120 ms. The drop settles in 160 ms. |
+| 10.8 | **Drag** | Lift 120 ms (scale 1.02 + glow). Rows shift 120 ms. The drop settles in 160 ms. *As built (v1.5.2): the lift animates; the row shift and drop settle aren't built (rows can't animate their position in the recycling list, see above), and the unused `dropSettle` token was removed.* |
 | 10.9 | **Focus glow** | Fades in over 120 ms. |
-| 10.10 | **Toast** | Slides up 16 pt with fade over 200 ms, holds 5 s. |
+| 10.10 | **Toast** | Slides up 16 pt with fade over 200 ms, holds 5 s. *As built (v1.5.2): it also leaves the same way (slides down with a fade, 200 ms).* |
 | 10.11 | **Highlight-on-open** | The task's background flashes to `surfaceRaised` twice over 800 ms. |
 
 All animations run on the UI thread via Reanimated worklets.

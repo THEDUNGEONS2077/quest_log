@@ -74,4 +74,12 @@ export const focusGlow = {
 export const glowShadow = {
   inset: 'inset 0 0 6px 0 rgba(57, 255, 20, 0.35)',
   outset: '0 0 6px 0 rgba(57, 255, 20, 0.35)',
+  /** Stronger, for marks too thin for the soft glow to show: the completion scan's leading edge. */
+  bright: '0 0 6px 0 rgba(57, 255, 20, 0.6)',
+} as const;
+
+/** The same glow on text: the floating "+N XP" labels. Spread into a text style. */
+export const glowText = {
+  textShadowColor: 'rgba(57, 255, 20, 0.6)',
+  textShadowRadius: 6,
 } as const;

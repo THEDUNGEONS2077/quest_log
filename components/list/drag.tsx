@@ -20,7 +20,7 @@ import type { FlashListRef } from '@shopify/flash-list';
 import { createContext, type RefObject, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, type View } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
-import Animated, { type SharedValue, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { type SharedValue, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { type DragRow, dropOp, dropTarget, type DropTarget } from '@/lib/dnd';
@@ -30,10 +30,23 @@ import { shownTitle } from '@/lib/title';
 import { subtreeIds } from '@/lib/tree';
 import { haptics } from '@/services/haptics';
 import type { AppStoreInstance } from '@/store/createStore';
-import { colors, focusGlow, glowShadow, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
+import {
+  colors,
+  duration,
+  easing,
+  focusGlow,
+  glowShadow,
+  glyphs,
+  maxFontSizeMultiplier,
+  platformText,
+  scale,
+  shape,
+  size,
+  space,
+  timing,
+  type,
+} from '@/theme';
 
-/** The lifted row's scale (PLAN §9.10: slight lift). */
-const LIFT_SCALE = 1.02;
 /** Moving less than this (pt) between lift and release counts as a long-press, not a drag. */
 const TAP_SLOP = 8;
 /** Distance from the list's top/bottom edge where auto-scroll kicks in. */
@@ -295,9 +308,20 @@ export function useRowDragGesture(id: string) {
   }, [api, id]);
 }
 
-/** The lifted row and the drop indicator, drawn over the list. */
+/**
+ * The lifted row and the drop indicator, drawn over the list. The row lifts
+ * to `scale.lift` over `duration.fast` as the drag starts (PLAN §10.8).
+ */
 export function DragOverlay({ view, api }: { view: DragView | null; api: DragApi }) {
-  const lifted = useAnimatedStyle(() => ({ transform: [{ translateY: api.y.get() - size.rowMinHeight / 2 }, { scale: LIFT_SCALE }] }));
+  const dragging = view !== null;
+  const lift = useSharedValue(0);
+  useEffect(() => {
+    lift.set(0);
+    if (dragging) lift.set(withTiming(1, { duration: duration.fast, easing }));
+  }, [dragging, lift]);
+  const lifted = useAnimatedStyle(() => ({
+    transform: [{ translateY: api.y.get() - size.rowMinHeight / 2 }, { scale: 1 + (scale.lift - 1) * lift.get() }],
+  }));
   if (!view) return null;
   return (
     <>

@@ -14,7 +14,9 @@
  * before categories existed get one derived here: repeating daily → daily,
  * anything else → main.
  */
-import type { QuestCategory, Task } from './types';
+import type { FieldChange, Op } from './ops';
+import { findTask } from './taskMap';
+import { type QuestCategory, ROOT, type Task, type TasksState } from './types';
 
 /** The category tabs in display order, with their labels. */
 export const CATEGORIES: readonly { key: QuestCategory; label: string }[] = [
@@ -43,4 +45,24 @@ export function categoryForNew(tab: CategoryTab): QuestCategory {
 /** Does a quest show on `tab`? */
 export function onTab(task: Pick<Task, 'category' | 'repeat'>, tab: CategoryTab): boolean {
   return tab === 'all' || questCategory(task) === tab;
+}
+
+/**
+ * Repair for completed copies of repeating quests saved before v1.5.2
+ * (bug 2026-10-09). A copy is archived without its repeat rule, so a copy
+ * whose quest was DAILY only through its daily repeat (no stored category)
+ * fell to MAIN. Each such copy gets its quest's category stored, looked up
+ * through `repeatSourceId`; a copy whose quest is gone is left as it is.
+ * Returns null when there's nothing to do. Run at launch and after an
+ * import, outside undo history (it isn't a user action).
+ */
+export function pinArchivedCategories(state: TasksState): Op | null {
+  const changes: FieldChange[] = [];
+  for (const id of state.children[ROOT] ?? []) {
+    const copy = findTask(state, id);
+    if (!copy || copy.category || copy.repeatSourceId === null) continue;
+    const source = findTask(state, copy.repeatSourceId);
+    if (source) changes.push({ id, fields: { category: questCategory(source) } });
+  }
+  return changes.length ? { type: 'update', changes } : null;
 }

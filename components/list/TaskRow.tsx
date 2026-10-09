@@ -41,7 +41,7 @@ import { remindersAvailable } from '@/services/reminderSupport';
 import { repeatMultiplier } from '@/lib/xp';
 import { ADVANCE_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
+import { colors, distance, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
 
 import { Caret } from './Caret';
 import { CheckGlyph, CompleteScan, useJustChecked, XpFloat } from './CompleteBurst';
@@ -106,15 +106,15 @@ export const TaskRow = memo(
     const slide = useSharedValue(0);
     useEffect(() => {
       if (!lingering) {
-        opacity.value = 1;
-        slide.value = 0;
+        opacity.set(1);
+        slide.set(0);
         return;
       }
       const out = { duration: duration.base, easing };
-      opacity.value = withDelay(timing.completeHold, withTiming(0, out));
-      slide.value = withDelay(timing.completeHold, withTiming(EXIT_SLIDE, out));
+      opacity.set(withDelay(timing.completeHold, withTiming(0, out)));
+      slide.set(withDelay(timing.completeHold, withTiming(distance.exit, out)));
     }, [lingering, opacity, slide]);
-    const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.value, transform: [{ translateX: slide.value }] }));
+    const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: slide.get() }] }));
 
     if (!task) return null; // removed between flatten and render
 
@@ -298,9 +298,6 @@ export const TaskRow = memo(
 
 /** The room a quest's "+" button takes at the row's right edge (its width plus its gap). */
 const QUEST_PLUS_WIDTH = size.hitTarget + space.sm * 2;
-
-/** How far a completed quest slides right as it leaves ACTIVE (pt). */
-const EXIT_SLIDE = space.xl * 2;
 
 /** Screen-reader alternatives to the row's gestures (PLAN §13). */
 const ROW_ACTIONS = [

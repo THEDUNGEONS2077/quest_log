@@ -23,10 +23,7 @@ import { Modal, Pressable, type StyleProp, StyleSheet, View, type ViewStyle } fr
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useAfterKeyboardCloses } from '@/components/common/keyboard';
-import { duration, easing, space } from '@/theme';
-
-/** How far below its resting place the sheet starts. */
-const RISE = space.xl * 3;
+import { distance, duration, easing } from '@/theme';
 
 interface Props {
   visible: boolean;
@@ -53,7 +50,7 @@ function SheetBody({ onClose, sheetStyle, children }: Omit<Props, 'visible'>) {
   }, [ready, shown]);
 
   const backdrop = useAnimatedStyle(() => ({ opacity: shown.get() }));
-  const sheet = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: (1 - shown.get()) * RISE }] }));
+  const sheet = useAnimatedStyle(() => ({ opacity: shown.get(), transform: [{ translateY: (1 - shown.get()) * distance.sheet }] }));
 
   return (
     <Modal visible={ready} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>

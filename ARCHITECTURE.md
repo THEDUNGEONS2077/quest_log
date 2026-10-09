@@ -216,6 +216,7 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
   - It's a structural field.
   - A quest added on a tab takes its category (`categoryForNew`). On DAILY it also gets a daily repeat.
   - Change it from the hold menu (`setQuestCategory`, undoable).
+  - **Completed copies keep their tab.** A repeating quest's archived occurrence (`lib/complete.ts` advance) has no repeat rule, so it stores its quest's category; so does a Run again copy. Copies saved before v1.5.2 without one (a daily quest whose DAILY came from its repeat fell to MAIN) are fixed by `pinArchivedCategories` at launch and after an import, outside undo history.
 - **Navigation rules (pass 2026-10-09):**
   - **Android back** is `store.backStep()`, one mode per press: selection → search → zoom → COMPLETED→ACTIVE → tab→ALL → leave.
   - **Switching tabs** first commits an edit in progress and ends selection (`leaveListModes`).
@@ -226,7 +227,7 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 - **Navigation rules (second pass, 2026-10-09):**
   - **Home:** tapping the title runs `goHome()`: ALL, ACTIVE, top level, search closed, scrolled up.
   - **Re-tapping the selected tab** (a quest tab or the switch) runs `toTabTop()`: out of a zoom to the tab's top level, otherwise scroll to the top. Scrolling to the top is one signal, `revealTop`, which each list honours only while it's the one on screen.
-  - **Each view keeps its place.** A view is a quest tab plus a zoom level on ACTIVE, or a quest tab on COMPLETED. `useViewPlace` remembers each view's scroll offset and restores it when you return (unseen views start at the top). The new view slides in 16 pt from its side (`rank`: tabs left to right, deeper zoom to the right), and ACTIVE ↔ COMPLETED does the same (`useViewEntrance` in app/index.tsx).
+  - **Where a view opens** (`useViewPlace`): a quest tab always opens at the top (user request 2026-10-09; switching tab forgets remembered places). Within a tab, each zoom level remembers its scroll offset and is restored when you zoom back out; a list that was hidden when its view changed (ACTIVE while COMPLETED shows) scrolls when it's shown again, and the scroll is applied a second time a frame later so FlashList's `maintainVisibleContentPosition` can't pull a tab back to where a shared quest was. The new view slides in `distance.nudge` from its side (`rank`: tabs left to right, deeper zoom to the right), and ACTIVE ↔ COMPLETED does the same (`useViewEntrance` in app/index.tsx).
   - **The zoom follows the tree:** a store subscription runs `shownZoom()` (lib/flatten.ts) on every change. Zoomed into a quest that is completed (after its exit has played), deleted, undone away or no longer on this tab, you're taken out to the nearest level still there.
   - **Lingering is timed by the store** (`toggleDone` → `releaseLingering` after `LINGER_MS`), not by the quest's row, which isn't mounted when you're zoomed into it.
   - **The breadcrumb's first part is the tab's name** (`← DAILY`), because that's where it leads.
@@ -327,6 +328,9 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 2. **At most one `TextInput` is mounted.** Every other row is a plain `Text`.
 3. **FlashList** with `getItemType` by row kind (group header, task, completed), and stable keys (task IDs).
 4. **Animations run on the UI thread** via Reanimated worklets. Never animate with `setState`. Reduce Motion is applied globally by `<MotionConfig/>` (Reanimated's `ReducedMotionConfig`), so animations need no per-call checks; only multi-step effects (boot screen, blinking cursor) read `useReduceMotion()`.
+   - **One style** (animation pass 2026-10-09): shared values with `.get()` / `.set()` (never `.value`), plain value animations (never layout `entering` / `exiting`), and every number from `theme/motion.ts` (durations, easing, timings, `distance`, `scale`) and the glow from `theme/colors.ts`. `__tests__/theme.test.ts` scans `app/` and `components/` for violations.
+   - **Shared motions** live in `components/common/motion.tsx`: `useFloatUp` (every floating `+N XP`) and `useSameItem` (list rows animate a change only while showing the same item; a recycled row jumps).
+   - **Store waits match their animations:** `LINGER_MS` = `completeHold` + `base`, `ADVANCE_MS` = `base` + `repeatHold` (checked by the same test).
 5. **Measure with the seed data** (`scripts/seed.ts`: 1,000 active plus 5,000 completed) in a **release** build. `__tests__/perf.test.ts` runs desktop smoke limits on every `npm test`.
 6. If a change would break a budget, **stop and flag it**. Don't work around it silently.
 

@@ -966,3 +966,30 @@ describe('navigation (second pass, 2026-10-09)', () => {
     expect(store.getState().ui.zoomRootId).toBeNull();
   });
 });
+
+describe('daily quests on COMPLETED (bug 2026-10-09)', () => {
+  const daily = { freq: 'day', interval: 1, from: 'schedule' } as const;
+
+  it('an older daily quest (DAILY from its repeat) shows on DAILY · COMPLETED once done', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'meditate');
+    s.editTask(q, { repeat: daily, dueAt: NOW + 3_600_000 });
+    s.toggleDone(q);
+    expect(makeSelectors().tabCounts(store.getState()).daily).toEqual({ active: 1, completed: 1 });
+  });
+
+  it('copies saved under MAIN by earlier versions move back to DAILY at launch, and are saved', () => {
+    const kv = createMemoryKV();
+    saveTasks(
+      kv,
+      build([
+        ['meditate', { repeat: daily }],
+        ['copy', { done: true, repeatSourceId: 'meditate' }],
+      ]),
+    );
+    const { store } = makeStore(kv);
+    expect(makeSelectors().tabCounts(store.getState()).daily.completed).toBe(1);
+    expect(store.dirtyAtStart).toBe(true);
+  });
+});

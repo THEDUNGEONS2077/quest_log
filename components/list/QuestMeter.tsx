@@ -9,12 +9,14 @@
  * The preview is what completing the quest earns before streak multipliers
  * (lib/xp.ts previewXp: base, priority, +8 per subtask, on-time bonus), so
  * a bigger quest visibly promises more. The fill eases to each new value
- * (instant with Reduce Motion).
+ * (instant with Reduce Motion, and when the list reuses the row for another
+ * quest).
  */
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { useSameItem } from '@/components/common/motion';
 import { useMinuteIf } from '@/components/common/useMinute';
 import type { Task } from '@/lib/types';
 import { baseXp } from '@/lib/xp';
@@ -38,9 +40,12 @@ export function QuestMeter({ task, done, total }: Props) {
   const fraction = total > 0 ? done / total : 0;
 
   const fill = useSharedValue(fraction);
+  // The same quest: ease to the new value. A row reused for another quest while
+  // scrolling: jump (it would otherwise fill or drain on its own).
+  const sameItem = useSameItem(task.id);
   useEffect(() => {
-    fill.set(withTiming(fraction, { duration: duration.slow, easing }));
-  }, [fraction, fill]);
+    fill.set(sameItem() ? withTiming(fraction, { duration: duration.slow, easing }) : fraction);
+  }, [fraction, fill, sameItem]);
   const fillStyle = useAnimatedStyle(() => ({ width: `${fill.get() * 100}%` }));
 
   return (

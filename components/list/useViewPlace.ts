@@ -6,9 +6,13 @@
  * DAILY / MAIN / MISC) and, on ACTIVE, each zoom level. Before, they all
  * shared one scroll position, so switching tabs left you at an arbitrary
  * spot in the next one. Now:
- *   - leaving a view remembers where it was scrolled to; coming back
- *     restores it (zoom out of a quest and you're back where it was); a
- *     view never seen starts at the top;
+ *   - **a quest tab always opens at the top** (user request 2026-10-09):
+ *     switching tab (`group`) forgets every remembered place;
+ *   - within a tab, leaving a zoom level remembers where it was scrolled to,
+ *     and coming back restores it (zoom out of a quest and you're back where
+ *     it was); a level never seen starts at the top;
+ *   - a list that's hidden when its view changes (ACTIVE while COMPLETED is
+ *     shown) scrolls when it's shown again: a hidden list can't scroll;
  *   - the new view slides in a short way from the side it's on (`rank`:
  *     tabs left to right, deeper zoom further right) while fading in, so
  *     moving between views has a direction. Under Reduce Motion it simply
@@ -18,15 +22,15 @@
 import { type RefObject, useCallback, useLayoutEffect, useRef } from 'react';
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { duration, easing, space } from '@/theme';
+import { distance, duration, easing } from '@/theme';
 
 /** The part of FlashList's handle this needs. */
 interface Scrollable {
   scrollToOffset(params: { offset: number; animated?: boolean }): void;
 }
 
-/** How far a new view slides in from (pt). */
-const SHIFT = space.lg;
+/** How much of a new view shows at once (it fades in from here): never a blank frame. */
+const ENTER_OPACITY = 0.3;
 
 /**
  * The arrival of a new `view`: it slides in from the side it's on (`rank`
@@ -45,31 +49,55 @@ export function useViewEntrance(view: string, rank: number) {
     enter.set(withTiming(0, { duration: duration.base, easing }));
   }, [view, rank, enter]);
   return useAnimatedStyle(() => ({
-    opacity: 1 - 0.7 * Math.abs(enter.get()),
-    transform: [{ translateX: SHIFT * enter.get() }],
+    opacity: 1 - (1 - ENTER_OPACITY) * Math.abs(enter.get()),
+    transform: [{ translateX: distance.nudge * enter.get() }],
   }));
 }
 
+interface Options {
+  /** The quest tab: a new one starts at the top, whatever was remembered. */
+  group: string;
+  /** Whether the list is on screen now (a hidden list can't scroll; it catches up when shown). */
+  visible: boolean;
+}
+
 /**
- * Remembers and restores `view`'s scroll position on `list`, and animates
- * its arrival (useViewEntrance). Returns `onScroll(offsetY)` to call from
- * the list's scroll handler, and the style for the view's container.
+ * Sets `list`'s scroll position for each `view` (see the file header) and
+ * animates its arrival (useViewEntrance). Returns `onScroll(offsetY)` to
+ * call from the list's scroll handler, and the style for the view's container.
  */
-export function useViewPlace(list: RefObject<Scrollable | null>, view: string, rank: number) {
+export function useViewPlace(list: RefObject<Scrollable | null>, view: string, rank: number, { group, visible }: Options) {
   const places = useRef(new Map<string, number>());
   const offset = useRef(0);
-  const shownView = useRef(view);
+  const shown = useRef({ view, group });
+  // Where the list must go once it can (it may be hidden right now).
+  const pending = useRef<number | null>(null);
 
-  // Layout effect: runs after the list has taken the new rows, before the
+  // Layout effects: they run after the list has taken the new rows, before the
   // frame is drawn, so the old position never flashes on the new rows.
   useLayoutEffect(() => {
-    if (shownView.current === view) return;
-    places.current.set(shownView.current, offset.current);
-    shownView.current = view;
-    const back = places.current.get(view) ?? 0;
-    offset.current = back;
-    list.current?.scrollToOffset({ offset: back, animated: false });
-  }, [view, list]);
+    const before = shown.current;
+    if (before.view === view) return;
+    if (before.group !== group) places.current.clear();
+    else places.current.set(before.view, offset.current);
+    shown.current = { view, group };
+    const target = places.current.get(view) ?? 0;
+    offset.current = target;
+    pending.current = target;
+  }, [view, group]);
+
+  useLayoutEffect(() => {
+    const target = pending.current;
+    if (!visible || target === null) return;
+    pending.current = null;
+    const go = () => list.current?.scrollToOffset({ offset: target, animated: false });
+    go();
+    // Once more after the new rows are measured: the list keeps rows that were on
+    // screen in place (maintainVisibleContentPosition) and could pull the view back
+    // to where a quest shown on both tabs was.
+    const frame = requestAnimationFrame(go);
+    return () => cancelAnimationFrame(frame);
+  }, [view, group, visible, list]);
 
   const onScroll = useCallback((y: number) => {
     offset.current = y;

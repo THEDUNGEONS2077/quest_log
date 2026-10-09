@@ -3,9 +3,15 @@
  *
  * - Every text color reaches WCAG AA (≥ 4.5:1) on every background color.
  * - Spacing sits on the 4 pt grid.
- * - Motion durations match the spec.
+ * - Motion durations match the spec, the store's waits match the
+ *   animations they wait for, and components take every animation number
+ *   from the motion tokens (animation pass 2026-10-09).
  */
-import { backgroundTokens, colors, duration, space, textTokens, timing } from '@/theme';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
+
+import { ADVANCE_MS, LINGER_MS } from '@/store/createStore';
+import { backgroundTokens, colors, distance, duration, space, textTokens, timing } from '@/theme';
 
 /** WCAG relative luminance of a #RRGGBB color. */
 function luminance(hex: string): number {
@@ -49,6 +55,44 @@ describe('motion', () => {
   it('matches the PLAN §8.3 tokens', () => {
     expect(duration).toEqual({ fast: 120, base: 200, slow: 320 });
     expect(timing.cursorBlink).toBe(530);
+  });
+
+  it("the store's waits last exactly as long as the animations they wait for", () => {
+    // A completed quest: hold, then slide out (TaskRow); then it leaves ACTIVE.
+    expect(LINGER_MS).toBe(timing.completeHold + duration.base);
+    // A repeating task: strike, hold, then un-strike with its next date.
+    expect(ADVANCE_MS).toBe(duration.base + timing.repeatHold);
+  });
+
+  it('distances sit on the 4 pt grid', () => {
+    Object.values(distance).forEach((v) => expect(v % 4).toBe(0));
+  });
+
+  it('components take animation numbers from the tokens, and use one shared-value style', () => {
+    const root = join(__dirname, '..');
+    const files: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) walk(p);
+        else if (/\.tsx?$/.test(name)) files.push(p);
+      }
+    };
+    ['app', 'components'].forEach((d) => walk(join(root, d)));
+    const problems: string[] = [];
+    for (const file of files) {
+      const src = readFileSync(file, 'utf8');
+      const rel = file.slice(root.length + 1);
+      // A literal duration (other than 0, an instant switch) belongs in theme/motion.ts.
+      if (/duration: [1-9]/.test(src)) problems.push(`${rel}: literal animation duration`);
+      // Reanimated 4 style: .get() / .set(), never .value.
+      if (/\b\w+\.value\b/.test(src.replace(/nativeEvent\.\w+(\.\w+)*/g, ''))) problems.push(`${rel}: shared value .value`);
+      // The glow color belongs in theme/colors.ts (glowShadow, glowText).
+      if (src.includes('rgba(57')) problems.push(`${rel}: literal glow color`);
+      // Layout "entering"/"exiting" animations are unreliable in recycled rows and modals.
+      if (/\b(entering|exiting)=\{/.test(src)) problems.push(`${rel}: layout animation`);
+    }
+    expect(problems).toEqual([]);
   });
 });
 

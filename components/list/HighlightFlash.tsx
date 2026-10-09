@@ -24,15 +24,20 @@ export function HighlightFlash({ rowId }: { rowId: string }) {
   const flash = useSharedValue(0);
 
   useEffect(() => {
-    if (!active) return;
+    // Not (or no longer) this row's highlight, e.g. the list reused the row for
+    // another task mid-flash: no flash.
+    if (!active) {
+      flash.set(0);
+      return;
+    }
     // Two pulses: each up then down in a quarter of the total time.
     const quarter = timing.highlight / 4;
-    flash.value = withRepeat(withSequence(withTiming(1, { duration: quarter, easing }), withTiming(0, { duration: quarter, easing })), 2);
+    flash.set(withRepeat(withSequence(withTiming(1, { duration: quarter, easing }), withTiming(0, { duration: quarter, easing })), 2));
     const t = setTimeout(actions.clearHighlight, timing.highlight);
     return () => clearTimeout(t);
   }, [active, flash, actions]);
 
-  const style = useAnimatedStyle(() => ({ opacity: flash.value }));
+  const style = useAnimatedStyle(() => ({ opacity: flash.get() }));
   return <Animated.View pointerEvents="none" style={[styles.overlay, style]} />;
 }
 

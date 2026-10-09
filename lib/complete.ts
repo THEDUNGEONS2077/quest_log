@@ -23,6 +23,7 @@
  *     twice can never archive twice.
  */
 import { mergeChanges, type FieldChange, newTask, type Op, touchChanges } from './ops';
+import { questCategory } from './quests';
 import { nextOccurrence } from './recurrence';
 import { awardXp, revokeXp } from './xp';
 import { findTask } from './taskMap';
@@ -134,6 +135,8 @@ function advance(state: TasksState, r: Task, checkedId: ID, at: number, autoComp
   ];
 
   // Top level: archive this occurrence as a completed copy (no repeat, no reminder).
+  // The copy keeps its quest's tab: a quest whose DAILY comes from its daily repeat
+  // would otherwise land on MAIN once the repeat is taken off (bug 2026-10-09).
   if (r.parentId === null) {
     const copyId = (orig: ID) => archiveId(orig, r.dueAt!);
     const tasks: Task[] = subtree.map((t) => ({
@@ -146,6 +149,7 @@ function advance(state: TasksState, r: Task, checkedId: ID, at: number, autoComp
       notificationIds: [],
       repeat: null,
       repeatSourceId: t.id === r.id ? r.id : null,
+      ...(t.id === r.id && { category: questCategory(r) }),
       collapsed: true,
       createdAt: at,
       updatedAt: at,
@@ -179,8 +183,9 @@ export function uncheck(state: TasksState, id: ID, at: number, opts: { subtree?:
 /**
  * Run again (PLAN §9.6): a fresh copy of a completed task and its live
  * subtree, all unchecked, added to the end of the ACTIVE list. Notes,
- * priority and repeat rules carry over; dates and notification handles
- * don't (a reused checklist shouldn't inherit last time's alarms).
+ * priority and the quest's tab (DAILY / MAIN / MISC) carry over; dates,
+ * repeat rules and notification handles don't (a reused checklist shouldn't
+ * inherit last time's alarms).
  * `newId` supplies one ID per copied task.
  */
 export function runAgain(state: TasksState, id: ID, at: number, newId: () => ID): { op: Op; rootId: ID } {
@@ -197,6 +202,8 @@ export function runAgain(state: TasksState, id: ID, at: number, newId: () => ID)
       notes: t.notes,
       priority: t.priority,
       collapsed: t.collapsed,
+      // The copy goes back to the tab the quest was on, not to MAIN.
+      ...(t.id === id && parentId === null && { category: questCategory(t) }),
     });
     if (parentId !== null) (children[parentId] ??= []).push(copyId);
   }

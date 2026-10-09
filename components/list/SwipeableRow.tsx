@@ -57,34 +57,36 @@ export function SwipeableRow({ children, right, left, enabled, drag }: Props) {
     .onUpdate((e) => {
       // Only allow directions that have an action.
       const dx = e.translationX;
-      x.value = (dx > 0 && !right) || (dx < 0 && !left) ? 0 : dx;
-      const side = Math.abs(x.value) > width.value * COMMIT_FRACTION ? Math.sign(x.value) : 0;
-      if (side !== armed.value) {
-        armed.value = side;
+      x.set((dx > 0 && !right) || (dx < 0 && !left) ? 0 : dx);
+      const side = Math.abs(x.get()) > width.get() * COMMIT_FRACTION ? Math.sign(x.get()) : 0;
+      if (side !== armed.get()) {
+        armed.set(side);
         if (side !== 0) scheduleOnRN(haptics.tick);
       }
     })
     .onEnd(() => {
-      const side = armed.value;
-      armed.value = 0;
+      const side = armed.get();
+      armed.set(0);
       if (side === 0) {
-        x.value = withTiming(0, { duration: duration.fast, easing });
+        x.set(withTiming(0, { duration: duration.fast, easing }));
         return;
       }
       // Slide fully out in the swipe direction, run the action, then reset.
       // Rows that stay (a checked subtask) come back; rows that leave are recycled.
-      x.value = withTiming(side * width.value, { duration: duration.fast, easing }, () => {
-        scheduleOnRN(side > 0 ? right!.onCommit : left!.onCommit);
-        x.value = withTiming(0, { duration: duration.base, easing });
-      });
+      x.set(
+        withTiming(side * width.get(), { duration: duration.fast, easing }, () => {
+          scheduleOnRN(side > 0 ? right!.onCommit : left!.onCommit);
+          x.set(withTiming(0, { duration: duration.base, easing }));
+        }),
+      );
     });
 
-  const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
-  const rightTrack = useAnimatedStyle(() => ({ opacity: x.value > 0 ? 1 : 0 }));
-  const leftTrack = useAnimatedStyle(() => ({ opacity: x.value < 0 ? 1 : 0 }));
+  const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
+  const rightTrack = useAnimatedStyle(() => ({ opacity: x.get() > 0 ? 1 : 0 }));
+  const leftTrack = useAnimatedStyle(() => ({ opacity: x.get() < 0 ? 1 : 0 }));
 
   return (
-    <View onLayout={(e) => (width.value = Math.max(1, e.nativeEvent.layout.width))}>
+    <View onLayout={(e) => width.set(Math.max(1, e.nativeEvent.layout.width))}>
       {/* Tracks sit underneath and show through as the row slides. */}
       {right && (
         <Animated.View style={[styles.track, styles.trackRight, rightTrack]} pointerEvents="none">

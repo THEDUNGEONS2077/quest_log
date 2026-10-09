@@ -14,10 +14,11 @@
  * (FlashList recycles rows while scrolling): only a change of the same
  * task's state animates.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type NativeSyntheticEvent, StyleSheet, Text, type TextLayoutEventData, type TextStyle, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+import { useSameItem } from '@/components/common/motion';
 import { colors, duration, easing, maxFontSizeMultiplier, platformText, shape } from '@/theme';
 
 interface Props {
@@ -45,19 +46,18 @@ interface Line {
 export function StrikeText({ id, text, struck, color, style, onPress, onLongPress, highlight }: Props) {
   // 0 = plain, 1 = fully struck. Starts at the final state: mounting isn't a change.
   const progress = useSharedValue(struck ? 1 : 0);
-  const shown = useRef({ id, struck });
+  const sameItem = useSameItem(id);
   const [lines, setLines] = useState<Line[]>([]);
 
   useEffect(() => {
-    const before = shown.current;
-    shown.current = { id, struck };
-    if (before.id !== id)
-      progress.value = struck ? 1 : 0; // reused for another task: jump
-    else if (before.struck !== struck) progress.value = withTiming(struck ? 1 : 0, { duration: duration.base, easing });
-  }, [id, struck, progress]);
+    // The same task: animate. Reused for another task: jump. (On mount there's
+    // nothing to change: progress already starts at the final state.)
+    const target = struck ? 1 : 0;
+    progress.set(sameItem() ? withTiming(target, { duration: duration.base, easing }) : target);
+  }, [struck, progress, sameItem]);
 
   const textStyle = useAnimatedStyle(() => ({
-    color: interpolateColor(progress.value, [0, 1], [color, colors.textDim]),
+    color: interpolateColor(progress.get(), [0, 1], [color, colors.textDim]),
   }));
 
   const onTextLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
@@ -93,7 +93,7 @@ export function StrikeText({ id, text, struck, color, style, onPress, onLongPres
 }
 
 function StrikeSegment({ line, progress }: { line: Line; progress: ReturnType<typeof useSharedValue<number>> }) {
-  const style = useAnimatedStyle(() => ({ width: line.width * progress.value }));
+  const style = useAnimatedStyle(() => ({ width: line.width * progress.get() }));
   return (
     <Animated.View
       pointerEvents="none"
