@@ -61,7 +61,7 @@ export function hapticFor(outcome: ToggleOutcome): void {
 const PRIORITY_COLOR = [colors.textDim, colors.textDim, colors.text, colors.accent] as const;
 
 export const TaskRow = memo(
-  function TaskRow({ row }: { row: Row }) {
+  function TaskRow({ row, first = false }: { row: Row; first?: boolean }) {
     const task = useAppStore((s) => findTask(s.tasks, row.id));
     const editing = useAppStore((s) => s.editingId === row.id);
     // Which field is being edited, only meaningful (and only subscribed) for the editing row.
@@ -133,7 +133,8 @@ export const TaskRow = memo(
       run[e.nativeEvent.actionName]?.();
     };
 
-    const isGroup = row.depth === 0 && row.hasChildren;
+    // A quest: any top-level task, with or without subtasks yet.
+    const isQuest = row.depth === 0;
     const visualDepth = Math.min(row.depth, size.maxVisualDepth);
     // Group / subtask / top-level title size, shared with COMPLETED and the editor.
     const variant = titleVariant(row.depth, row.hasChildren);
@@ -152,7 +153,8 @@ export const TaskRow = memo(
             style={[
               styles.row,
               { paddingLeft: space.lg + visualDepth * size.indent },
-              row.depth === 0 && styles.topLevel,
+              // The first quest sits right under the fixed header divider: no second line.
+              row.depth === 0 && !first && styles.topLevel,
               editing && styles.editing,
               selected && styles.selected,
             ]}
@@ -226,9 +228,11 @@ export const TaskRow = memo(
               )}
             </Pressable>
 
-            {/* While editing the title of a task without notes: the quiet "+ NOTE" affordance (PLAN §9.7). */}
-            {/* Group headers: "+" adds a subtask straight from the title (user request 2026-10-08). */}
-            {isGroup && !editing && (
+            {/* Every quest (top-level task) has "+" to add a subtask / objective, from the
+                moment it's created, editing or not (user request 2026-10-09: every quest is
+                meant to become a group). It takes the place of "+ NOTE" while editing a quest;
+                notes stay one tap away on the toolbar's NOTE. */}
+            {isQuest && (field === null || field === 'title') && (
               <Pressable
                 onPress={() => actions.addSubtask(task.id)}
                 hitSlop={HIT_SLOP}
@@ -241,7 +245,8 @@ export const TaskRow = memo(
                 </Text>
               </Pressable>
             )}
-            {field === 'title' && !task.notes ? (
+            {/* Subtasks being edited without notes: the quiet "+ NOTE" affordance (PLAN §9.7). */}
+            {!isQuest && field === 'title' && !task.notes ? (
               <Pressable
                 onPress={() => actions.setEditing(task.id, null, 'notes')}
                 hitSlop={HIT_SLOP}
@@ -266,7 +271,8 @@ export const TaskRow = memo(
     a.row.depth === b.row.depth &&
     a.row.hasChildren === b.row.hasChildren &&
     a.row.progress.done === b.row.progress.done &&
-    a.row.progress.total === b.row.progress.total,
+    a.row.progress.total === b.row.progress.total &&
+    a.first === b.first,
 );
 
 /** Screen-reader alternatives to the row's gestures (PLAN §13). */

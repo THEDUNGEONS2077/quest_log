@@ -1,6 +1,6 @@
 /**
  * services/quickActions.ts: the app icon's long-press shortcut,
- * "New task" (PLAN §9.20).
+ * "New quest" (PLAN §9.20).
  *
  * Layer: services (native module boundary: expo-quick-actions, which uses
  * Android's ShortcutManager; on iOS, home screen quick actions).
@@ -15,7 +15,7 @@ import * as QuickActions from 'expo-quick-actions';
 /** The one shortcut's ID. */
 const NEW_TASK = 'new-task';
 
-/** True when this launch came from the "New task" shortcut (the boot screen is skipped). */
+/** True when this launch came from the "New quest" shortcut (the boot screen is skipped). */
 export function launchedFromShortcut(): boolean {
   return QuickActions.initial?.id === NEW_TASK;
 }
@@ -26,7 +26,7 @@ export function launchedFromShortcut(): boolean {
  */
 export function startQuickActions(onNewTask: () => void): () => void {
   // Android shows the app icon next to the label ("ic_launcher" mipmap).
-  QuickActions.setItems([{ id: NEW_TASK, title: 'New task', icon: 'ic_launcher' }]).catch(() => {
+  QuickActions.setItems([{ id: NEW_TASK, title: 'New quest', icon: 'ic_launcher' }]).catch(() => {
     // No shortcut support (unusual launchers): the app works the same without it.
   });
   if (QuickActions.initial?.id === NEW_TASK) onNewTask();

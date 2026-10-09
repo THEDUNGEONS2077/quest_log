@@ -27,13 +27,16 @@ describe('linkSegments', () => {
   });
 });
 
-/** Renders one row over an in-memory store. */
+/**
+ * Renders the row of subtask "a" (inside quest "q") over an in-memory store.
+ * A subtask: quests show "+" (add an objective) where subtasks show "+ NOTE".
+ */
 async function renderRow(fields = {}) {
   const kv = createMemoryKV();
-  saveTasks(kv, build([['a', fields]]));
+  saveTasks(kv, build([['q', [['a', fields]]]]));
   const store = createAppStore({ kv, now: () => 1_000, newId: () => 'x' });
   const bundle = bundleStore(store);
-  const [row] = bundle.selectors.activeRows(store.getState());
+  const row = bundle.selectors.activeRows(store.getState()).find((r) => r.id === 'a');
   await render(
     <StoreProvider value={bundle}>
       <TaskRow row={row!} />

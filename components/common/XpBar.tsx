@@ -94,11 +94,11 @@ function GainLabel({ amount }: { amount: number }) {
   );
 }
 
-/** Track height: thin, so the bar stays subtle. */
-const TRACK = 6;
+/** Track height: still slim, but solid enough to read at a glance (6 → 10, user request 2026-10-09). */
+const TRACK = 10;
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.lg, marginBottom: space.sm, minHeight: 20 },
+  wrap: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.lg, marginBottom: space.md, minHeight: 20 },
   track: {
     flex: 1,
     height: TRACK,

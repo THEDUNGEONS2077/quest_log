@@ -94,7 +94,8 @@ export function TaskList({ bottomInset }: Props) {
     }
   };
 
-  const renderItem = useCallback(({ item }: { item: Row }) => <TaskRow row={item} />, []);
+  // The first row skips its top divider: the fixed header divider is right above it.
+  const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => <TaskRow row={item} first={index === 0} />, []);
 
   return (
     <View ref={container} style={styles.container} collapsable={false}>

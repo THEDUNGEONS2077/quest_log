@@ -2,6 +2,14 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.3.1 (build 25)
+
+Quests first.
+
+- **Every quest has a `+`** to add objectives (subtasks), from the moment you create it. While you edit a quest, the `+` is where `+ NOTE` used to be (notes are still on the toolbar's NOTE).
+- **The bottom bar reads `> new quest`**, and the app icon shortcut is now **New quest**.
+- **A taller XP bar**, and the top panel (title, tabs, XP bar) now has one fixed divider that stays put while you scroll your quests.
+
 ## 1.3.0 (build 24)
 
 XP and levels.

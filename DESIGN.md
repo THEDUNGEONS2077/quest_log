@@ -190,7 +190,7 @@ All measurements are in pt (dp on Android, px on the web).
 ```
 [■■■■■■■■■■■■■■□□□□□□□□□□]  340/425 XP
 ```
-- **Track:** 6 pt tall, hairline `line` frame, `surface` inside, radius 2.
+- **Track:** 10 pt tall, hairline `line` frame, `surface` inside, radius 2.
 - **Fill:** `accent` with the outset glow, split into 10 segments by 1 pt `bg` separators (a terminal gauge).
 - **Label:** `into/needed XP` in `meta` `textDim`.
 - **Gain:** the fill eases forward (320 ms), and a `+18` in `accent` floats up 12 pt and fades (1.2 s). On a level-up the fill runs to the end, then restarts from empty.
@@ -215,9 +215,10 @@ All measurements are in pt (dp on Android, px on the web).
 - **Columns:** caret (36) → 8 gap → checkbox (`[ ]` in `glyph`, 12 pt margin after) → title column (flex).
 - **Details go on their own line under the title** (priority, notes `≡`, due date, progress `[2/5]`), wrapping as needed. *Why:* side-by-side details squeezed long titles into broken wraps.
 - **The whole title column is the tap target,** not just the letters.
-- **Top-level rows** get a hairline divider above them and 8 pt extra top margin, whether or not they have children.
+- **Top-level rows** get a hairline divider above them and 8 pt extra top margin, whether or not they have children, except the first row: it sits right under the top panel's fixed divider.
+- **The top panel** (title, tabs, XP bar, search, breadcrumb) never scrolls. Its bottom hairline divider stays put while the list scrolls under it.
 - **Nesting guides:** 1 pt vertical `line` hairlines, one per level, centred under each ancestor's caret column.
-- **Group `+` button:** a 44 pt bordered square on the right adds a child.
+- **Quest `+` button:** every top-level task (a quest) has a bordered `+` on the right that adds an objective (subtask), from the moment it's created. While a quest is being edited, the `+` takes the place of `+ NOTE`. Every quest is meant to become a group.
 - **States:**
   - *editing*: `surface` background plus the inset glow (fades in over 120 ms)
   - *selected*: `surfaceRaised` with a 2 pt `accent` bar on the left
@@ -232,12 +233,12 @@ All measurements are in pt (dp on Android, px on the web).
 ### Quick-add bar (bottom)
 ```
 ┌──────────────────────────────────┐
-│ > new task█                      │
+│ > new quest█                     │
 └──────────────────────────────────┘
 ```
 - **Placement:** pinned to the bottom, riding on top of the keyboard when it's open.
 - **Field:** `surface` with a hairline `line` border, which turns `accent` when focused. The prompt `>` is in `accent`.
-- **Idle state:** `new task` plus a **blinking █ cursor** (a placeholder can't blink, so it's an overlay).
+- **Idle state:** `new quest` plus a **blinking █ cursor** (a placeholder can't blink, so it's an overlay).
 - **Enter adds the item and closes the keyboard.** Live chips above the field preview parsed shorthand.
 
 ### Editing toolbar (bottom, while editing)

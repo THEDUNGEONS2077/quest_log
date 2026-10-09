@@ -123,11 +123,6 @@ describe('TaskRow', () => {
     expect(tk(tasks, editingId!)!.parentId).toBe('g');
   });
 
-  it('only group headers get the "+" (plain tasks use the toolbar or menu)', async () => {
-    await setup();
-    expect(screen.queryByLabelText('Add subtask to a')).toBeNull();
-  });
-
   it('screen-reader actions cover the row operations', async () => {
     const { store } = await setup();
     const row = screen.getByLabelText(/^b, not done/);
@@ -170,5 +165,16 @@ describe('TaskRow', () => {
     await fireEvent.press(screen.getByText('b'));
     expect(store.getState().selection).toEqual(['a', 'b']);
     expect(store.getState().editingId).toBeNull();
+  });
+});
+
+describe('quests (user request 2026-10-09)', () => {
+  it('every top-level task has + to add an objective, even before it has subtasks', async () => {
+    const { store } = await setup();
+    // "a" is top-level with no children yet.
+    await fireEvent.press(screen.getByLabelText('Add subtask to a'));
+    expect(store.getState().tasks.children.a).toHaveLength(1);
+    // Subtasks don't get one: "g1" is nested.
+    expect(screen.queryByLabelText('Add subtask to g1')).toBeNull();
   });
 });

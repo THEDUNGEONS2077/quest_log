@@ -50,15 +50,18 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: 'ADDING TASKS',
-    intro: 'New tasks come from the bar at the bottom, from a group, or from pasting a list.',
+    title: 'ADDING QUESTS & TASKS',
+    intro: 'Quests (the top-level tasks) come from the bar at the bottom; their objectives (subtasks) from the + next to a quest.',
     lines: [
       {
-        key: `${g.prompt.glyph} new task`,
-        what: 'The bar at the bottom of ACTIVE QUESTS. Type, press Enter. The keyboard closes after each task.',
+        key: `${g.prompt.glyph} new quest`,
+        what: 'The bar at the bottom of ACTIVE QUESTS. Type, press Enter. The keyboard closes after each quest.',
       },
-      { key: 'App icon', what: 'Hold the quest_log icon on your home screen and choose New task: the app opens ready to type.' },
-      { key: `${g.add.glyph} next to a group`, what: 'Adds a subtask inside that group and opens it for typing.' },
+      { key: 'App icon', what: 'Hold the quest_log icon on your home screen and choose New quest: the app opens ready to type.' },
+      {
+        key: `${g.add.glyph} next to a quest`,
+        what: 'Every quest has one, even a brand-new one: adds an objective (subtask) and opens it for typing.',
+      },
       { key: `${g.add.glyph} SUB`, what: 'While editing a task: adds a subtask under it.' },
       {
         key: 'Paste a list',

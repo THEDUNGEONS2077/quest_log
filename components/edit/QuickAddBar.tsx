@@ -1,9 +1,10 @@
 /**
- * components/edit/QuickAddBar.tsx: the always-there "new task" input at the
+ * components/edit/QuickAddBar.tsx: the always-there "new quest" input at the
  * bottom of the ACTIVE tab (PLAN §9.4).
  *
  * Layer: UI. Pinned above the keyboard by KeyboardStickyView.
- *   - Idle, it reads `> new task█`, with the shared blinking block cursor.
+ *   - Idle, it reads `> new quest█`, with the shared blinking block cursor
+ *     (quest, not task: every top-level task is a quest, user request 2026-10-09).
  *   - It takes focus when asked (`quickAddFocus`: the app icon's "New
  *     task" shortcut, and the first launch).
  *   - Enter adds the task at the end of the current view, then closes the
@@ -121,7 +122,7 @@ export function QuickAddBar({ onHeight }: Props) {
             {glyphs.prompt.glyph}
           </Text>
           <View style={styles.inputWrap}>
-            {/* Idle: "new task█" with a blinking cursor (a placeholder can't blink). */}
+            {/* Idle: "new quest█" with a blinking cursor (a placeholder can't blink). */}
             {!focused && text === '' && (
               <Text
                 style={[type.body, styles.idle]}
@@ -130,7 +131,7 @@ export function QuickAddBar({ onHeight }: Props) {
                 importantForAccessibility="no-hide-descendants"
                 maxFontSizeMultiplier={maxFontSizeMultiplier}
               >
-                new task
+                new quest
                 <BlockCursor color={colors.textDim} />
               </Text>
             )}
@@ -153,7 +154,7 @@ export function QuickAddBar({ onHeight }: Props) {
               selectionColor={colors.accent}
               maxFontSizeMultiplier={maxFontSizeMultiplier}
               style={[type.body, styles.input]}
-              accessibilityLabel="New task"
+              accessibilityLabel="New quest"
             />
           </View>
         </View>

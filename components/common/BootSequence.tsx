@@ -15,7 +15,7 @@
  *   - lines type at 8 ms per character, hold briefly, then fade in 160 ms,
  *   - a tap skips it,
  *   - never shown with Reduce Motion, with the "Boot sequence" setting off,
- *     or when the app icon's "New task" shortcut opened the app.
+ *     or when the app icon's "New quest" shortcut opened the app.
  *
  * useBooting() tells the main screen when the boot screen is up, so things
  * like first-run tips and What's new wait until it has gone.

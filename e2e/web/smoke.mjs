@@ -88,7 +88,7 @@ await check('example-tasks-and-undo', async () => {
 });
 
 await check('quick-add-with-shorthand', async () => {
-  const input = page.getByLabel('New task');
+  const input = page.getByLabel('New quest');
   await input.click();
   await input.fill('Buy milk');
   await input.press('Enter');

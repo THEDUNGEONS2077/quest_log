@@ -15,7 +15,7 @@
  *     defined by importing services/notificationTask first, at load time.
  *   - motion: the Reduce Motion setting, applied to every animation,
  *   - the boot screen, laid over the app on a cold start (BootGate),
- *   - the app icon's "New task" shortcut (services/quickActions.ts),
+ *   - the app icon's "New quest" shortcut (services/quickActions.ts),
  *   - the crash screen (the exported ErrorBoundary, CrashScreen.tsx).
  *
  * Fonts need no loading step here: they're embedded at build time by the
@@ -68,7 +68,7 @@ export default function RootLayout() {
     [],
   );
 
-  // App icon shortcut "New task": open the ACTIVE list ready to type.
+  // App icon shortcut "New quest": open the ACTIVE list ready to type.
   useEffect(
     () =>
       startQuickActions(() => {

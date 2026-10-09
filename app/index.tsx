@@ -40,7 +40,7 @@ import { MovePicker } from '@/components/overlays/MovePicker';
 import { RepeatSheet } from '@/components/overlays/RepeatSheet';
 import { Toast } from '@/components/overlays/Toast';
 import { useAppStore, useStoreBundle } from '@/store/react';
-import { colors, size, space } from '@/theme';
+import { colors, shape, size, space } from '@/theme';
 
 export default function ListScreen() {
   const insets = useSafeAreaInsets();
@@ -89,11 +89,15 @@ export default function ListScreen() {
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.content}>
-        <Header />
-        <Tabs />
-        <XpBar />
-        {searchOpen && <SearchBar key={tab} tab={tab} />}
-        {tab === 'active' && zoomed && <Breadcrumb />}
+        {/* The top panel never scrolls; its bottom divider stays put while the list
+            scrolls under it (user request 2026-10-09). */}
+        <View style={styles.topPanel}>
+          <Header />
+          <Tabs />
+          <XpBar />
+          {searchOpen && <SearchBar key={tab} tab={tab} />}
+          {tab === 'active' && zoomed && <Breadcrumb />}
+        </View>
         <View style={[styles.list, tab !== 'active' && styles.hidden]}>
           <TaskList bottomInset={listInset} />
         </View>
@@ -123,6 +127,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   // Caps the width on large screens and split-screen (PLAN §9.20).
   content: { flex: 1, width: '100%', maxWidth: size.maxContentWidth, alignSelf: 'center' },
+  topPanel: { backgroundColor: colors.bg, borderBottomWidth: shape.hairline, borderBottomColor: colors.line },
   list: { flex: 1 },
   hidden: { display: 'none' },
 });
