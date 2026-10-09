@@ -2,6 +2,17 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.4.0 (build 26)
+
+Quest tabs.
+
+- **New tabs: ALL · DAILY · MAIN · MISC**, each showing how many open quests it has. Under them, an **ACTIVE · COMPLETED** switch shows open or finished quests for that tab. Your finished quests now live there.
+- **A quest joins the tab you add it on.** Quests added on **DAILY** repeat daily by themselves, so they come back each day and build streaks. Adding from ALL puts a quest in MAIN.
+- **Change a quest's category:** hold the quest, let go, then **Category…**.
+- **The newest quest is always at the top.** Quests are listed by their last change, newest first, and the list scrolls up to show a quest you just added. Objectives inside a quest keep the order you give them.
+- Your existing quests sorted themselves: repeating daily ones went to DAILY, everything else to MAIN.
+- **The XP bar is a little more subtle** (80% opacity).
+
 ## 1.3.1 (build 25)
 
 Quests first.

@@ -21,6 +21,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { CATEGORIES, questCategory } from '@/lib/quests';
 import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
 import type { Priority } from '@/lib/types';
@@ -43,9 +44,28 @@ export function ContextMenu({ id, onClose }: Props) {
   const task = useAppStore((s) => findTask(s.tasks, id));
   const hasChildren = useAppStore((s) => (s.tasks.children[id]?.length ?? 0) > 0);
   const actions = useActions();
-  // "Sort subtasks…" opens a second, small sheet.
+  // "Sort subtasks…" and "Category…" each open a second, small sheet.
   const [sorting, setSorting] = useState(false);
+  const [choosingCategory, setChoosingCategory] = useState(false);
   if (!task) return null;
+
+  if (choosingCategory) {
+    const current = questCategory(task);
+    return (
+      <ActionSheet
+        visible
+        title={`Category of ${task.title || 'quest'}`}
+        onClose={onClose}
+        actions={CATEGORIES.map((c) => ({
+          glyph: c.key === current ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph,
+          label: c.label,
+          onPress: () => {
+            if (c.key !== current) actions.setQuestCategory(id, c.key);
+          },
+        }))}
+      />
+    );
+  }
 
   if (sorting) {
     const sort = (key: SortKey) => () => actions.sortSubtasks(id, key);
@@ -71,6 +91,17 @@ export function ContextMenu({ id, onClose }: Props) {
       label: task.dueAt !== null ? 'Change due date / time…' : 'Due date / reminder…',
       onPress: () => actions.openDueSheet(id),
     },
+    // Quests (top level) belong to a tab: DAILY, MAIN or MISC (lib/quests.ts).
+    ...(task.parentId === null
+      ? [
+          {
+            glyph: glyphs.moveTo.glyph,
+            label: `Category: ${CATEGORIES.find((c) => c.key === questCategory(task))!.label}…`,
+            onPress: () => setChoosingCategory(true),
+            keepOpen: true,
+          },
+        ]
+      : []),
     { glyph: glyphs.add.glyph, label: 'Add subtask', onPress: () => actions.addSubtask(id) },
     { glyph: glyphs.indent.glyph, label: 'Indent', onPress: () => actions.indentTask(id) },
     { glyph: glyphs.outdent.glyph, label: 'Outdent', onPress: () => actions.outdentTask(id) },

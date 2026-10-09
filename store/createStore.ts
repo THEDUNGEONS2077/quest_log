@@ -31,14 +31,15 @@ import * as dnd from '@/lib/dnd';
 import * as ops from '@/lib/ops';
 import * as outliner from '@/lib/outliner';
 import { parse, type ParseResult } from '@/lib/parser';
-import { firstOccurrence } from '@/lib/recurrence';
+import { firstOccurrence, PRESETS } from '@/lib/recurrence';
+import { CATEGORIES, type CategoryTab, categoryForNew } from '@/lib/quests';
 import { parseOutline, pasteOp, TITLE_MAX } from '@/lib/paste';
 import { purgeExpiredTrash } from '@/lib/purge';
 import { SAMPLE_OUTLINE } from '@/lib/sample';
 import { findTask, taskCount } from '@/lib/taskMap';
 import { ancestors, childIds, getTask, liveChildIds, toDocument } from '@/lib/tree';
 import type { Filter } from '@/lib/search';
-import type { ID, Priority, RepeatRule, TaskFields, TasksDocument, TasksState } from '@/lib/types';
+import type { ID, Priority, QuestCategory, RepeatRule, Task, TaskFields, TasksDocument, TasksState } from '@/lib/types';
 
 import { readDocument } from './backup';
 import { EMPTY_HISTORY, type History, record } from './history';
@@ -169,6 +170,12 @@ export interface AppStore {
    * quick action, first launch). Not persisted.
    */
   quickAddFocus: number;
+  /**
+   * Bumped when a new quest is added at the top (quick-add, paste), so the
+   * list scrolls up to show it. FlashList otherwise keeps the rows you were
+   * looking at in place, leaving the new quest just above the screen.
+   */
+  revealTop: number;
   /** How the tasks were loaded at startup (for diagnostics and recovery messages). */
   loadStatus: LoadResult['status'];
 
@@ -267,6 +274,10 @@ export interface AppStore {
 
   // --- UI actions ---
   setTab(tab: Tab): void;
+  /** Shows a quest tab (ALL / DAILY / MAIN / MISC); leaves zoom and the #Group target. */
+  setCategoryTab(category: CategoryTab): void;
+  /** Hold menu → Category: moves a quest to another tab (one undo step, with a toast). */
+  setQuestCategory(id: ID, category: QuestCategory): void;
   setZoom(id: ID | null): void;
   /** Starts editing a row (or stops, with null); `caret` = initial caret position (default: end). */
   setEditing(id: ID | null, caret?: number | null, field?: 'title' | 'notes'): void;
@@ -459,6 +470,7 @@ export function createAppStore(deps: StoreDeps) {
       toast: null,
       onboarding: loadJSON(kv, KEYS.onboarding, DEFAULT_ONBOARDING),
       quickAddFocus: 0,
+      revealTop: 0,
       loadStatus: loaded.status,
 
       dispatch(op, options = {}) {
@@ -558,8 +570,23 @@ export function createAppStore(deps: StoreDeps) {
         if (target !== null && !targetOk) set({ quickAddParent: null });
         const parent = targetOk ? target : get().ui.zoomRootId;
         const id = newId();
-        const task = { ...ops.newTask(id, parent, r.title.slice(0, TITLE_MAX), now()), ...shorthandFields(r) };
+        const task: Task = { ...ops.newTask(id, parent, r.title.slice(0, TITLE_MAX), now()), ...shorthandFields(r) };
+        // A new quest (top level) joins the tab it was added on (lib/quests.ts). On DAILY
+        // it repeats daily unless the shorthand said otherwise: a daily quest resets each
+        // day, and earns the repeat and day streaks (lib/xp.ts).
+        if (parent === null) {
+          task.category = categoryForNew(get().ui.category);
+          if (task.category === 'daily' && !task.repeat) {
+            const { notifyByDefault, defaultTimeMinutes } = get().settings;
+            const daily = { ...PRESETS.daily };
+            task.repeat = daily;
+            if (task.dueAt === null)
+              Object.assign(task, { dueAt: firstOccurrence(daily, now(), defaultTimeMinutes), notify: notifyByDefault });
+          }
+        }
         get().dispatch(ops.addTask(get().tasks, task));
+        // A new quest sorts first: bring the list to the top to show it.
+        if (parent === null) set({ revealTop: get().revealTop + 1 });
         // `#Group`: the next quick-adds go inside it (PLAN §9.4 "ready for children").
         if (r.group) set({ quickAddParent: id });
       },
@@ -567,8 +594,17 @@ export function createAppStore(deps: StoreDeps) {
       quickPaste(text) {
         const parent = get().ui.zoomRootId;
         const tasks = get().tasks;
-        const { op } = pasteOp(tasks, parseOutline(text), parent, childIds(tasks, parent).length, now(), newId);
-        get().dispatch(op);
+        const lines = parseOutline(text);
+        const { op, ids } = pasteOp(tasks, lines, parent, childIds(tasks, parent).length, now(), newId);
+        // Pasted quests (top level) join the current tab, like quick-added ones.
+        const category = categoryForNew(get().ui.category);
+        const quests = parent === null ? ids.filter((_, i) => lines[i]!.depth === 0) : [];
+        get().dispatch(
+          quests.length
+            ? { type: 'batch', ops: [op, { type: 'update', changes: quests.map((id) => ({ id, fields: { category } })) }] }
+            : op,
+        );
+        if (quests.length) set({ revealTop: get().revealTop + 1 });
       },
 
       finishEditing(id) {
@@ -724,6 +760,8 @@ export function createAppStore(deps: StoreDeps) {
       },
 
       loadExampleTasks() {
+        // Shown on ALL, so they're visible whichever tab the empty list was on.
+        if (get().ui.category !== 'all') get().setCategoryTab('all');
         const tasks = get().tasks;
         const { op } = pasteOp(tasks, parseOutline(SAMPLE_OUTLINE), null, childIds(tasks, null).length, now(), newId);
         get().dispatch(op);
@@ -746,6 +784,16 @@ export function createAppStore(deps: StoreDeps) {
       },
 
       setTab: (tab) => set({ ui: { ...get().ui, tab } }),
+
+      setCategoryTab(category) {
+        // Leave modes tied to quests the new tab may not show.
+        set({ ui: { ...get().ui, category, zoomRootId: null }, quickAddParent: null, menuFor: null });
+      },
+
+      setQuestCategory(id, category) {
+        get().dispatch(ops.editTask(get().tasks, id, { category }, now()));
+        get().showToast(`MOVED TO ${CATEGORIES.find((c) => c.key === category)!.label}`, true);
+      },
       setZoom: (zoomRootId) => set({ ui: { ...get().ui, zoomRootId } }),
       setEditing: (editingId, caret = null, field = 'title') => {
         // Leaving another task's session (for a new task, or for none): commit it

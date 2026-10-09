@@ -665,3 +665,58 @@ describe('navigation and power features (Phase 10)', () => {
     expect(store.getState().tasks.children.p).toEqual(['a', 'b']);
   });
 });
+
+describe('quest tabs (lib/quests.ts, user request 2026-10-09)', () => {
+  it('a quest added on a tab joins it; on DAILY it repeats daily, due at the default time', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    s.setCategoryTab('daily');
+    s.quickAdd('Stretch');
+    const t = tk(store.getState().tasks, 't1')!;
+    expect(t.category).toBe('daily');
+    expect(t.repeat).toMatchObject({ freq: 'day', interval: 1 });
+    expect(new Date(t.dueAt!).getHours()).toBe(9);
+    // Shorthand still wins: a weekly repeat stays weekly.
+    s.quickAdd('Review *weekly');
+    expect(tk(store.getState().tasks, 't2')!.repeat).toMatchObject({ freq: 'week' });
+    // ALL adds to MAIN, with no repeat.
+    s.setCategoryTab('all');
+    s.quickAdd('Ship it');
+    expect(tk(store.getState().tasks, 't3')).toMatchObject({ category: 'main', repeat: null });
+  });
+
+  it('a new quest shows first; tabs filter the list and count open and done quests', () => {
+    const { store, advance } = makeStore();
+    const s = store.getState();
+    s.setCategoryTab('misc');
+    s.quickAdd('older');
+    advance(1000);
+    s.setCategoryTab('main');
+    s.quickAdd('newer');
+    const sel = makeSelectors();
+    s.setCategoryTab('all');
+    expect(sel.activeRows(store.getState()).map((r) => r.id)).toEqual(['t2', 't1']);
+    s.setCategoryTab('misc');
+    expect(sel.activeRows(store.getState()).map((r) => r.id)).toEqual(['t1']);
+    expect(sel.tabCounts(store.getState())).toMatchObject({
+      all: { active: 2, completed: 0 },
+      main: { active: 1 },
+      misc: { active: 1 },
+      daily: { active: 0 },
+    });
+  });
+
+  it('moving a quest to another category is one undo step; switching tabs leaves zoom', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const q = s.addTask(null, 'quest');
+    s.setZoom(q);
+    s.setQuestCategory(q, 'misc');
+    expect(tk(store.getState().tasks, q)!.category).toBe('misc');
+    expect(store.getState().toast?.message).toBe('MOVED TO MISC');
+    s.undo();
+    expect(tk(store.getState().tasks, q)!.category).toBeUndefined();
+    s.setCategoryTab('daily');
+    expect(store.getState().ui).toMatchObject({ category: 'daily', zoomRootId: null });
+  });
+});

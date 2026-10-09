@@ -44,6 +44,12 @@ export function TaskList({ bottomInset }: Props) {
   const editingId = useAppStore((s) => s.editingId);
   const highlightId = useAppStore((s) => s.highlightId);
   const list = useRef<FlashListRef<Row>>(null);
+
+  // A new quest was added: it sorts first, so scroll up to show it (store revealTop).
+  const revealTop = useAppStore((s) => s.revealTop);
+  useEffect(() => {
+    if (revealTop > 0) list.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [revealTop]);
   const container = useRef<View>(null);
   const keyboardHeight = useKeyboardHeight();
 
@@ -139,8 +145,13 @@ export function TaskList({ bottomInset }: Props) {
  */
 function EmptyState() {
   const actions = useActions();
+  const selectors = useSelectors();
   const searching = useAppStore((s) => s.search.active.open && (s.search.active.query.trim() !== '' || s.search.active.filter !== 'all'));
   const zoomed = useAppStore((s) => s.ui.zoomRootId !== null);
+  // The quest tab shown, and whether there are any open quests at all (example tasks are
+  // offered only to a truly empty list, not to an empty DAILY tab).
+  const category = useAppStore((s) => s.ui.category);
+  const noQuests = useAppStore((s) => selectors.tabCounts(s).all.active === 0);
   if (searching || zoomed) {
     return (
       <View style={styles.empty}>
@@ -153,20 +164,22 @@ function EmptyState() {
   return (
     <View style={styles.empty}>
       <Text style={[type.body, styles.emptyText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} NO ACTIVE QUESTS. TYPE BELOW TO BEGIN`}
+        {`${glyphs.prompt.glyph} NO ${category === 'all' ? 'ACTIVE' : category.toUpperCase()} QUESTS. TYPE BELOW TO BEGIN`}
         <BlockCursor />
       </Text>
-      <Pressable
-        onPress={actions.loadExampleTasks}
-        style={({ pressed }) => [styles.example, pressed && styles.examplePressed]}
-        accessibilityRole="button"
-        accessibilityLabel="Load example tasks"
-        accessibilityHint="Adds a few tasks that show how the app works. You can undo it."
-      >
-        <Text style={[type.tab, styles.exampleText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          [ LOAD EXAMPLE TASKS ]
-        </Text>
-      </Pressable>
+      {noQuests && (
+        <Pressable
+          onPress={actions.loadExampleTasks}
+          style={({ pressed }) => [styles.example, pressed && styles.examplePressed]}
+          accessibilityRole="button"
+          accessibilityLabel="Load example tasks"
+          accessibilityHint="Adds a few tasks that show how the app works. You can undo it."
+        >
+          <Text style={[type.tab, styles.exampleText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            [ LOAD EXAMPLE TASKS ]
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

@@ -98,7 +98,16 @@ function GainLabel({ amount }: { amount: number }) {
 const TRACK = 10;
 
 const styles = StyleSheet.create({
-  wrap: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginHorizontal: space.lg, marginBottom: space.md, minHeight: 20 },
+  // 80% opacity: present but quieter than the quest tabs above it (user request 2026-10-09).
+  wrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginHorizontal: space.lg,
+    marginBottom: space.md,
+    minHeight: 20,
+    opacity: 0.8,
+  },
   track: {
     flex: 1,
     height: TRACK,

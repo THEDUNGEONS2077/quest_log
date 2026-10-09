@@ -29,17 +29,20 @@ describe('duplicate', () => {
     const { op, rootId } = duplicate(s, 'trip', 9, () => `d${n++}`);
     const r = apply(s, op);
     expect(shape(apply(r.state, r.inverse).state)).toEqual(shape(s));
+    // The copy is the newest quest, so it shows first (quests display newest-modified first).
     expect(outline(flattenActive(r.state))).toEqual([
-      'trip',
-      '  flights',
-      '  hotel',
-      '    deposit',
       'd0',
       '  d1',
       '  d2',
       '    d3',
+      'trip',
+      '  flights',
+      '  hotel',
+      '    deposit',
       'other',
     ]);
+    // Stored right below the original.
+    expect(r.state.children.root).toEqual(['trip', 'd0', 'other']);
     expect(tk(r.state, rootId)).toMatchObject({ title: 'trip', notes: 'book early', createdAt: 9 });
     expect(tk(r.state, 'd1')!.done).toBe(true); // done state carries over
   });

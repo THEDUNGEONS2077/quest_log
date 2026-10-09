@@ -2,7 +2,8 @@
  * app/index.tsx: the main screen (PLAN §9.1, §12.1, §12.2, §12.7).
  *
  *   header      > quest_log · counts · [/] [?]
- *   tabs        [ ACTIVE QUESTS · 12 ][ COMPLETED · 34 ]
+ *   tabs        [ ALL ][ DAILY ][ MAIN ][ MISC ]   quest tabs (lib/quests.ts)
+ *               [ ACTIVE · 12 ][ COMPLETED · 34 ]   the switch for that tab
  *   XP bar      [■■■■■■□□□□]  340/425 XP (both tabs)
  *   search      search field (+ filter chips on ACTIVE), when open
  *   breadcrumb  ← ALL / WORK / …, when zoomed in (ACTIVE)

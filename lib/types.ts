@@ -78,11 +78,21 @@ export interface Task {
    */
   xp?: number;
   /**
+   * Which tab a quest (top-level task) belongs to: DAILY, MAIN or MISC
+   * (lib/quests.ts). Absent on older data and on subtasks: questCategory()
+   * then derives it (repeating daily → daily, else main). Added 2026-10-09
+   * as an optional field: no migration.
+   */
+  category?: QuestCategory;
+  /**
    * Repeating tasks: occurrences completed on time in a row. Each one raises
    * the task's XP multiplier (lib/xp.ts); a late completion resets it.
    */
   streak?: number;
 }
+
+/** The quest tabs (lib/quests.ts). */
+export type QuestCategory = 'daily' | 'main' | 'misc';
 
 /**
  * XP and streaks (lib/xp.ts). Part of the tree, so every change is an op

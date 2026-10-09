@@ -203,6 +203,20 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
 
 ---
 
+## 6g. Quests: order and categories *(built: `lib/quests.ts`, `lib/flatten.ts`)*
+
+- **Order:** quests (true top level) display **newest-modified first**. `updatedAt` bubbles up from any change inside a quest, so a new quest is at the top and active ones rise.
+  - The stored `children` order is untouched. Below the top level, the manual order still applies, and zooming into a quest shows its objectives in manual order.
+  - Like COMPLETED, the order refreshes on structural changes, never while typing.
+  - Quick-add bumps `revealTop` so the list scrolls up to the new quest. FlashList otherwise holds the visible rows in place.
+- **Categories:** `task.category` is `daily`, `main` or `misc`. It's optional: older quests derive theirs, with repeating daily → daily and anything else → main (`questCategory`).
+  - It's a structural field.
+  - A quest added on a tab takes its category (`categoryForNew`). On DAILY it also gets a daily repeat.
+  - Change it from the hold menu (`setQuestCategory`, undoable).
+- **View state:** `ui.category` (`all` / a category) picks the quest tab, and `ui.tab` (`active` / `completed`) is the switch under it.
+  - Both lists filter by the category.
+  - `tabCounts` gives the badges in one pass per structure change.
+
 ## 6f. XP, levels and streaks *(built: `lib/xp.ts`, in `lib/complete.ts`)*
 
 - **Where it lives:**

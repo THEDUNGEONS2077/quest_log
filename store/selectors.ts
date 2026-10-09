@@ -15,6 +15,7 @@ import { findTask } from '@/lib/taskMap';
 import { ROOT, type TasksState } from '@/lib/types';
 
 import type { Filter } from '@/lib/search';
+import { type CategoryTab, questCategory } from '@/lib/quests';
 import { liveSubtaskCount } from '@/lib/xp';
 
 import type { UiState } from './uiState';
@@ -30,6 +31,9 @@ export interface Counts {
   /** Open, live tasks past their due time. */
   overdue: number;
 }
+
+/** Open (active) and done (completed) quests on each quest tab. */
+export type TabCounts = Record<CategoryTab, { active: number; completed: number }>;
 
 /** Minimal state the selectors read. */
 interface SelectorInput {
@@ -61,12 +65,33 @@ function memoLast<K extends unknown[], R>(compute: (...keys: K) => R): (...keys:
 export function makeSelectors() {
   // Keyed on structureVersion; `tasks` is passed along but deliberately not a key.
   let activeTasks: TasksState;
-  const active = memoLast((_version: number, zoomRootId: string | null, lingering: readonly string[]) =>
-    flattenActive(activeTasks, { zoomRootId, keep: lingering.length ? new Set(lingering) : undefined }),
+  const active = memoLast((_version: number, zoomRootId: string | null, lingering: readonly string[], category: CategoryTab) =>
+    flattenActive(activeTasks, { zoomRootId, keep: lingering.length ? new Set(lingering) : undefined, category }),
   );
 
   let completedTasks: TasksState;
-  const completed = memoLast((_version: number, expanded: readonly string[]) => flattenCompleted(completedTasks, new Set(expanded)));
+  const completed = memoLast((_version: number, expanded: readonly string[], category: CategoryTab) =>
+    flattenCompleted(completedTasks, new Set(expanded), category),
+  );
+
+  // Open and done quests per tab, for the tab badges (one pass per structure change).
+  let tabTasks: TasksState;
+  const tabCounts = memoLast((_version: number): TabCounts => {
+    const counts: TabCounts = {
+      all: { active: 0, completed: 0 },
+      daily: { active: 0, completed: 0 },
+      main: { active: 0, completed: 0 },
+      misc: { active: 0, completed: 0 },
+    };
+    for (const id of tabTasks.children[ROOT] ?? []) {
+      const t = findTask(tabTasks, id);
+      if (!t || t.deletedAt !== null) continue;
+      const key = t.done ? 'completed' : 'active';
+      counts.all[key]++;
+      counts[questCategory(t)][key]++;
+    }
+    return counts;
+  });
 
   // Search results, memoized on the tree version and the search inputs.
   // (Titles aren't structural, but a search re-runs when the query changes.)
@@ -106,14 +131,19 @@ export function makeSelectors() {
         // Overdue depends on the time: results refresh at most once a minute.
         return found(s.tasks.structureVersion, s.ui.zoomRootId, q.query, q.filter, Math.floor(Date.now() / 60_000));
       }
-      return active(s.tasks.structureVersion, s.ui.zoomRootId, s.lingering ?? NO_LINGERING);
+      return active(s.tasks.structureVersion, s.ui.zoomRootId, s.lingering ?? NO_LINGERING, s.ui.category ?? 'all');
     },
     /** Rows for the COMPLETED tab (search results when searching). */
     completedRows(s: SelectorInput): Row[] {
       completedTasks = s.tasks;
       const q = s.search?.completed;
       if (q && q.query.trim()) return foundCompleted(s.tasks.structureVersion, q.query);
-      return completed(s.tasks.structureVersion, s.ui.completedExpanded);
+      return completed(s.tasks.structureVersion, s.ui.completedExpanded, s.ui.category ?? 'all');
+    },
+    /** Open and done quests on each quest tab (lib/quests.ts). */
+    tabCounts(s: SelectorInput): TabCounts {
+      tabTasks = s.tasks;
+      return tabCounts(s.tasks.structureVersion);
     },
     /** Header and tab counts at time `now`. */
     counts(s: SelectorInput, now: number): Counts {

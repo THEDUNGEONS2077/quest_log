@@ -76,6 +76,8 @@ const STRUCTURAL_FIELDS: ReadonlySet<keyof TaskFields> = new Set<keyof TaskField
   'priority',
   'dueAt',
   'repeat',
+  // Which quest tab a task shows on (lib/quests.ts).
+  'category',
 ]);
 
 // ---------------------------------------------------------------------------

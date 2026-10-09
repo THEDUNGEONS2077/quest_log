@@ -4,6 +4,7 @@
 // Serves web-dist/ (build it first: `npm run web:export`), then walks the
 // main journeys and fails on the first broken one or on any page error:
 //   first run → example tasks → quick-add with shorthand → complete + UNDO
+//   → a new quest shows first, quest tabs filter
 //   → data survives a reload → the app opens OFFLINE (service worker)
 //   → due date through the browser picker → amend it (sheet fits the screen)
 //   → backup save and import.
@@ -105,6 +106,33 @@ await check('complete-and-undo', async () => {
   await visible('COMPLETED');
   await page.getByLabel('Undo').click();
   await visible(/buy milk/i);
+});
+
+await check('new-quest-shows-first-and-tabs-filter', async () => {
+  // Quests sort newest first, and the list scrolls up to show a new one.
+  const input = page.getByLabel('New quest');
+  await input.click();
+  await input.fill('Newest quest');
+  await input.press('Enter');
+  await visible(/newest quest/i);
+  const newest = await page
+    .getByText(/^newest quest$/i)
+    .first()
+    .boundingBox();
+  const older = await page
+    .getByText(/^buy milk$/i)
+    .first()
+    .boundingBox();
+  if (!newest || !older || newest.y > older.y) throw new Error('the new quest is not listed first');
+  // DAILY: a quest added there repeats daily; ALL still lists everything.
+  await page.getByLabel(/^daily quests/i).click();
+  await input.click();
+  await input.fill('Stretch');
+  await input.press('Enter');
+  await visible(/^stretch$/i);
+  if (await page.getByText(/^newest quest$/i).count()) throw new Error('DAILY shows a MAIN quest');
+  await page.getByLabel(/^all quests/i).click();
+  await visible(/^newest quest$/i);
 });
 
 await check('survives-reload', async () => {

@@ -70,3 +70,34 @@ describe('flattenCompleted', () => {
     expect(outline(flattenCompleted(s, new Set(['old'])))).toEqual(['new', 'mid', 'old', '  o1']);
   });
 });
+
+describe('quests: newest first, by category tab (user request 2026-10-09)', () => {
+  const daily = { freq: 'day' as const, interval: 1, from: 'schedule' as const };
+  const s = build([
+    [
+      'old',
+      { updatedAt: 1 },
+      [
+        ['a1', { updatedAt: 9 }],
+        ['a2', { updatedAt: 1 }],
+      ],
+    ],
+    ['newest', { updatedAt: 5 }],
+    ['gym', { updatedAt: 3, repeat: daily, dueAt: 10 }],
+    ['junk', { updatedAt: 4, category: 'misc' }],
+  ]);
+
+  it('lists quests by last modified, newest first; objectives keep their order', () => {
+    expect(outline(flattenActive(s))).toEqual(['newest', 'junk', 'gym', 'old', '  a1', '  a2']);
+  });
+
+  it('filters quests by tab; older quests get a derived category', () => {
+    expect(outline(flattenActive(s, { category: 'daily' }))).toEqual(['gym']); // repeats daily
+    expect(outline(flattenActive(s, { category: 'misc' }))).toEqual(['junk']);
+    expect(outline(flattenActive(s, { category: 'main' }))).toEqual(['newest', 'old', '  a1', '  a2']);
+  });
+
+  it('a zoomed-in quest ignores the tab and keeps manual order', () => {
+    expect(outline(flattenActive(s, { zoomRootId: 'old', category: 'misc' }))).toEqual(['a1', 'a2']);
+  });
+});

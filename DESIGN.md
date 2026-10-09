@@ -177,14 +177,18 @@ All measurements are in pt (dp on Android, px on the web).
 - **Buttons:** 34 pt glyph boxes, 4 apart, at the top right; `hitSlop` keeps them 44 pt to tap.
 - **Status line:** `meta`, `textDim`, items joined with ` · `. The day streak appears from 2 days.
 
-### Tabs (segmented)
+### Tabs: quest categories plus a view switch
 ```
-[ ACTIVE QUESTS · 12 ][ COMPLETED · 34 ]
+[  ALL  ][ DAILY ][ MAIN  ][ MISC  ]
+    12       3       7        2
+[ ACTIVE · 12      ][ COMPLETED · 34 ]
 ```
-- **Segments:** 44 pt tall, hairline border, radius 2.
-- **Selected segment:** `accent` border on `surface`, label in `textBright`, takes 3/5 of the width, and shows the full name.
-- **Unselected segment:** 2/5 of the width and a short name, so both fit at large text sizes.
-- **New item:** when a count goes up, the number pulses to `accent` (120 ms in, 320 ms out), so you see where the item went.
+- **Quest tabs:** four equal segments, 52 pt tall, hairline border, radius 2. The label (`tab` role) sits over the count of open quests (`meta`).
+  - **Selected:** `accent` border on `surface`, label in `textBright`, count in `accent`.
+  - **Unselected:** both label and count in `textDim`.
+- **View switch:** two equal halves, 28 pt drawn (44 to tap), with no frame, just a 2 pt bottom bar (`line`, or `accent` when selected). Label `LABEL · n` in `meta`. It reads as secondary to the tabs above.
+- **The panel never changes height** between tabs: every tab has the switch.
+- **New item:** when the COMPLETED count goes up, its number pulses to `textBright` (120 ms in, 320 ms out), so you see where the item went.
 
 ### XP bar (under the tabs)
 ```
@@ -193,6 +197,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **Track:** 10 pt tall, hairline `line` frame, `surface` inside, radius 2.
 - **Fill:** `accent` with the outset glow, split into 10 segments by 1 pt `bg` separators (a terminal gauge).
 - **Label:** `into/needed XP` in `meta` `textDim`.
+- **Opacity:** 80%, quieter than the tabs above it.
 - **Gain:** the fill eases forward (320 ms), and a `+18` in `accent` floats up 12 pt and fades (1.2 s). On a level-up the fill runs to the end, then restarts from empty.
 - **Screen readers:** `role=progressbar`, "Level 7: 340 of 425 XP to level 8".
 

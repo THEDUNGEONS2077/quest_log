@@ -6,6 +6,7 @@
  * run once per structural change, never per keystroke or per render.
  * Search and filter options are added in Phase 10.
  */
+import { type CategoryTab, onTab } from './quests';
 import { findTask } from './taskMap';
 import { childIds } from './tree';
 import { type ID, ROOT, type Task, type TasksState } from './types';
@@ -30,6 +31,8 @@ export interface ActiveOptions {
    * on ACTIVE while its strikethrough plays and holds (PLAN §6.6), then leaves.
    */
   keep?: ReadonlySet<ID>;
+  /** Quest tab: only top-level quests of this category (ignored when zoomed in). */
+  category?: CategoryTab;
 }
 
 /**
@@ -42,6 +45,12 @@ export interface ActiveOptions {
  * Done subtasks are always included, struck through in place (PLAN §2).
  * When zoomed in, the zoom root's direct children count as "top of the
  * list", but done ones stay visible, since they aren't top-level tasks.
+ *
+ * Quests (true top level) show newest-modified first, so a new quest is at
+ * the top and the ones you're working on rise (user request 2026-10-09);
+ * `updatedAt` bubbles up from any change inside a quest. Everything below
+ * them keeps its manual order. Like the COMPLETED tab, the order refreshes
+ * on structural changes, never while typing, so a row can't jump under you.
  */
 export function flattenActive(state: TasksState, options: ActiveOptions = {}): Row[] {
   const rootId = options.zoomRootId ?? null;
@@ -50,7 +59,7 @@ export function flattenActive(state: TasksState, options: ActiveOptions = {}): R
   // Iterative walk: a stack of [id, depth], children pushed in reverse so they
   // come out in display order. Iterative so depth can't overflow the call stack.
   const stack: [ID, number][] = [];
-  const top = childIds(state, rootId);
+  const top = rootId === null ? questsByRecent(state, options.category ?? 'all') : childIds(state, rootId);
   for (let i = top.length - 1; i >= 0; i--) stack.push([top[i]!, 0]);
 
   while (stack.length) {
@@ -77,11 +86,11 @@ export function flattenActive(state: TasksState, options: ActiveOptions = {}): R
  * `expanded`; the COMPLETED tab tracks its own expanded set, separate from
  * `task.collapsed`, so it defaults to collapsed without changing the ACTIVE view.
  */
-export function flattenCompleted(state: TasksState, expanded: ReadonlySet<ID> = new Set()): Row[] {
+export function flattenCompleted(state: TasksState, expanded: ReadonlySet<ID> = new Set(), category: CategoryTab = 'all'): Row[] {
   const done: Task[] = [];
   for (const id of state.children[ROOT] ?? []) {
     const t = findTask(state, id);
-    if (t && t.done && t.deletedAt === null) done.push(t);
+    if (t && t.done && t.deletedAt === null && onTab(t, category)) done.push(t);
   }
   // Newest first; ties keep the manual order (Array.prototype.sort is stable).
   done.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -94,6 +103,20 @@ export function flattenCompleted(state: TasksState, expanded: ReadonlySet<ID> = 
     if (expanded.has(t.id)) appendSubtree(state, t.id, 1, rows);
   }
   return rows;
+}
+
+/**
+ * Top-level quest IDs on `tab`, most recently modified first. Ties (e.g.
+ * pasted together) keep their manual order: the sort is stable.
+ */
+function questsByRecent(state: TasksState, tab: CategoryTab): ID[] {
+  const quests: Task[] = [];
+  for (const id of state.children[ROOT] ?? []) {
+    const t = findTask(state, id);
+    if (t && onTab(t, tab)) quests.push(t);
+  }
+  quests.sort((a, b) => b.updatedAt - a.updatedAt);
+  return quests.map((t) => t.id);
 }
 
 /** Appends every live descendant of `parentId` (fully expanded) in display order. */

@@ -42,11 +42,27 @@ const SECTIONS: Section[] = [
     title: 'START HERE',
     intro: 'quest_log is a to-do list that lives only on your phone: no account, no internet, nothing leaves the device.',
     lines: [
-      { key: '1. Add', what: 'Type a task in the bar at the bottom and press Enter.' },
+      { key: '1. Add', what: 'Type a quest in the bar at the bottom and press Enter. It joins the tab you are on.' },
       { key: '2. Finish', what: `Tap the ${g.checkboxOff.glyph} box (or swipe the task right) when it's done.` },
       { key: '3. Change', what: 'Tap any task title to edit it. Press Done on the keyboard to save.' },
       { key: 'Oops?', what: 'Most actions show a message with UNDO for 5 seconds.' },
       { key: 'Try it out', what: 'On an empty list, LOAD EXAMPLE TASKS adds a few tasks to play with. UNDO removes them again.' },
+    ],
+  },
+  {
+    title: 'QUEST TABS',
+    intro: 'Quests are sorted into three kinds. The newest or most recently changed quest is always at the top.',
+    lines: [
+      {
+        key: 'DAILY',
+        what: 'Things you do every day. A quest added here repeats daily by itself, so it comes back each day and builds streaks.',
+      },
+      { key: 'MAIN', what: 'Your bigger goals. Quests added on ALL go here.' },
+      { key: 'MISC', what: 'Everything else.' },
+      { key: 'ALL', what: 'Every quest together.' },
+      { key: 'ACTIVE · COMPLETED', what: 'The switch under the tabs: open quests, or the ones you finished, for the tab you are on.' },
+      { key: 'Change category', what: 'Hold a quest and let go → Category… → DAILY, MAIN or MISC.' },
+      { key: 'Order', what: 'Quests sort by last change, newest first. Objectives inside a quest keep the order you give them.' },
     ],
   },
   {
@@ -55,7 +71,7 @@ const SECTIONS: Section[] = [
     lines: [
       {
         key: `${g.prompt.glyph} new quest`,
-        what: 'The bar at the bottom of ACTIVE QUESTS. Type, press Enter. The keyboard closes after each quest.',
+        what: 'The bar at the bottom of the open quests. Type, press Enter: it joins the tab you are on. The keyboard closes after each quest.',
       },
       { key: 'App icon', what: 'Hold the quest_log icon on your home screen and choose New quest: the app opens ready to type.' },
       {
@@ -112,7 +128,7 @@ const SECTIONS: Section[] = [
     lines: [
       {
         key: 'Hold, then drag',
-        what: 'Drag up or down to reorder. Drag right to nest under the task above, left to move out a level. A green line shows where it lands.',
+        what: 'Drag up or down to reorder objectives inside a quest (quests sort themselves by recent activity). Drag right to nest under the task above, left to move out a level. A green line shows where it lands.',
       },
       { key: 'Near the edge', what: 'The list scrolls by itself while you drag near the top or bottom.' },
       { key: 'Over a closed group', what: 'Hover for a moment and it opens, so you can drop inside.' },
@@ -128,7 +144,7 @@ const SECTIONS: Section[] = [
         what: 'Completes the task. Checking a group completes everything in it; finishing the last subtask completes the group.',
       },
       { key: 'Swipe right', what: 'Completes the task. Swipe left deletes it.' },
-      { key: 'COMPLETED QUESTS', what: 'Finished main tasks move to this tab, newest first.' },
+      { key: 'COMPLETED', what: 'Finished quests move here (the switch under the tabs), newest first.' },
       { key: 'Restore', what: `On COMPLETED: swipe right, or tap ${g.checkboxOn.glyph}, to put a task back where it was.` },
       { key: 'Run again', what: 'On COMPLETED, hold a task: a fresh unchecked copy, great for checklists.' },
       { key: 'CLEAR…', what: 'On COMPLETED: moves old completed tasks to Trash.' },
@@ -232,7 +248,7 @@ const SECTIONS: Section[] = [
     title: 'TRASH',
     intro: 'Deleted tasks wait in Trash for 7 days before they’re gone for good.',
     lines: [
-      { key: `${g.delete.glyph} TRASH`, what: 'On the COMPLETED tab. Restore puts a task back where it was, with its subtasks.' },
+      { key: `${g.delete.glyph} TRASH`, what: 'On COMPLETED (top of the list). Restore puts a task back where it was, with its subtasks.' },
       { key: 'DELETE NOW / EMPTY', what: 'Removes tasks permanently (asks first).' },
     ],
   },

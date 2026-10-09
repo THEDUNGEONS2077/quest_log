@@ -160,7 +160,8 @@ export const TaskRow = memo(
             ]}
             accessible={!editing}
             accessibilityLabel={rowLabel(task, row, now)}
-            accessibilityActions={ROW_ACTIONS}
+            // Quests are ordered by recent activity, so Move up / down only apply below them.
+            accessibilityActions={row.depth === 0 ? QUEST_ACTIONS : ROW_ACTIONS}
             onAccessibilityAction={onAccessibilityAction}
           >
             {/* The soft green glow on the row being edited (PLAN §10.9). */}
@@ -292,6 +293,9 @@ const ROW_ACTIONS = [
   { name: 'menu', label: 'More actions' },
   { name: 'delete', label: 'Delete' },
 ];
+
+/** A quest's actions: the same, without Move up / Move down (quests sort by recent activity). */
+const QUEST_ACTIONS = ROW_ACTIONS.filter((a) => a.name !== 'moveUp' && a.name !== 'moveDown');
 
 /** What a screen reader announces for a row, e.g. "Ship v2 build, high priority, repeats weekly, not done, 2 of 5 subtasks done". */
 function rowLabel(task: Task, row: Row, now: number): string {

@@ -105,7 +105,8 @@ describe('runAgain', () => {
     let n = 0;
     const { op, rootId } = runAgain(s, 'list', 7, () => `c${n++}`);
     const next = run(s, op);
-    expect(outline(flattenActive(next))).toEqual(['other', 'c0', '  c1']); // deleted subtask not copied
+    // The copy is the newest quest, so it shows first; the deleted subtask isn't copied.
+    expect(outline(flattenActive(next))).toEqual(['c0', '  c1', 'other']);
     expect(tk(next, rootId)).toMatchObject({ title: 'list', done: false, notes: 'n', priority: 2, createdAt: 7 });
     expect(tk(next, 'c1')).toMatchObject({ title: 'x', done: false, parentId: 'c0' });
   });

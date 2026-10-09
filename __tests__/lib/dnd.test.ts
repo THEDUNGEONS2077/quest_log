@@ -5,7 +5,7 @@ import { depthRange, dropOp, dropTarget, type DragRow, moveBy, resolveDrop } fro
 import { flattenActive } from '@/lib/flatten';
 import { apply } from '@/lib/ops';
 import { findTask } from '@/lib/taskMap';
-import { subtreeIds } from '@/lib/tree';
+import { childIds, subtreeIds } from '@/lib/tree';
 import type { TasksState } from '@/lib/types';
 
 import { build, outline, shape } from '../helpers/tree';
@@ -83,8 +83,9 @@ describe('dropping', () => {
 describe('moveBy (accessibility Move up / Move down)', () => {
   const live = (id: string) => findTask(s, id)?.deletedAt === null;
   it('swaps with the neighbouring sibling; null at the ends', () => {
+    // Quests display newest-first (lib/flatten.ts), so the stored order is what moves.
     const up = apply(s, moveBy(s, 'bank', -1, 1, live)!).state;
-    expect(outline(flattenActive(up)).slice(-2)).toEqual(['bank', 'home']);
+    expect(childIds(up, null).slice(-2)).toEqual(['bank', 'home']);
     const down = apply(s, moveBy(s, 'ship', 1, 1, live)!).state;
     expect(outline(flattenActive(down)).slice(1, 3)).toEqual(['  notes', '    draft']);
     expect(moveBy(s, 'work', -1, 1, live)).toBeNull();
