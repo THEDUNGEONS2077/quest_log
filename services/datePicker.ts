@@ -25,6 +25,18 @@ export function pickTime(initial: Date): Promise<Date | null> {
   });
 }
 
+/** Asks for a day only. Resolves the chosen day (time of day as in `initial`), or null if cancelled. */
+export function pickDate(initial: Date, minimumDate?: Date): Promise<Date | null> {
+  return new Promise((resolve) => {
+    DateTimePickerAndroid.open({
+      value: initial,
+      mode: 'date',
+      minimumDate,
+      onChange: (e, date) => resolve(e.type === 'set' && date ? date : null),
+    });
+  });
+}
+
 /** Asks for a date, then a time. Resolves the combined moment, or null if either was cancelled. */
 export function pickDateTime(initial: Date, minimumDate?: Date): Promise<Date | null> {
   return new Promise((resolve) => {

@@ -136,6 +136,10 @@ const SECTIONS: Section[] = [
     intro: 'Give a task a due date, and optionally a notification at that time.',
     lines: [
       { key: `${g.notify.glyph} DUE / hold menu`, what: 'Pick IN 1H, TONIGHT, TOMORROW, NEXT MON, or CUSTOM for any date and time.' },
+      {
+        key: 'Change a date',
+        what: 'Tap the date under the task, or hold the task and let go: Change due date / time is first. AMEND has CHANGE DATE (keeps the time), CHANGE TIME (keeps the day), +1 HOUR, +1 DAY and +1 WEEK.',
+      },
       { key: 'NOTIFY', what: 'On: a notification at the due time. Off: just the date.' },
       { key: 'DONE on the notification', what: 'Completes the task, even with the app closed.' },
       { key: 'SNOOZE 15M', what: 'Reminds you again in 15 minutes.' },
@@ -171,6 +175,10 @@ const SECTIONS: Section[] = [
       { key: '*daily *weekdays', what: 'Repeats. Also *weekly *monthly *yearly *mon,thu *every 2w.' },
       { key: '// some text', what: 'Everything after // becomes notes.' },
       { key: '\\word', what: 'Keeps a word exactly as typed (\\!!! stays "!!!").' },
+      {
+        key: 'On a saved task',
+        what: 'Tap it, type the shortcut at the end, then press Enter or tap anywhere else. On a dated task, @5pm keeps the day and @mon keeps the time.',
+      },
       { key: 'Example', what: 'buy milk !! @fri 5pm *weekly // the oat one' },
     ],
   },

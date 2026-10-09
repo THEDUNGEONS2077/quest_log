@@ -5,10 +5,10 @@
  *   > Ship v2 build
  *   ────────────────────────────
  *   PRIORITY  [ — ][ ! ][ !! ][ !!! ]
+ *   ◔ Change due date / time…   (first: the most common reason to hold a dated task)
  *   + Add subtask
  *   → Indent          ← Outdent
  *   ≡ Notes
- *   ◔ Due / remind…
  *   ↻ Repeat…
  *   ⊞ Duplicate
  *   ⎕ Copy as text
@@ -64,15 +64,17 @@ export function ContextMenu({ id, onClose }: Props) {
   }
 
   const items: SheetAction[] = [
+    // The due date comes first: amending it is the most common reason to hold a dated task
+    // (user request 2026-10-09). The sheet offers CHANGE DATE / CHANGE TIME and +1 nudges.
+    {
+      glyph: glyphs.notify.glyph,
+      label: task.dueAt !== null ? 'Change due date / time…' : 'Due date / reminder…',
+      onPress: () => actions.openDueSheet(id),
+    },
     { glyph: glyphs.add.glyph, label: 'Add subtask', onPress: () => actions.addSubtask(id) },
     { glyph: glyphs.indent.glyph, label: 'Indent', onPress: () => actions.indentTask(id) },
     { glyph: glyphs.outdent.glyph, label: 'Outdent', onPress: () => actions.outdentTask(id) },
     { glyph: glyphs.notes.glyph, label: task.notes ? 'Edit notes' : 'Add notes', onPress: () => actions.setEditing(id, null, 'notes') },
-    {
-      glyph: glyphs.notify.glyph,
-      label: task.dueAt !== null ? 'Change due date…' : 'Due / remind…',
-      onPress: () => actions.openDueSheet(id),
-    },
     {
       glyph: glyphs.repeat.glyph,
       label: task.repeat ? `Repeat: ${repeatLabel(task.repeat).toLowerCase()}` : 'Repeat…',

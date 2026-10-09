@@ -14,7 +14,10 @@ import {
   formatRelative,
   formatTime,
   isOverdue,
+  minutesOfDay,
+  nudgeDue,
   startOfDay,
+  withDay,
 } from '@/lib/dates';
 
 /** Local time → epoch ms (month is 1-based here, for readability). */
@@ -102,5 +105,26 @@ describe('due presets', () => {
     const p = duePresets(lateMonday, 9 * 60);
     expect(p[1]).toEqual({ label: 'TOMORROW 20:00', at: at(2026, 10, 13, 20) });
     expect(p[3]!.at).toBe(at(2026, 10, 19, 9));
+  });
+});
+
+describe('amending a due date', () => {
+  // Runs in Europe/London: clocks go back on Sun 25 Oct 2026 (02:00 → 01:00).
+
+  it('nudges by an hour, a day or a week', () => {
+    const due = at(2026, 10, 9, 15);
+    expect(nudgeDue(due, 'hour')).toBe(at(2026, 10, 9, 16));
+    expect(nudgeDue(due, 'day')).toBe(at(2026, 10, 10, 15));
+    expect(nudgeDue(due, 'week')).toBe(at(2026, 10, 16, 15));
+  });
+
+  it('a day or week later keeps the wall-clock time across a daylight-saving change', () => {
+    expect(nudgeDue(at(2026, 10, 24, 9), 'day')).toBe(at(2026, 10, 25, 9));
+    expect(nudgeDue(at(2026, 10, 20, 9), 'week')).toBe(at(2026, 10, 27, 9));
+  });
+
+  it('moves to another day keeping the time, and reads the time of day', () => {
+    expect(withDay(at(2026, 10, 9, 15, 30), at(2026, 10, 12))).toBe(at(2026, 10, 12, 15, 30));
+    expect(minutesOfDay(at(2026, 10, 9, 17, 30))).toBe(1050);
   });
 });

@@ -129,3 +129,31 @@ describe('literal words (editing a saved title)', () => {
     expect(r.dueAt).toBeUndefined();
   });
 });
+
+describe('amending an existing due date (existingDue)', () => {
+  // The task is due Friday 2026-10-09 at 15:00; now is Wednesday noon.
+  const existing = { ...opts, existingDue: at(2026, 10, 9, 15) };
+
+  it('a time alone keeps the day', () => {
+    expect(parse('x @5pm', existing).dueAt).toBe(at(2026, 10, 9, 17));
+  });
+
+  it('a day alone keeps the time', () => {
+    expect(parse('x @mon', existing).dueAt).toBe(at(2026, 10, 12, 15));
+    expect(parse('x @tomorrow', existing).dueAt).toBe(at(2026, 10, 8, 15));
+  });
+
+  it('a full day and time replaces both', () => {
+    expect(parse('x @mon 9am', existing).dueAt).toBe(at(2026, 10, 12, 9));
+  });
+
+  it('a time on a day already past falls back to the next future one', () => {
+    const overdue = { ...opts, existingDue: at(2026, 10, 5, 15) }; // last Sunday
+    expect(parse('x @5pm', overdue).dueAt).toBe(at(2026, 10, 7, 17)); // today, still ahead
+  });
+
+  it('without an existing date, behaves as before (default time, today/tomorrow)', () => {
+    expect(parse('x @mon', opts).dueAt).toBe(at(2026, 10, 12, 9));
+    expect(parse('x @5pm', opts).dueAt).toBe(at(2026, 10, 7, 17));
+  });
+});

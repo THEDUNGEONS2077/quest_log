@@ -2,6 +2,18 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.2.0 (build 21)
+
+Changing due dates.
+
+- **Change a date without starting over:** tap the date under a task, or hold the task and let go. **Change due date / time…** is now first in that menu. The new **AMEND** row offers:
+  - **CHANGE DATE…** picks a new day and keeps the time
+  - **CHANGE TIME…** picks a new time and keeps the day
+  - **+1 HOUR**, **+1 DAY** and **+1 WEEK**
+- **Shorthand on saved tasks now always works.** Typing `!!`, `@fri 5pm` or `// note` into an existing task used to stay as plain text if you tapped another task or the new-task bar instead of pressing Enter. It's now applied whichever way you finish editing.
+- **Shorthand amends dates sensibly:** on a task due Friday 15:00, `@5pm` means Friday at 17:00 and `@mon` means Monday at 15:00.
+- An empty task is no longer left behind when you tap away from it.
+
 ## 1.1.0 (build 20)
 
 quest_log on iPhone.

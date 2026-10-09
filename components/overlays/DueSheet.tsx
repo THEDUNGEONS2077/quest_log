@@ -28,10 +28,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SheetModal } from './SheetModal';
 
 import { useMinute } from '@/components/common/useMinute';
-import { addDays, atTimeOfDay, duePresets, formatDue, startOfDay } from '@/lib/dates';
+import { addDays, atTimeOfDay, duePresets, formatDue, minutesOfDay, nudgeDue, startOfDay, withDay } from '@/lib/dates';
 import { repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
-import { hasDialogPicker, pickDateTime } from '@/services/datePicker';
+import { hasDialogPicker, pickDate, pickDateTime, pickTime } from '@/services/datePicker';
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
 import { SELECTION } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
@@ -79,6 +79,27 @@ function DueSheetBody({ id }: { id: string }) {
     close();
   };
 
+  // Amending an existing date (one task, not a selection).
+  const amendable = !forSelection && task.dueAt !== null;
+  /** CHANGE DATE…: pick a day; the time of day stays. */
+  const changeDate = () => {
+    if (task.dueAt === null) return;
+    const due = task.dueAt;
+    if (!hasDialogPicker) return setIosPicker(true);
+    void pickDate(new Date(due), new Date(startOfDay(now))).then((d) => {
+      if (d) choose(withDay(due, d.getTime()));
+    });
+  };
+  /** CHANGE TIME…: pick a time; the day stays. */
+  const changeTime = () => {
+    if (task.dueAt === null) return;
+    const due = task.dueAt;
+    if (!hasDialogPicker) return setIosPicker(true);
+    void pickTime(new Date(due)).then((t) => {
+      if (t) choose(atTimeOfDay(due, minutesOfDay(t.getTime())));
+    });
+  };
+
   /** CUSTOM…: the system date and time picker (services/datePicker: Android dialogs, the browser's picker on web). */
   const custom = () => {
     const start = new Date(task.dueAt ?? atTimeOfDay(addDays(now, 1), defaultTime));
@@ -102,6 +123,31 @@ function DueSheetBody({ id }: { id: string }) {
         </Text>
       )}
       <View style={styles.divider} />
+
+      {/* AMEND: a task that already has a date changes it without starting over
+          (user request 2026-10-09). CHANGE DATE keeps the time, CHANGE TIME keeps
+          the day, and the nudges move it from where it is. */}
+      {amendable && (
+        <>
+          <Text style={[type.meta, styles.section]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
+            AMEND
+          </Text>
+          <View style={styles.grid}>
+            <Option label="CHANGE DATE…" onPress={changeDate} />
+            <Option label="CHANGE TIME…" onPress={changeTime} />
+            <Option label="+1 HOUR" onPress={() => choose(nudgeDue(task.dueAt!, 'hour'))} third />
+            <Option label="+1 DAY" onPress={() => choose(nudgeDue(task.dueAt!, 'day'))} third />
+            <Option label="+1 WEEK" onPress={() => choose(nudgeDue(task.dueAt!, 'week'))} third />
+          </View>
+          <Text
+            style={[type.meta, styles.section, styles.sectionGap]}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={maxFontSizeMultiplier}
+          >
+            NEW DATE
+          </Text>
+        </>
+      )}
 
       {/* Presets: two per row. */}
       <View style={styles.grid}>
@@ -179,11 +225,11 @@ function DueSheetBody({ id }: { id: string }) {
 }
 
 /** One option button. */
-function Option({ label, onPress, wide }: { label: string; onPress: () => void; wide?: boolean }) {
+function Option({ label, onPress, wide, third }: { label: string; onPress: () => void; wide?: boolean; third?: boolean }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.option, wide && styles.wide, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.option, wide && styles.wide, third && styles.third, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
@@ -222,6 +268,10 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
   },
   wide: { flexBasis: '100%' },
+  // Three per row (the AMEND nudges).
+  third: { flexBasis: '28%' },
+  section: { color: colors.textDim, marginBottom: space.sm, ...platformText },
+  sectionGap: { marginTop: space.md },
   pressed: { borderColor: colors.accent },
   optionText: { color: colors.accent, ...platformText },
   toggleRow: {

@@ -28,13 +28,16 @@ const PRIORITY_LABEL = ['', 'LOW', 'MED', 'HIGH'] as const;
 /**
  * Parses `text` with the user's default time at the current minute.
  * `literalFrom`: the saved title; its words are kept as typed, exactly as
- * they will be when the edit is applied (store.finishEditing).
+ * they will be when the edit is applied (store commitEdit).
+ * `existingDue`: the task's current due date, so "@5pm" previews as a new
+ * time on the same day, as it will be applied.
  */
-export function useShorthand(text: string, literalFrom?: string | null): ParseResult {
+export function useShorthand(text: string, literalFrom?: string | null, existingDue?: number | null): ParseResult {
   const now = useMinute();
   const defaultTimeMinutes = useAppStore((s) => s.settings.defaultTimeMinutes);
   const literal = literalFrom ? new Set(literalFrom.split(/\s+/).filter(Boolean)) : undefined;
-  return parse(text, { now, defaultTimeMinutes, literal });
+  // existingDue: amending a saved date keeps the parts not typed (lib/parser.ts).
+  return parse(text, { now, defaultTimeMinutes, literal, existingDue });
 }
 
 /** One chip; with `onClear` it gets a ✕ that clears the value. */
@@ -93,7 +96,7 @@ export function TaskChips({ id }: { id: string }) {
   const now = useMinute();
   // Preview exactly what finishing the edit will apply: the saved title's words stay literal.
   const startTitle = useAppStore((s) => (s.editingId === id ? s.editingStartTitle : null));
-  const parsed = useShorthand(task?.title ?? '', startTitle);
+  const parsed = useShorthand(task?.title ?? '', startTitle, task?.dueAt ?? null);
   if (!task) return null;
 
   const showPriority = task.priority > 0 && parsed.priority === undefined;

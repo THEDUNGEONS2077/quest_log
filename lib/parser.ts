@@ -12,6 +12,10 @@
  *   @mon … @sun              the next such day (today if still ahead); may be
  *                            followed by a time: "@mon 9am"
  *   @5pm @9:30am @17:30      that time today, or tomorrow if it has passed
+ *
+ * Amending an existing due date (`existingDue`): typing only part of a date
+ * keeps the rest. On a task due Friday 15:00, "@5pm" means Friday 17:00
+ * (if that's still ahead) and "@mon" means Monday 15:00.
  *   @in 30m / 2h / 3d / 1w   relative to now ("@in2h" works too)
  *   *daily *weekdays *weekly *monthly *yearly
  *   *mon,thu  *every 2w  *every 3d  *every 2mo   repeat rule (PLAN §9.9);
@@ -38,6 +42,12 @@ export interface ParseOptions {
    * escaped `\@fri` (saved as "@fri") doesn't turn into a date later.
    */
   literal?: ReadonlySet<string>;
+  /**
+   * The task's current due date, when editing a saved task. Day-only
+   * expressions then keep its time of day, and time-only expressions its
+   * day (see the file header).
+   */
+  existingDue?: number | null;
 }
 
 /** One recognized token, for the live chips under the input. */
@@ -141,6 +151,9 @@ function ceilMinute(ts: number): number {
 function resolveDate(expr: string, next: string | undefined, opts: ParseOptions): { at: number; used: number } | null {
   const { now, defaultTimeMinutes } = opts;
   const e = expr.toLowerCase();
+  // Amending: the existing date's time of day, used for day-only expressions.
+  const existing = opts.existingDue ?? null;
+  const existingTime = existing !== null ? new Date(existing).getHours() * 60 + new Date(existing).getMinutes() : null;
 
   // @in 2h / @in2h
   if (e === 'in' || e.startsWith('in')) {
@@ -158,7 +171,7 @@ function resolveDate(expr: string, next: string | undefined, opts: ParseOptions)
 
   // A time given right after the day word ("@mon 9am"), if any.
   const followingTime = next !== undefined ? parseTime(next) : null;
-  const timeFor = () => followingTime ?? defaultTimeMinutes;
+  const timeFor = () => followingTime ?? existingTime ?? defaultTimeMinutes;
   const used = followingTime !== null ? 1 : 0;
 
   if (e === 'today' || e === 'tod') {
@@ -180,9 +193,14 @@ function resolveDate(expr: string, next: string | undefined, opts: ParseOptions)
     return { at: atTimeOfDay(addDays(now, days), timeFor()), used };
   }
 
-  // Time only: today, or tomorrow if that time has passed ("ambiguous → next future").
+  // Time only: on the existing due date's day when amending (if still ahead);
+  // otherwise today, or tomorrow if that time has passed ("ambiguous → next future").
   const time = parseTime(e);
   if (time !== null) {
+    if (existing !== null) {
+      const sameDay = atTimeOfDay(existing, time);
+      if (sameDay > now) return { at: sameDay, used: 0 };
+    }
     const today = atTimeOfDay(now, time);
     return { at: today > now ? today : atTimeOfDay(addDays(now, 1), time), used: 0 };
   }

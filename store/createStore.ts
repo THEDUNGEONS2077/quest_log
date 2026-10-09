@@ -285,7 +285,7 @@ export interface AppStore {
    * Parses shorthand with the user's settings (default time) at the current
    * time. Words in `literal` are kept as typed (the saved title's words).
    */
-  parseShorthand(text: string, literal?: ReadonlySet<string>): ParseResult;
+  parseShorthand(text: string, literal?: ReadonlySet<string>, existingDue?: number | null): ParseResult;
   /** Stops targeting a `#Group` with the quick-add bar. */
   clearQuickAddParent(): void;
 
@@ -394,6 +394,35 @@ export function createAppStore(deps: StoreDeps) {
       if (fields.dueAt === undefined && existingDue === null) Object.assign(fields, { dueAt, notify: notifyByDefault });
     }
     return fields;
+  };
+
+  /**
+   * Ends task `id`'s editing session, however it ends (Enter, DONE, the
+   * keyboard closing, tapping another task, the quick-add bar taking focus):
+   *   - shorthand typed during the session (!!, @fri, //…) becomes fields, as
+   *     one undo step. Only newly typed words count (the words of the title
+   *     when editing started stay literal), and dates amend the existing due
+   *     date: "@5pm" keeps its day, "@mon" keeps its time;
+   *   - a task left empty with no children is discarded (undoable).
+   * `startTitle` is the title when editing started (null: no shorthand pass).
+   */
+  const commitEdit = (id: ID, startTitle: string | null) => {
+    const s = store.getState();
+    let task = findTask(s.tasks, id);
+    if (task && startTitle !== null && task.title !== startTitle) {
+      const r = s.parseShorthand(task.title, new Set(startTitle.split(/\s+/).filter(Boolean)), task.dueAt);
+      if (r.chips.length) {
+        // Typing only shorthand ("!!") must not empty the title (which would delete the task).
+        const fields = { ...shorthandFields(r, task.dueAt), title: r.title || startTitle };
+        // `//` appends to existing notes rather than replacing them.
+        if (r.notes !== undefined && task.notes) fields.notes = `${task.notes}\n${r.notes}`;
+        s.dispatch(ops.editTask(s.tasks, id, fields, now()));
+        task = findTask(store.getState().tasks, id);
+      }
+    }
+    if (task && task.title === '' && liveChildIds(store.getState().tasks, id).length === 0) {
+      store.getState().dispatch({ type: 'remove', id });
+    }
   };
 
   /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
@@ -541,29 +570,11 @@ export function createAppStore(deps: StoreDeps) {
       },
 
       finishEditing(id) {
-        const startTitle = get().editingId === id ? get().editingStartTitle : null;
-        // Another row may already be editing (focus moved): only clear our own session.
+        // Still this task's session: ending it commits it (setEditing → commitEdit).
         if (get().editingId === id) get().setEditing(null);
-        // The task may already be gone (for example, removed by Backspace).
-        let task = findTask(get().tasks, id);
-        // Shorthand typed during this session (!!, @fri, //…) becomes fields: one undo step.
-        if (task && startTitle !== null && task.title !== startTitle) {
-          // Only newly typed words count as shorthand: the saved title's words stay literal.
-          const r = get().parseShorthand(task.title, new Set(startTitle.split(/\s+/).filter(Boolean)));
-          if (r.chips.length) {
-            // Typing only shorthand ("!!") must not empty the title (which would delete the task).
-            const fields = { ...shorthandFields(r, task.dueAt), title: r.title || startTitle };
-            // `//` appends to existing notes rather than replacing them.
-            if (r.notes !== undefined && task.notes) fields.notes = `${task.notes}\n${r.notes}`;
-            get().dispatch(ops.editTask(get().tasks, id, fields, now()));
-            task = findTask(get().tasks, id);
-          }
-        }
-        // An empty task with no children left behind on blur is discarded
-        // (undoable, so history stays consistent).
-        if (task && task.title === '' && liveChildIds(get().tasks, id).length === 0) {
-          get().dispatch({ type: 'remove', id });
-        }
+        // Already moved on (that switch committed it): just make sure an empty
+        // task isn't left behind, e.g. by a late blur.
+        else commitEdit(id, null);
       },
 
       toggleCollapsed(id) {
@@ -724,7 +735,11 @@ export function createAppStore(deps: StoreDeps) {
 
       setTab: (tab) => set({ ui: { ...get().ui, tab } }),
       setZoom: (zoomRootId) => set({ ui: { ...get().ui, zoomRootId } }),
-      setEditing: (editingId, caret = null, field = 'title') =>
+      setEditing: (editingId, caret = null, field = 'title') => {
+        // Leaving another task's session (for a new task, or for none): commit it
+        // first, exactly as Enter would, so its shorthand is never left as raw text.
+        const prev = get().editingId;
+        if (prev !== null && prev !== editingId) commitEdit(prev, get().editingStartTitle);
         // A new editing session starts a new undo step for typing.
         set({
           editingId,
@@ -738,7 +753,8 @@ export function createAppStore(deps: StoreDeps) {
                 ? get().editingStartTitle
                 : (findTask(get().tasks, editingId)?.title ?? null),
           editSession: editingId === get().editingId ? get().editSession : get().editSession + 1,
-        }),
+        });
+      },
 
       toggleNotes(id) {
         const list = get().expandedNotes;
@@ -766,7 +782,8 @@ export function createAppStore(deps: StoreDeps) {
 
       outlineText: (id) => copy.toOutlineText(get().tasks, id),
 
-      parseShorthand: (text, literal) => parse(text, { now: now(), defaultTimeMinutes: get().settings.defaultTimeMinutes, literal }),
+      parseShorthand: (text, literal, existingDue) =>
+        parse(text, { now: now(), defaultTimeMinutes: get().settings.defaultTimeMinutes, literal, existingDue }),
 
       clearQuickAddParent: () => set({ quickAddParent: null }),
 

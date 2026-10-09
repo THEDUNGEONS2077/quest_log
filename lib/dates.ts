@@ -152,3 +152,24 @@ export function isOverdue(dueAt: number | null, done: boolean, now: number): boo
 function pad2(n: number): string {
   return n < 10 ? `0${n}` : String(n);
 }
+
+/** Minutes after local midnight of `ts` (17:30 → 1050). */
+export function minutesOfDay(ts: number): number {
+  const d = new Date(ts);
+  return d.getHours() * 60 + d.getMinutes();
+}
+
+/**
+ * Amending a due date (the due sheet's AMEND row): `due` moved by one hour,
+ * day or week. Days and weeks keep the same wall-clock time across daylight
+ * saving changes (addDays); an hour is exactly 60 minutes.
+ */
+export function nudgeDue(due: number, by: 'hour' | 'day' | 'week'): number {
+  if (by === 'hour') return due + HOUR;
+  return addDays(due, by === 'day' ? 1 : 7);
+}
+
+/** `due`'s time of day on another `day` (CHANGE DATE… keeps the time). */
+export function withDay(due: number, day: number): number {
+  return atTimeOfDay(day, minutesOfDay(due));
+}

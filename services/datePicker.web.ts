@@ -33,7 +33,7 @@ export function fromLocalInputValue(value: string, base: Date): Date | null {
 }
 
 /** Opens a temporary input of `type` with `value`; resolves its value when the picker closes (null if cancelled). */
-function openInput(type: 'datetime-local' | 'time', value: string, min?: string): Promise<string | null> {
+function openInput(type: 'datetime-local' | 'date' | 'time', value: string, min?: string): Promise<string | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = type;
@@ -70,6 +70,13 @@ function openInput(type: 'datetime-local' | 'time', value: string, min?: string)
 export async function pickTime(initial: Date): Promise<Date | null> {
   const v = await openInput('time', `${pad(initial.getHours())}:${pad(initial.getMinutes())}`);
   return v ? fromLocalInputValue(v, initial) : null;
+}
+
+/** Asks for a day only. Resolves that day at `initial`'s time of day, or null if cancelled. */
+export async function pickDate(initial: Date, minimumDate?: Date): Promise<Date | null> {
+  const day = (d: Date) => toLocalInputValue(d).slice(0, 10);
+  const v = await openInput('date', day(initial), minimumDate ? day(minimumDate) : undefined);
+  return v ? fromLocalInputValue(`${v}T${toLocalInputValue(initial).slice(11)}`, initial) : null;
 }
 
 /** Asks for a date and time. Resolves the chosen moment, or null if cancelled. */

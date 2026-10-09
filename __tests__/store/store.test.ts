@@ -361,6 +361,55 @@ describe('details and shorthand (Phase 6)', () => {
     expect(tk(store.getState().tasks, id)!.title).toBe('review !!! @fri');
   });
 
+  it('shorthand is applied when editing moves to another task, not only on Enter (bug 2026-10-09)', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'call bank');
+    const b = s.addTask(null, 'gym');
+    s.setEditing(a);
+    s.updateTitle(a, 'call bank !! @tomorrow');
+    s.setEditing(b); // tapped another task: no Enter, no blur-finish
+    expect(tk(store.getState().tasks, a)).toMatchObject({ title: 'call bank', priority: 2 });
+    expect(tk(store.getState().tasks, a)!.dueAt).not.toBeNull();
+    // Same when the quick-add bar takes focus (editing ends with null).
+    s.updateTitle(b, 'gym !!!');
+    s.setEditing(null);
+    expect(tk(store.getState().tasks, b)).toMatchObject({ title: 'gym', priority: 3 });
+  });
+
+  it('an empty new task is discarded when editing moves elsewhere', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const keep = s.addTask(null, 'keep');
+    const empty = s.addTask(null, '');
+    s.setEditing(empty);
+    s.setEditing(keep);
+    expect(tk(store.getState().tasks, empty)).toBeUndefined();
+  });
+
+  it('amending a date by shorthand keeps the parts you did not type', () => {
+    const { store } = makeStore();
+    const s = store.getState();
+    const id = s.addTask(null, 'dentist');
+    // Due in 3 days at 15:00.
+    const due = new Date(NOW + 3 * DAY);
+    due.setHours(15, 0, 0, 0);
+    s.setDue(id, due.getTime(), false);
+    // "@5pm": same day, new time.
+    s.setEditing(id);
+    s.updateTitle(id, 'dentist @5pm');
+    s.finishEditing(id);
+    const at = new Date(tk(store.getState().tasks, id)!.dueAt!);
+    expect([at.getDate(), at.getHours()]).toEqual([due.getDate(), 17]);
+    expect(tk(store.getState().tasks, id)!.title).toBe('dentist');
+    // "@tomorrow": new day, the 17:00 time kept (not the 09:00 default).
+    s.setEditing(id);
+    s.updateTitle(id, 'dentist @tomorrow');
+    s.finishEditing(id);
+    const t = new Date(tk(store.getState().tasks, id)!.dueAt!);
+    expect([t.getDate(), t.getHours()]).toEqual([new Date(NOW + DAY).getDate(), 17]);
+  });
+
   it('an unchanged title is not re-parsed (escaped literals stay literal)', () => {
     const { store } = makeStore();
     const s = store.getState();
