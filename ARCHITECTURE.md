@@ -309,7 +309,7 @@ Anything unreadable is kept under `corrupt.<time>`, and the app recovers from th
   - `KeyboardController.dismiss()` resolves once the keyboard is gone, so the tracker sees it close. There's a 450 ms fallback.
 - **The sticky bars ignore a phantom keyboard:** this is the second line of defence. The `KeyboardStickyView` wrapper turns itself off when the library reports a keyboard that React Native's own events (which read the window directly) haven't confirmed 700 ms later. The next real keyboard opening or closing turns it back on.
 - **Components import keyboard pieces from `components/common/keyboard`, never from the library**, so the web build can swap in its own (`keyboard.web.tsx`).
-- **Objective titles** (`lib/title.ts`) start with a capital letter. They're stored that way when typed (`commitEdit`, only if the title changed), quick-added or pasted. `shownTitle()` capitalizes on display for older titles and for quests moved under another quest. Search highlights stay aligned because the capital is always the same length.
+- **Objective titles** (`lib/title.ts`): stored with a capital first letter when typed (`commitEdit`, only if the title changed), quick-added or pasted (`titleFor`). Shown with every word capitalized (`shownTitle` → `capitalizeWords`), display only: rows, breadcrumb, sheets, Move to…, the drag ghost and reminders. The editor and Copy as text use the saved title. Words that already contain a capital are left alone, and capitals never change a title's length, so search highlights stay aligned.
 
 ## 7. Side effects
 

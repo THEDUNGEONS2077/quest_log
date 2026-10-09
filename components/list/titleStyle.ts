@@ -7,7 +7,8 @@
  *   group    every top-level task, with or without subtasks: 14 pt
  *            uppercase bold, bright (user request 2026-10-08: all main
  *            tasks in caps like group titles)
- *   subtask  any nested task: 15 pt, mixed case
+ *   subtask  any nested task: 15 pt, every word capitalized on display
+ *            (lib/title.ts shownTitle; the stored title is as typed)
  *   body     plain 17 pt (kept for inputs such as the quick-add bar)
  * Smaller variants are nudged down so their first line stays aligned with
  * the 24 pt-tall checkbox and caret.

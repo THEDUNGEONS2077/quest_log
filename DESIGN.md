@@ -86,7 +86,7 @@ Components use a **role**, never a raw size.
 | `tab` | 14 / 20 | Bold, +1 letter spacing | UPPERCASE | Tabs, buttons, setting values (`[ON ]`) |
 | `group` | 14 / 20 | Bold | UPPERCASE | Top-level item titles, section headings |
 | `body` | 17 / 24 | Regular | as written | Inputs, primary text, sheet titles |
-| `subtask` | 15 / 22 | Regular | as written | Nested item titles |
+| `subtask` | 15 / 22 | Regular | Every word capitalized on display (the saved text is as typed; words with their own capitals stay) | Nested item titles |
 | `meta` | 13 / 18 | Medium | mostly UPPERCASE | Counts, dates, tags, hints, toasts |
 | `notes` | 15 / 22 | Regular | as written | Long text and help descriptions (in `textDim`) |
 | `glyph` | 20 / 24 | Regular | | Icon glyphs next to body text (20% larger than body; same line height so rows stay aligned) |

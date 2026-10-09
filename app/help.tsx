@@ -121,7 +121,10 @@ const SECTIONS: Section[] = [
     intro: 'Any task can hold subtasks. A main task with subtasks is a group, with a progress count like [2/5].',
     lines: [
       { key: 'Make a group', what: 'Use IN on a task, the + on a group, + SUB while editing, or paste an indented list.' },
-      { key: 'Capitals', what: 'Objectives (subtasks) always start with a capital letter, however you type them.' },
+      {
+        key: 'Capitals',
+        what: 'Objectives (subtasks) show every word with a capital letter, however you type them. What you typed is kept, and shown while you edit.',
+      },
       {
         key: `${g.expanded.glyph} / ${g.collapsed.glyph}`,
         what: 'Tap to hide or show a group’s subtasks. Hold to do it for every group at that level.',

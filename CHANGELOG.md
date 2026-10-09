@@ -2,6 +2,10 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.5.1 (build 30)
+
+- **Objectives show every word with a capital:** `buy oat milk` reads **Buy Oat Milk**. Only the display changes: what you typed is kept as it is, and it's what you see when you edit or copy. Words you wrote with capitals of their own (`iPhone`, `NASA`) are left alone.
+
 ## 1.5.0 (build 29)
 
 Smoother navigation, a better moment when you finish something, and a bug fix.

@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.5.1",
+    "build": 30,
+    "lines": [
+      "- **Objectives show every word with a capital:** `buy oat milk` reads **Buy Oat Milk**. Only the display changes: what you typed is kept as it is, and it's what you see when you edit or copy. Words you wrote with capitals of their own (`iPhone`, `NASA`) are left alone."
+    ]
+  },
+  {
     "version": "1.5.0",
     "build": 29,
     "lines": [
@@ -60,24 +67,6 @@
       "- **Every quest has a `+`** to add objectives (subtasks), from the moment you create it. While you edit a quest, the `+` is where `+ NOTE` used to be (notes are still on the toolbar's NOTE).",
       "- **The bottom bar reads `> new quest`**, and the app icon shortcut is now **New quest**.",
       "- **A taller XP bar**, and the top panel (title, tabs, XP bar) now has one fixed divider that stays put while you scroll your quests."
-    ]
-  },
-  {
-    "version": "1.3.0",
-    "build": 24,
-    "lines": [
-      "XP and levels.",
-      "- **Earn XP by completing tasks.** Your level is at the top: `<7>_quest_log`. It starts at 0. Level 1 takes 50 XP, and each level after needs 25 XP more than the one before.",
-      "- **What tasks are worth:** 10 XP each, +2 / +5 / +10 for `!` / `!!` / `!!!`, and +5 for finishing before the due time.",
-      "- **Quests pay more the bigger they are:** +8 XP for every subtask when the quest is completed. The `[3/5]` count is now a small meter that fills as you go and shows the reward: `3/5 · +58 XP`.",
-      "- **Streaks:**",
-      "  - **Day streak:** complete something every day for +5% XP per day in a row (up to +50%). It shows as `3-DAY STREAK` at the top.",
-      "  - **Repeat streak:** a repeating task done on time again and again earns ×1.1, ×1.2… up to ×2.0 (the multiplier shows on the task). Finishing late resets it.",
-      "- **A slim XP bar** under the tabs fills as you earn. A `+18` floats up with each gain, and the bar sweeps full on a level-up.",
-      "- **The completion message shows what you earned:** `COMPLETED · +18 XP · LEVEL 3!`. **UNDO** takes the XP back. Clearing or deleting finished tasks never does.",
-      "- **COMPLETED** shows what each task earned.",
-      "- **The header is larger** (+30%), with smaller boxes around `/ ? ⊛`.",
-      "- **iPhone:** the web version's offline mode is now sturdier."
     ]
   }
 ]

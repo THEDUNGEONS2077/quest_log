@@ -50,8 +50,13 @@ describe('duplicate', () => {
 
 describe('toOutlineText', () => {
   it('writes an indented outline with checkboxes and notes', () => {
-    // Objectives are written as shown, with a capital first letter (lib/title.ts).
+    // Objectives are written as saved, with a capital first letter (lib/title.ts).
     expect(toOutlineText(s, 'trip')).toBe(['trip', '  // book early', '  - [x] Flights', '  - [ ] Hotel', '    - [ ] Deposit'].join('\n'));
+  });
+
+  it('copies objectives as saved, not with every word capitalized as they are shown', () => {
+    const t = build([['q', [['buy oat milk']]]]);
+    expect(toOutlineText(t, 'q')).toBe(['q', '  - [ ] Buy oat milk'].join('\n'));
   });
 
   it('round-trips through paste', () => {

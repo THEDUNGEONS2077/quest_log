@@ -16,7 +16,7 @@
 import { type Op, receiveChildChanges } from './ops';
 import { findTask } from './taskMap';
 import { childIds, getTask } from './tree';
-import { shownTitle } from './title';
+import { titleFor } from './title';
 import type { ID, Task, TasksState } from './types';
 
 /** Live tasks of a subtree in display order, root first; a deleted task hides its subtree. */
@@ -63,7 +63,9 @@ export function toOutlineText(state: TasksState, id: ID): string {
   const lines: string[] = [];
   for (const { task, depth } of liveSubtree(state, id)) {
     const indent = '  '.repeat(depth);
-    lines.push(depth === 0 ? task.title : `${indent}- [${task.done ? 'x' : ' '}] ${shownTitle(task)}`);
+    // The title as saved (an objective's first letter capitalized), not the every-word display form:
+    // copied text pasted back in shouldn't store capitals the user never typed.
+    lines.push(depth === 0 ? task.title : `${indent}- [${task.done ? 'x' : ' '}] ${titleFor(task.parentId, task.title)}`);
     if (task.notes) for (const n of task.notes.split('\n')) lines.push(`${indent}  // ${n}`);
   }
   return lines.join('\n');
