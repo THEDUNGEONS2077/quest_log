@@ -976,6 +976,9 @@ describe('navigation (second pass, 2026-10-09)', () => {
       expect(order()).toEqual([b, a]);
       jest.advanceTimersByTime(LINGER_MS);
       expect(order()).toEqual([b]);
+      // Something was checked here, so the order holds until the view changes.
+      expect(store.getState().questOrderLock).not.toBeNull();
+      s.setTab('completed');
       expect(store.getState().questOrderLock).toBeNull();
     } finally {
       jest.useRealTimers();
@@ -989,6 +992,48 @@ describe('navigation (second pass, 2026-10-09)', () => {
     s.setZoom(q);
     s.undo();
     expect(store.getState().ui.zoomRootId).toBeNull();
+  });
+});
+
+describe('the quest order holds while you work in a view (animation pass 2026-10-11)', () => {
+  it('ticking off an objective does not send its quest to the top until the view changes', () => {
+    const { store, advance } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    const a1 = s.addTask(a, 'A1');
+    s.addTask(a, 'A2');
+    advance(1000);
+    const b = s.addTask(null, 'b'); // newer: first
+    const order = () =>
+      makeSelectors()
+        .activeRows(store.getState())
+        .filter((r) => r.depth === 0)
+        .map((r) => r.id);
+    expect(order()).toEqual([b, a]);
+    advance(1000);
+    s.toggleDone(a1); // a was just changed, but it stays where it is
+    expect(order()).toEqual([b, a]);
+    s.setCategoryTab('main');
+    s.setCategoryTab('all'); // a new view: sorted again, last change first
+    expect(order()).toEqual([a, b]);
+  });
+
+  it('a quest added while the order holds still comes first, newest first', () => {
+    const { store, advance } = makeStore();
+    const s = store.getState();
+    const a = s.addTask(null, 'a');
+    const a1 = s.addTask(a, 'A1');
+    s.addTask(a, 'A2');
+    s.toggleDone(a1); // the order now holds
+    advance(1000);
+    s.quickAdd('first new');
+    advance(1000);
+    s.quickAdd('second new');
+    const titles = makeSelectors()
+      .activeRows(store.getState())
+      .filter((r) => r.depth === 0)
+      .map((r) => tk(store.getState().tasks, r.id)!.title);
+    expect(titles).toEqual(['second new', 'first new', 'a']);
   });
 });
 

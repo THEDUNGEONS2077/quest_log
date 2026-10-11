@@ -26,6 +26,7 @@ import Animated from 'react-native-reanimated';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BlockCursor } from '@/components/common/BlockCursor';
+import { EditingChips } from '@/components/edit/EditingChips';
 
 import type { Row } from '@/lib/flatten';
 import type { TasksState } from '@/lib/types';
@@ -72,6 +73,7 @@ export function TaskList({ bottomInset }: Props) {
   useEffect(() => {
     if (revealTop > 0 && store.getState().ui.tab === 'active') list.current?.scrollToOffset({ offset: 0, animated: true });
   }, [revealTop, store]);
+
   const container = useRef<View>(null);
   const keyboardHeight = useKeyboardHeight();
 
@@ -128,8 +130,11 @@ export function TaskList({ bottomInset }: Props) {
   const onScrollBeginDrag = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     dragStartY.current = e.nativeEvent.contentOffset.y;
   };
+  // The chips above an edited title follow it when the list scrolls (EditingChips.tsx).
+  const chipsMeasure = useRef<(() => void) | null>(null);
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     place.onScroll(e.nativeEvent.contentOffset.y);
+    if (editingId) chipsMeasure.current?.();
     const start = dragStartY.current;
     if (start !== null && Math.abs(e.nativeEvent.contentOffset.y - start) > DISMISS_DRAG_DISTANCE) {
       dragStartY.current = null;
@@ -173,6 +178,8 @@ export function TaskList({ bottomInset }: Props) {
             />
           </Animated.View>
           <DragOverlay view={drag.view} api={drag.api} />
+          {/* The chips of the title being edited, floating just above the typed line. */}
+          <EditingChips container={container} measureRef={chipsMeasure} />
         </DragProvider>
       </KeepInViewProvider>
     </View>

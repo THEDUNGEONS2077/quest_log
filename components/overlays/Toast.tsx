@@ -16,7 +16,21 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useActions, useAppStore } from '@/store/react';
-import { colors, distance, duration, easing, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
+import {
+  colors,
+  distance,
+  duration,
+  easing,
+  easingExit,
+  glowTextSoft,
+  maxFontSizeMultiplier,
+  platformText,
+  shape,
+  size,
+  space,
+  timing,
+  type,
+} from '@/theme';
 
 export function Toast({ bottom }: { bottom: number }) {
   const toast = useAppStore((s) => s.toast);
@@ -36,10 +50,10 @@ export function Toast({ bottom }: { bottom: number }) {
     return () => clearTimeout(t);
   }, [toast, shown, actions]);
 
-  // Leave the way it came, then unmount.
+  // Leave the way it came (on the exit curve), then unmount.
   useEffect(() => {
     if (!leaving) return;
-    shown.set(withTiming(0, { duration: duration.base, easing }));
+    shown.set(withTiming(0, { duration: duration.base, easing: easingExit }));
     const t = setTimeout(() => setDrawn(null), duration.base);
     return () => clearTimeout(t);
   }, [leaving, shown]);
@@ -96,5 +110,5 @@ const styles = StyleSheet.create({
   },
   message: { flex: 1, color: colors.textBright, ...platformText },
   undo: { minHeight: size.hitTarget, minWidth: size.hitTarget, paddingHorizontal: space.lg, justifyContent: 'center' },
-  undoText: { color: colors.accent, ...platformText },
+  undoText: { color: colors.accent, ...glowTextSoft, ...platformText },
 });

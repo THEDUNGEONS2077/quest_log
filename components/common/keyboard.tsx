@@ -13,16 +13,21 @@
  *   1. useAfterKeyboardCloses: sheets open only after the keyboard closed;
  *   2. closeKeyboardThen: a sheet with its own text field closes only after
  *      its keyboard closed;
- *   3. KeyboardStickyView checks itself against the system and slides back
- *      down whenever the two disagree (any cause, including ones not known).
+ *   3. KeyboardStickyView checks itself (focus, and a freshly re-read
+ *      system keyboard state) and slides back down whenever it's wrong,
+ *      whatever the cause, including ones not known.
+ * Every keyboard report and correction goes to a small in-memory log that
+ * the developer screen shows (keyboardLog.ts).
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Keyboard, type ViewProps } from 'react-native';
+import { type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { AppState, Keyboard, StyleSheet, type TextInput, View, type ViewProps } from 'react-native';
 import { KeyboardController, KeyboardEvents, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import Animated, { interpolate, useAnimatedReaction, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { duration, easing } from '@/theme';
+
+import { logKeyboard } from './keyboardLog';
 
 export { KeyboardProvider } from 'react-native-keyboard-controller';
 
@@ -55,6 +60,7 @@ export function useAfterKeyboardCloses(visible: boolean): boolean {
       done = true;
       setClear(true);
     };
+    logKeyboard('sheet: closing the keyboard first');
     void KeyboardController.dismiss().then(finish);
     // Never wait forever: if the "closed" event doesn't come, open anyway.
     const timer = setTimeout(finish, KEYBOARD_CLOSE_TIMEOUT_MS);
@@ -87,18 +93,52 @@ export function closeKeyboardThen(then: () => void): void {
     done = true;
     then();
   };
+  logKeyboard('closing the keyboard before closing a sheet');
   void KeyboardController.dismiss().then(finish);
   setTimeout(finish, KEYBOARD_CLOSE_TIMEOUT_MS);
 }
 
-/** How long the keyboard position must be still before it's checked against the system. */
+/** How long the keyboard position must be still before it's checked. */
 const SETTLE_MS = 500;
+/** While the bar is up, it's checked this often anyway (a missed trigger can't leave it up). */
+const CHECK_EVERY_MS = 1500;
+/** After forcing a re-layout, how long React Native gets to re-read the keyboard state. */
+const RELAYOUT_WAIT_MS = 80;
 /** Lifted at least this much (0–1) counts as "the bar is up". */
 const LIFTED = 0.05;
+
+let logStarted = false;
+/** Records every keyboard report in the developer log (keyboardLog.ts); once per app run. */
+function startKeyboardLog(): void {
+  if (logStarted) return;
+  logStarted = true;
+  for (const name of ['keyboardWillShow', 'keyboardDidShow', 'keyboardWillHide', 'keyboardDidHide'] as const) {
+    KeyboardEvents.addListener(name, (e) => logKeyboard(`library ${name} ${Math.round(e.height)}`));
+  }
+  Keyboard.addListener('keyboardDidShow', (e) => logKeyboard(`system keyboardDidShow ${Math.round(e.endCoordinates.height)}`));
+  Keyboard.addListener('keyboardDidHide', () => logKeyboard('system keyboardDidHide'));
+  AppState.addEventListener('change', (state) => logKeyboard(`app ${state}`));
+}
+
+/**
+ * Calls `then` when either keyboard tracker reports the keyboard closed (the
+ * library's or React Native's: each can miss what the other sees). Returns
+ * the unsubscribe function.
+ */
+export function onKeyboardHidden(then: () => void): () => void {
+  const subs = [KeyboardEvents.addListener('keyboardDidHide', then), Keyboard.addListener('keyboardDidHide', then)];
+  return () => subs.forEach((sub) => sub.remove());
+}
 
 type StickyProps = ViewProps & {
   /** translateY added when the keyboard is closed / open (the library's offsets). */
   offset?: { closed?: number; opened?: number };
+  /**
+   * Whether this content belongs on the keyboard right now: the quick-add bar
+   * only while its field has focus (default: always, e.g. the editing
+   * toolbar, which only exists while a task is being edited).
+   */
+  riding?: boolean;
 };
 
 /**
@@ -106,41 +146,73 @@ type StickyProps = ViewProps & {
  * the editing toolbar). It follows the library's frame-by-frame keyboard
  * position, and corrects itself when that position is wrong.
  *
- * Why: the library tracks the keyboard by its animations, and has no way
- * back if it misses one. It then reports a keyboard that isn't there and
- * the bar hangs mid-screen until a real keyboard opens (bugs 2026-10-09 and
- * 2026-10-10). Known causes: the keyboard closing while a Modal shows, a
- * Modal closing with its own keyboard up, the app being left with the
- * keyboard open (it closes in the background, where no animation runs), and
- * a keyboard animation that never finishes.
+ * Why: the library tracks the keyboard by its animations and can't recover
+ * when it misses one: it reports a keyboard that isn't there, and the bar
+ * hangs mid-screen (bugs 2026-10-09, -10, -11). React Native's own keyboard
+ * state is no help on its own: it's only re-read when the screen lays
+ * itself out again, and the keyboard closing changes no layout here (the
+ * bar moves by transform), so it can be stale too.
  *
- * So after the position has been still for SETTLE_MS, whenever the app
- * comes back to the foreground, and whenever React Native reports the
- * keyboard closed, the bar checks the position against React Native's own
- * keyboard state, which reads the window directly (the editing toolbar
- * already relies on it). Lifted with no keyboard there, the bar slides back
- * down (`trust` → 0) and stays down until a real keyboard opens.
+ * So the bar checks itself, and never relies on one tracker:
+ *   - it may only be up while `riding` (the quick-add field has focus): up
+ *     without it is wrong whatever the trackers say;
+ *   - before each check it forces a tiny invisible re-layout (`relayout`),
+ *     which makes React Native re-read the real keyboard state, and then
+ *     asks it;
+ *   - checks run when the position has been still for SETTLE_MS, when
+ *     `riding` turns off, when the app returns to the foreground, when
+ *     either tracker reports the keyboard closed, and every CHECK_EVERY_MS
+ *     while the bar is up.
+ * Wrong, it slides back down (`trust` → 0) until a real keyboard opens.
+ * Every report and correction goes to the developer log (keyboardLog.ts).
  */
-export function KeyboardStickyView({ offset, style, children, ...rest }: StickyProps) {
+export function KeyboardStickyView({ offset, riding = true, style, children, ...rest }: StickyProps) {
   const closed = offset?.closed ?? 0;
   const opened = offset?.opened ?? 0;
   const { height, progress } = useReanimatedKeyboardAnimation();
-  // 1 = follow the library; 0 = stay at the bottom (the library is wrong).
-  const trust = useSharedValue(1);
+  // 1 = follow the library; 0 = stay at the bottom (the library is wrong). A bar that
+  // mounts while not riding (quick-add coming back after editing) starts at the bottom:
+  // if the library is stale then, it must not start lifted. A real keyboard event
+  // (below) makes it follow.
+  const trust = useSharedValue(riding ? 1 : 0);
+  // Toggled to force a re-layout, so React Native re-reads the keyboard state.
+  const [relayout, setRelayout] = useState(false);
+  // `riding` as of the last render, for checks that run later (timers, events).
+  const ridingNow = useRef(riding);
+  useLayoutEffect(() => {
+    ridingNow.current = riding;
+  }, [riding]);
 
-  const check = useCallback(() => {
-    const lifted = progress.get() > LIFTED;
-    if (!lifted)
-      trust.set(1); // in agreement again (and harmless at the bottom)
-    else if (!Keyboard.isVisible()) trust.set(withTiming(0, { duration: duration.base, easing }));
+  useEffect(startKeyboardLog, []);
+
+  /** Decides, from the trackers as they are now. */
+  const decide = useCallback(() => {
+    const lift = progress.get();
+    if (lift <= LIFTED) {
+      if (trust.get() < 1) trust.set(1); // in agreement again (and harmless at the bottom)
+      return;
+    }
+    const reason = !ridingNow.current ? 'not typing' : !Keyboard.isVisible() ? 'no keyboard' : null;
+    if (reason && trust.get() > 0) {
+      logKeyboard(`bar down: up ${lift.toFixed(2)} with ${reason}`);
+      trust.set(withTiming(0, { duration: duration.base, easing }));
+    }
   }, [progress, trust]);
 
-  // Debounced: every movement restarts the wait, so the check runs once things settle.
+  /** A check: force a re-layout first, then decide once React Native has looked. */
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const checkSoon = useCallback(() => {
+  const verify = useCallback(() => {
     clearTimeout(timer.current);
-    timer.current = setTimeout(check, SETTLE_MS);
-  }, [check]);
+    setRelayout((r) => !r);
+    timer.current = setTimeout(decide, RELAYOUT_WAIT_MS);
+  }, [decide]);
+
+  // Debounced: every movement restarts the wait, so the check runs once things settle.
+  const settle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const checkSoon = useCallback(() => {
+    clearTimeout(settle.current);
+    settle.current = setTimeout(verify, SETTLE_MS);
+  }, [verify]);
 
   useAnimatedReaction(
     () => progress.get(),
@@ -149,23 +221,38 @@ export function KeyboardStickyView({ offset, style, children, ...rest }: StickyP
     },
   );
 
+  // Typing ended: the bar must come down (normally with the keyboard; a check makes sure).
+  // Typing started with a keyboard already up: follow it now (no "will show" will come).
   useEffect(() => {
-    const believe = () => trust.set(1);
+    if (!riding) checkSoon();
+    else if (Keyboard.isVisible()) trust.set(1);
+  }, [riding, checkSoon, trust]);
+
+  useEffect(() => {
+    const believe = (why: string) => {
+      if (trust.get() < 1) logKeyboard(`bar follows: ${why}`);
+      trust.set(1);
+    };
     const subs = [
       // A real keyboard opening: follow it again (and check, in case it's a phantom).
       KeyboardEvents.addListener('keyboardWillShow', () => {
-        believe();
+        believe('library keyboardWillShow');
         checkSoon();
       }),
-      Keyboard.addListener('keyboardDidShow', believe),
-      Keyboard.addListener('keyboardDidHide', checkSoon),
+      Keyboard.addListener('keyboardDidShow', () => believe('system keyboardDidShow')),
       AppState.addEventListener('change', (state) => state === 'active' && checkSoon()),
     ];
+    const unhide = onKeyboardHidden(checkSoon);
+    // The safety net: while the bar is up, check now and then whatever else happened.
+    const every = setInterval(() => progress.get() > LIFTED && verify(), CHECK_EVERY_MS);
     return () => {
+      clearTimeout(settle.current);
       clearTimeout(timer.current);
+      clearInterval(every);
+      unhide();
       subs.forEach((sub) => sub.remove());
     };
-  }, [trust, checkSoon]);
+  }, [trust, progress, checkSoon, verify]);
 
   const stick = useAnimatedStyle(() => {
     const t = trust.get();
@@ -176,6 +263,44 @@ export function KeyboardStickyView({ offset, style, children, ...rest }: StickyP
   return (
     <Animated.View style={[style, stick]} {...rest}>
       {children}
+      {/* Invisible: its size flips to force a re-layout (see `verify`). */}
+      <View pointerEvents="none" style={[styles.relayout, relayout && styles.relayoutOn]} />
     </Animated.View>
   );
+}
+
+const styles = StyleSheet.create({
+  relayout: { position: 'absolute', left: 0, top: 0, width: 0, height: 0 },
+  relayoutOn: { height: 1 },
+});
+
+/** When the keyboard should have opened, the first check (then a second, later one). */
+const KEYBOARD_CHECKS_MS = [250, 700] as const;
+
+/**
+ * Makes sure the keyboard opened for `input`, a field that just took focus
+ * by itself (an editor opening, quick-add asked to focus). Returns a cancel
+ * function, for an effect's cleanup.
+ *
+ * Why (bug 2026-10-11, "when adding a subtask, the keyboard is not
+ * opening"): Android only opens the keyboard for a field that is on screen,
+ * in a window that has focus. A field focused the moment it mounts can be
+ * neither yet (a brand-new list row; a sheet still closing, e.g. the hold
+ * menu's "Add subtask"), and then it gets focus without a keyboard. Fields
+ * now focus with `autoFocus`, which Android applies once the field is on
+ * screen; this is the follow-up: if the field has focus but no keyboard
+ * came, it asks again. (A plain focus() is ignored for a field React Native
+ * already counts as focused, so it lets go first.)
+ */
+export function ensureKeyboard(input: RefObject<TextInput | null>): () => void {
+  const timers = KEYBOARD_CHECKS_MS.map((ms) =>
+    setTimeout(() => {
+      const field = input.current;
+      if (!field?.isFocused() || Keyboard.isVisible()) return;
+      logKeyboard(`no keyboard ${ms} ms after focus: asking again`);
+      field.blur();
+      field.focus();
+    }, ms),
+  );
+  return () => timers.forEach(clearTimeout);
 }

@@ -4,6 +4,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
 import { linkSegments } from '@/components/edit/NotesField';
+import { EditingChips } from '@/components/edit/EditingChips';
 import { TaskRow } from '@/components/list/TaskRow';
 import { createAppStore } from '@/store/createStore';
 import { createMemoryKV } from '@/store/kv';
@@ -40,6 +41,8 @@ async function renderRow(fields = {}) {
   await render(
     <StoreProvider value={bundle}>
       <TaskRow row={row!} />
+      {/* The editing chips float above the typed line, outside the row (EditingChips.tsx). */}
+      <EditingChips container={{ current: null }} />
     </StoreProvider>,
   );
   return store;

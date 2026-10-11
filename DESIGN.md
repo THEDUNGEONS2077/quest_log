@@ -30,7 +30,7 @@ The look is a **cyberdeck terminal**: green phosphor on pure black, one monospac
 5. **Controls live at the bottom**, within thumb reach: the quick-add bar, the editing toolbar, sheets and toasts.
 6. **Calm density.** Rows are generous (52 pt minimum), details sit on their own line under the title, and dividers separate top-level items.
 7. **Accessible by construction.** All text meets WCAG AA, every gesture has a screen-reader action, text scales with the system, and Reduce Motion is honoured.
-8. **One effect only:** a soft green glow for focus. There are no other shadows, gradients or blurs.
+8. **One effect only:** a soft green glow, for what's focused, selected or lit. There are no other shadows, gradients or blurs.
 
 ---
 
@@ -67,7 +67,11 @@ Every text token passes AA (4.5:1) on every background. `textDim` was brightened
 - **Overlays dim the screen** with black at 60% (`rgba(0,0,0,0.6)`).
 - **Focus glow:** `accent` at 35% opacity, 6 px blur, no offset.
   - **Inset** (`inset 0 0 6px rgba(57,255,20,0.35)`) for things inside a list, where neighbours could cover an outer shadow.
-  - **Outset** for floating things, such as a lifted drag row.
+  - **Outset** for floating things, such as a lifted drag row, the XP fill and the selected switch bar.
+  - **Faint** (22%, 8 px) for frames that stay lit: the selected quest tab, the quick-add field while typing.
+  - **Soft text glow** (35%, 6 px) on accent text in the chrome: the title, the prompt and toolbar glyphs, menu icons, UNDO, the selected tab's count.
+  - **Bright** (60%) only for thin marks and small floating text: the scan line's edge, `+N XP`.
+  - **Where it never goes:** inside list rows (apart from the row being edited or dragged, and the completion burst). Rows stay calm; the glow marks the chrome that's lit or selected (2026-10-11: "accentuate, subtly").
 
 ---
 
@@ -187,7 +191,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **Quest tabs:** four equal segments, 52 pt tall, hairline border, radius 2. The label (`tab` role) sits over the count of open quests (`meta`).
   - **Selected:** `accent` border on `surface`, label in `textBright`, count in `accent`.
   - **Unselected:** both label and count in `textDim`.
-- **View switch:** two equal halves, 25 pt drawn (44 to tap), with no frame, just a 2 pt bottom bar (`line`, or `accent` when selected). Label `LABEL · n` at 12 / 16 (10% under `meta`). It reads as secondary to the tabs above.
+- **View switch:** two equal halves, 22.5 pt drawn (44 to tap), with no frame, just a 2 pt bar along the bottom: `line`, or `accent` with the outset glow when selected. Label `LABEL · n` at 10.8 / 14.4 (`meta` made 10% smaller twice). It reads as secondary to the tabs above. The selected quest tab has the faint glow on its frame, and its count glows softly.
 - **The panel never changes height** between tabs: every tab has the switch.
 - **New item:** when the COMPLETED count goes up, its number pulses to `textBright` (120 ms in, 320 ms out), so you see where the item went.
 - **Tapping the selected tab again** goes to the top of that view: out of a zoomed-in group first, otherwise the list scrolls up.
@@ -247,6 +251,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **Field:** `surface` with a hairline `line` border, which turns `accent` when focused. The prompt `>` is in `accent`.
 - **Idle state:** `new quest` plus a **blinking █ cursor** (a placeholder can't blink, so it's an overlay).
 - **Enter adds the item and closes the keyboard.** Live chips above the field preview parsed shorthand.
+- **Shorthand chips** (everywhere): 24 pt tall (44 to tap), `surfaceRaised` with a hairline `line` frame and the outset glow, accent text at 12 / 16, a dim ✕ on clearable ones. They always sit **just above the text being typed**: above the quick-add field, and floating 4 pt above the line of a title being edited, over the list rather than inside the row, so nothing moves while typing (below the line only when there's no room above).
 
 ### Editing toolbar (bottom, while editing)
 ```
@@ -326,7 +331,8 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 | `fast` | 120 ms | Small state changes: caret rotation, focus glow, lift |
 | `base` | 200 ms | Default: strikethrough, toast, sheets |
 | `slow` | 320 ms | Larger transitions, pulse decay |
-| easing | `Easing.out(Easing.cubic)` | The only curve |
+| easing | `Easing.out(Easing.cubic)` | Everything that arrives, changes or settles |
+| easingExit | `Easing.in(Easing.cubic)` | Things leaving (a completed quest's slide, the toast going): slow to start, then away |
 | cursor blink | 530 ms on / 530 ms off | All `█` cursors share one animated value (they blink in step, at the cost of one animation) |
 | float | in `fast`, hold 450 ms, out `slow`, rising throughout | Every floating `+N XP` (the row and the XP bar move in step) |
 | `distance.nudge` | 16 pt | Small arrivals: the toast, a view sliding in, the XP bar's `+N` |
@@ -341,7 +347,8 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 | Moment | Spec |
 |---|---|
 | Complete an item | All at once, on the UI thread: the checkbox swells to `scale.pop` (`fast`) and settles (`base`) while flashing `accent` back to `textDim` (`slow`, ending with the swell); a scan line sweeps the row behind its content (an `accent` wash at 14% led by a bright 2 pt edge with the glow, `slow`, then fades, `slow`); `+N XP` in bold `accent` with the glow floats up `distance.float` (the float rhythm), in step with the XP bar's `+N`; the strikethrough draws across each line (`base`) as the text fades to `textDim` |
-| A top-level item completes | It stays **in place** (the order is held) while the above plays and holds (600 ms), then slides 48 pt right while fading (200 ms) with its children, and moves to COMPLETED. The tab count pulses |
+| A top-level item completes | It stays **in place** (the order is held) while the above plays and holds (600 ms), then slides 48 pt right while fading (`base`, `easingExit`) with its children. 120 ms in, its space closes over `slow` and the items below **glide up**, so there's no gap to jump. Then it moves to COMPLETED and the tab count pulses |
+| An item leaves (swiped away, restored, deleted) | It stays slid out (or fades, `fast`), and its space closes over `slow` while the items below glide up; then the change is made |
 | Change view (tab, zoom, ACTIVE ↔ COMPLETED) | The new view slides in `distance.nudge` from the side it's on (tabs left to right; deeper levels on the right) while fading in from 30%, `base`. A quest tab opens at the top; zoom levels keep their scroll position |
 | Repeating item | Strike (200), hold (300), un-strike with the new date |
 | Collapse / expand | ▸ rotates 90° over 120 ms. It's instant for groups of more than 50 children, and when a recycled list cell starts showing a different item |
@@ -378,6 +385,7 @@ These are the rules that make the app feel good. Most were refined through devic
    Every one also has a visible button or menu entry **and** a screen-reader action.
 7. **The back button steps out of the innermost thing first:** typing (the field lets go), editing, then selection, search, zoom (one level at a time), and only then leaves the app. It never closes the app from the middle of something.
    - **A tab opens at the top; depth keeps its place:** switching quest tab always shows the list from the top, while zooming out of a group returns to where you were.
+   - **Nothing moves away while you work in a view:** editing, ticking things off. The order holds and re-sorts when you change view. New items still appear at the top.
    - **Re-tap a tab for its top; tap the title for home.**
    - **A view never shows something that has left it:** zoomed into a group that gets completed or deleted, you're taken out to the nearest level still there (after the completion has played).
    - **Sheets wait for the keyboard to close** before they open: never show a sheet over a closing keyboard (on Android it can leave keyboard-tracking views stranded mid-screen).
@@ -483,13 +491,19 @@ export const size = {
 export const shape = { radius: 2, hairline: 1, strike: 1.5, checkboxTracking: -4, dropIndicator: 2 } as const;
 
 export const duration = { fast: 120, base: 200, slow: 320 } as const;
-export const timing = { cursorBlink: 530, completeHold: 500, repeatHold: 300, bootFade: 160, toastHold: 5000, highlight: 800, longPress: 300, hoverExpand: 600 } as const;
-// easing: Easing.out(Easing.cubic)
+export const timing = { cursorBlink: 530, completeHold: 600, repeatHold: 300, bootFade: 160, toastHold: 5000, highlight: 800, longPress: 300, hoverExpand: 600, floatHold: 450 } as const;
+export const distance = { nudge: 16, float: 24, exit: 48, sheet: 72 } as const;
+export const scale = { lift: 1.02, pop: 1.3 } as const;
+// easing: Easing.out(Easing.cubic)   easingExit: Easing.in(Easing.cubic)
 
 export const glowShadow = {
   inset: 'inset 0 0 6px 0 rgba(57, 255, 20, 0.35)',
   outset: '0 0 6px 0 rgba(57, 255, 20, 0.35)',
+  faint: '0 0 8px 0 rgba(57, 255, 20, 0.22)',
+  bright: '0 0 6px 0 rgba(57, 255, 20, 0.6)',
 } as const;
+export const glowTextSoft = { textShadowColor: 'rgba(57, 255, 20, 0.35)', textShadowRadius: 6 } as const;
+export const glowText = { textShadowColor: 'rgba(57, 255, 20, 0.6)', textShadowRadius: 6 } as const;
 export const backdrop = 'rgba(0,0,0,0.6)';
 ```
 
@@ -502,6 +516,8 @@ export const backdrop = 'rgba(0,0,0,0.6)';
   --backdrop: rgba(0, 0, 0, 0.6);
   --glow-inset: inset 0 0 6px 0 rgba(57, 255, 20, 0.35);
   --glow: 0 0 6px 0 rgba(57, 255, 20, 0.35);
+  --glow-faint: 0 0 8px 0 rgba(57, 255, 20, 0.22);
+  --glow-text: 0 0 6px rgba(57, 255, 20, 0.35);
 
   /* type */
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;

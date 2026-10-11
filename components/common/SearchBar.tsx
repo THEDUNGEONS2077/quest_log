@@ -15,7 +15,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import type { Filter } from '@/lib/search';
 import { useActions, useAppStore } from '@/store/react';
 import type { Tab } from '@/store/uiState';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** Debounce between typing and filtering (PLAN §9.11). */
 const DEBOUNCE_MS = 120;
@@ -137,6 +137,6 @@ const styles = StyleSheet.create({
     borderRadius: shape.radius,
   },
   chipOn: { borderColor: colors.accent, backgroundColor: colors.surface },
-  accent: { color: colors.accent, ...platformText },
+  accent: { color: colors.accent, ...glowTextSoft, ...platformText },
   text: { color: colors.text, ...platformText },
 });

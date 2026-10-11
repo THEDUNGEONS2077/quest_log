@@ -14,6 +14,7 @@
 import { useEffect, useRef } from 'react';
 import { Linking, StyleSheet, Text, TextInput } from 'react-native';
 
+import { ensureKeyboard } from '@/components/common/keyboard';
 import { useActions } from '@/store/react';
 import { colors, maxFontSizeMultiplier, platformText, space, type } from '@/theme';
 
@@ -32,10 +33,12 @@ export function NotesEditor({ id, notes }: { id: string; notes: string }) {
   // The field owns its text while typing; outside changes remount it (useOwnedText.ts).
   const { epoch, initial, typed } = useOwnedText(notes);
 
-  // Focus on mount (and after an outside change), caret at the end (continue writing).
+  // Focus on mount (and after an outside change), caret at the end (continue writing);
+  // the keyboard opens with it (autoFocus below, then ensureKeyboard).
   useEffect(() => {
     input.current?.focus();
     input.current?.setSelection?.(notes.length, notes.length);
+    return ensureKeyboard(input);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [epoch]);
 
@@ -45,6 +48,8 @@ export function NotesEditor({ id, notes }: { id: string; notes: string }) {
       key={epoch}
       ref={input}
       defaultValue={initial}
+      // Focused by Android itself once the field is on screen, keyboard included.
+      autoFocus
       onChangeText={(text) => {
         const next = text.slice(0, NOTES_MAX);
         typed(next);

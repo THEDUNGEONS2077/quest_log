@@ -66,5 +66,13 @@ export const scale = {
   pop: 1.3,
 } as const;
 
-/** The single easing curve used everywhere. */
+/** The easing curve for everything that arrives, changes or settles. */
 export const easing = Easing.out(Easing.cubic);
+
+/**
+ * The curve for things leaving (a completed quest sliding out, the toast
+ * going): slow to start, then away, the mirror of `easing`. Leaving with
+ * the arriving curve made exits look like they stopped short (animation
+ * pass 2026-10-11).
+ */
+export const easingExit = Easing.in(Easing.cubic);

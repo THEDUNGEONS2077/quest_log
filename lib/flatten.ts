@@ -124,11 +124,19 @@ export function questOrder(state: TasksState, tab: CategoryTab = 'all', order?: 
     const t = findTask(state, id);
     if (t && onTab(t, tab)) quests.push(t);
   }
+  const byRule = (a: Task, b: Task) => b.priority - a.priority || b.updatedAt - a.updatedAt;
   if (order) {
+    // Held: the recorded order. Quests it doesn't know (added since) come first, newest
+    // first among themselves, as they would unheld.
     const at = new Map(order.map((id, i) => [id, i]));
-    quests.sort((a, b) => (at.get(a.id) ?? -1) - (at.get(b.id) ?? -1));
+    quests.sort((a, b) => {
+      const ia = at.get(a.id);
+      const ib = at.get(b.id);
+      if (ia === undefined || ib === undefined) return ia === ib ? byRule(a, b) : ia === undefined ? -1 : 1;
+      return ia - ib;
+    });
   } else {
-    quests.sort((a, b) => b.priority - a.priority || b.updatedAt - a.updatedAt);
+    quests.sort(byRule);
   }
   return quests.map((t) => t.id);
 }

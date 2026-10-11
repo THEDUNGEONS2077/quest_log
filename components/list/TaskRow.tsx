@@ -15,8 +15,9 @@
  * cascade and auto-complete rules in lib/complete.ts); swipe-left deletes.
  * Checking plays the completion burst (CompleteBurst.tsx: the box pops, a
  * scan line crosses the row, "+N XP" rises). A checked top-level task then
- * holds 600 ms, slides out to the right as it fades, with its subtasks, and
- * moves to COMPLETED (PLAN §6.6). Every gesture has a screen-reader
+ * holds 600 ms, slides out to the right as it fades, with its subtasks; its
+ * space closes, the rows below gliding up (rowCollapse.ts); and it moves to
+ * COMPLETED (PLAN §6.6). Every gesture has a screen-reader
  * action as an alternative (PLAN §13).
  */
 import { memo, useEffect } from 'react';
@@ -26,7 +27,6 @@ import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } fro
 import { useMinute, useMinuteIf } from '@/components/common/useMinute';
 import { InlineEditor } from '@/components/edit/InlineEditor';
 import { NotesEditor, NotesView } from '@/components/edit/NotesField';
-import { TaskChips } from '@/components/edit/ParsedChips';
 import { ContextMenu } from '@/components/overlays/ContextMenu';
 import { formatDue, isOverdue } from '@/lib/dates';
 import type { Row } from '@/lib/flatten';
@@ -41,7 +41,20 @@ import { remindersAvailable } from '@/services/reminderSupport';
 import { repeatMultiplier } from '@/lib/xp';
 import { ADVANCE_MS, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, distance, duration, easing, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, timing, type } from '@/theme';
+import {
+  colors,
+  distance,
+  duration,
+  easingExit,
+  glyphs,
+  maxFontSizeMultiplier,
+  platformText,
+  shape,
+  size,
+  space,
+  timing,
+  type,
+} from '@/theme';
 
 import { Caret } from './Caret';
 import { CheckGlyph, CompleteScan, useJustChecked, XpFloat } from './CompleteBurst';
@@ -52,6 +65,7 @@ import { StrikeText } from './StrikeText';
 import { titleStyles, titleVariant } from './titleStyle';
 import { useRowDragGesture } from './drag';
 import { HighlightFlash } from './HighlightFlash';
+import { useRowLeave } from './rowCollapse';
 import { SwipeableRow } from './SwipeableRow';
 
 /** The haptic for each checkbox outcome (PLAN §9.18). */
@@ -100,20 +114,27 @@ export const TaskRow = memo(
     }, [advancing, actions, row.id]);
 
     // A just-completed top-level task: hold while the burst plays, then slide out to the
-    // right while fading, with its subtask rows. The store lets it leave ACTIVE after
-    // LINGER_MS (toggleDone).
+    // right while fading (the exit curve: it speeds up as it goes) and its space closes,
+    // the rows below gliding up (rowCollapse.ts); its subtask rows go with it. The store
+    // takes it off ACTIVE after LINGER_MS (toggleDone), when the space is closed.
     const opacity = useSharedValue(1);
     const slide = useSharedValue(0);
+    const exit = useRowLeave(row.id);
+    const { leave, stay } = exit;
     useEffect(() => {
       if (!lingering) {
         opacity.set(1);
         slide.set(0);
+        stay();
         return;
       }
-      const out = { duration: duration.base, easing };
+      const out = { duration: duration.base, easing: easingExit };
       opacity.set(withDelay(timing.completeHold, withTiming(0, out)));
       slide.set(withDelay(timing.completeHold, withTiming(distance.exit, out)));
-    }, [lingering, opacity, slide]);
+      // The space closes once the slide is well under way, so the rows gliding up
+      // never cover the quest while it can still be seen.
+      leave({ delay: timing.completeHold + duration.fast, fade: false });
+    }, [lingering, opacity, slide, leave, stay]);
     const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: slide.get() }] }));
 
     if (!task) return null; // removed between flatten and render
@@ -121,9 +142,10 @@ export const TaskRow = memo(
     const toggle = () => (selecting ? actions.toggleSelected(task.id) : hapticFor(actions.toggleDone(task.id)));
     /** A tap on the title: edit it, or (while selecting) select it. */
     const tapTitle = () => (selecting ? actions.toggleSelected(task.id) : actions.setEditing(task.id));
+    // Deleting: the row's space closes (the rows below glide up), then it goes to Trash.
     const remove = () => {
       haptics.delete();
-      actions.deleteTask(task.id);
+      leave({ then: () => actions.deleteTask(task.id) });
     };
     // Screen-reader actions: everything a gesture or button can do (PLAN §13).
     const onAccessibilityAction = (e: AccessibilityActionEvent) => {
@@ -156,133 +178,139 @@ export const TaskRow = memo(
     const titleStyle = titleStyles[variant];
 
     return (
-      <Animated.View style={[fadeStyle, (dimmed || context) && styles.dimmed]}>
-        <SwipeableRow
-          // Long-press (and hold still) to drag or open the menu: PLAN §9.10.
-          drag={dragGesture}
-          enabled={swipeOn && !editing && !selecting}
-          right={{ label: `${glyphs.checkboxOn.glyph} ${task.done ? 'UNDO' : 'DONE'}`, onCommit: toggle }}
-          left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
-        >
-          <Pressable
-            style={[
-              styles.row,
-              { paddingLeft: space.lg + visualDepth * size.indent },
-              // The first quest sits right under the fixed header divider: no second line.
-              isQuest && !first && styles.topLevel,
-              editing && styles.editing,
-              selected && styles.selected,
-            ]}
-            accessible={!editing}
-            accessibilityLabel={rowLabel(task, row, now)}
-            // Quests are ordered by recent activity, so Move up / down only apply below them.
-            accessibilityActions={isQuest ? QUEST_ACTIONS : ROW_ACTIONS}
-            onAccessibilityAction={onAccessibilityAction}
+      // Outer: the space the row takes, closing when it leaves (rowCollapse.ts).
+      // Inner: the completed quest's slide and fade.
+      <Animated.View style={exit.style} onLayout={exit.onLayout}>
+        <Animated.View style={[fadeStyle, (dimmed || context) && styles.dimmed]}>
+          <SwipeableRow
+            // Long-press (and hold still) to drag or open the menu: PLAN §9.10.
+            drag={dragGesture}
+            enabled={swipeOn && !editing && !selecting}
+            right={{ label: `${glyphs.checkboxOn.glyph} ${task.done ? 'UNDO' : 'DONE'}`, onCommit: toggle }}
+            left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove, leaves: true }}
+            id={task.id}
           >
-            {/* The soft green glow on the row being edited (PLAN §10.9). */}
-            {editing && <FocusGlow />}
-            {/* Flashes when the task is opened from a notification or link. */}
-            <HighlightFlash rowId={row.id} />
-            {/* The completion scan, behind the content. */}
-            <CompleteScan fire={fire} />
-            <NestingGuides levels={visualDepth} />
-
-            {/* Caret: tap collapses/expands; long-press does it for all siblings. */}
             <Pressable
-              style={styles.caret}
-              hitSlop={HIT_SLOP}
-              disabled={!row.hasChildren}
-              onPress={() => actions.toggleCollapsed(task.id)}
-              onLongPress={() => actions.setSiblingsCollapsed(task.id, !task.collapsed)}
-              accessibilityRole="button"
-              accessibilityLabel={`${task.collapsed ? 'Expand' : 'Collapse'} ${task.title || 'task'}`}
-              accessibilityElementsHidden={!row.hasChildren}
+              style={[
+                styles.row,
+                { paddingLeft: space.lg + visualDepth * size.indent },
+                // The first quest sits right under the fixed header divider: no second line.
+                isQuest && !first && styles.topLevel,
+                editing && styles.editing,
+                selected && styles.selected,
+              ]}
+              accessible={!editing}
+              accessibilityLabel={rowLabel(task, row, now)}
+              // Quests are ordered by recent activity, so Move up / down only apply below them.
+              accessibilityActions={isQuest ? QUEST_ACTIONS : ROW_ACTIONS}
+              onAccessibilityAction={onAccessibilityAction}
             >
-              {row.hasChildren && <Caret id={task.id} open={!task.collapsed} childCount={row.progress.total} style={styles.glyph} />}
-            </Pressable>
+              {/* The soft green glow on the row being edited (PLAN §10.9). */}
+              {editing && <FocusGlow />}
+              {/* Flashes when the task is opened from a notification or link. */}
+              <HighlightFlash rowId={row.id} />
+              {/* The completion scan, behind the content. */}
+              <CompleteScan fire={fire} />
+              <NestingGuides levels={visualDepth} />
 
-            {/* Checkbox: a full 44 pt target. */}
-            <Pressable
-              style={styles.checkbox}
-              hitSlop={HIT_SLOP}
-              onPress={toggle}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: task.done }}
-              accessibilityLabel={`${task.done ? 'Uncheck' : 'Complete'} ${task.title || 'task'}`}
-            >
-              <CheckGlyph
-                fire={fire}
-                done={task.done}
-                glyph={task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
-                style={[type.glyph, styles.checkboxText]}
-              />
-            </Pressable>
+              {/* Caret: tap collapses/expands; long-press does it for all siblings. */}
+              <Pressable
+                style={styles.caret}
+                hitSlop={HIT_SLOP}
+                disabled={!row.hasChildren}
+                onPress={() => actions.toggleCollapsed(task.id)}
+                onLongPress={() => actions.setSiblingsCollapsed(task.id, !task.collapsed)}
+                accessibilityRole="button"
+                accessibilityLabel={`${task.collapsed ? 'Expand' : 'Collapse'} ${task.title || 'task'}`}
+                accessibilityElementsHidden={!row.hasChildren}
+              >
+                {row.hasChildren && <Caret id={task.id} open={!task.collapsed} childCount={row.progress.total} style={styles.glyph} />}
+              </Pressable>
 
-            {/* Title (editor or text), then chips and notes while editing, or notes when expanded.
+              {/* Checkbox: a full 44 pt target. */}
+              <Pressable
+                style={styles.checkbox}
+                hitSlop={HIT_SLOP}
+                onPress={toggle}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: task.done }}
+                accessibilityLabel={`${task.done ? 'Uncheck' : 'Complete'} ${task.title || 'task'}`}
+              >
+                <CheckGlyph
+                  fire={fire}
+                  done={task.done}
+                  glyph={task.done ? glyphs.checkboxOn.glyph : glyphs.checkboxOff.glyph}
+                  style={[type.glyph, styles.checkboxText]}
+                />
+              </Pressable>
+
+              {/* Title (editor or text), then chips and notes while editing, or notes when expanded.
                 The whole column is the tap target, not just the title's letters, so a
                 short title is as easy to tap as a long one. Screen readers use the
                 row's actions instead (accessible={false} keeps one element per row). */}
-            <Pressable style={styles.title} onPress={editing ? undefined : tapTitle} disabled={editing} accessible={false}>
-              {field === 'title' ? (
-                <InlineEditor id={task.id} title={task.title} variant={variant} />
-              ) : (
-                <StrikeText
-                  id={task.id}
-                  text={shownTitle(task)}
-                  struck={task.done || advancing}
-                  color={isQuest ? colors.textBright : colors.text}
-                  style={titleStyle}
-                  onPress={tapTitle}
-                  highlight={query ? matchRange(task.title, query) : null}
-                />
-              )}
-              {/* Details sit on their own line under the title, so the title keeps
-                  the full width (user request 2026-10-08). While editing, the
-                  editing chips take their place. */}
-              {editing ? <TaskChips id={task.id} /> : <RowMeta task={task} row={row} onNotes={() => actions.toggleNotes(task.id)} />}
-              {field === 'notes' ? (
-                <NotesEditor id={task.id} notes={task.notes} />
-              ) : (
-                (notesOpen || editing) && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
-              )}
-            </Pressable>
+              <Pressable style={styles.title} onPress={editing ? undefined : tapTitle} disabled={editing} accessible={false}>
+                {field === 'title' ? (
+                  <InlineEditor id={task.id} title={task.title} variant={variant} />
+                ) : (
+                  <StrikeText
+                    id={task.id}
+                    text={shownTitle(task)}
+                    struck={task.done || advancing}
+                    color={isQuest ? colors.textBright : colors.text}
+                    style={titleStyle}
+                    onPress={tapTitle}
+                    highlight={query ? matchRange(task.title, query) : null}
+                  />
+                )}
+                {/* Details sit on their own line under the title, so the title keeps
+                  the full width (user request 2026-10-08). They stay while editing,
+                  so the row doesn't change size; the editing chips float above the
+                  typed line instead (EditingChips.tsx, user request 2026-10-11). */}
+                <RowMeta task={task} row={row} onNotes={() => actions.toggleNotes(task.id)} />
+                {field === 'notes' ? (
+                  <NotesEditor id={task.id} notes={task.notes} />
+                ) : (
+                  (notesOpen || editing) && <NotesView notes={task.notes} onEdit={() => actions.setEditing(task.id, null, 'notes')} />
+                )}
+              </Pressable>
 
-            {/* Every quest (top-level task) has "+" to add a subtask / objective, from the
+              {/* Every quest (top-level task) has "+" to add a subtask / objective, from the
                 moment it's created, editing or not (user request 2026-10-09: every quest is
                 meant to become a group). It takes the place of "+ NOTE" while editing a quest;
                 notes stay one tap away on the toolbar's NOTE. */}
-            {isQuest && (field === null || field === 'title') && (
-              <Pressable
-                onPress={() => actions.addSubtask(task.id)}
-                hitSlop={HIT_SLOP}
-                style={({ pressed }) => [styles.addSub, pressed && styles.addSubPressed]}
-                accessibilityRole="button"
-                accessibilityLabel={`Add subtask to ${task.title || 'group'}`}
-              >
-                <Text style={[type.glyph, styles.addSubText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                  {glyphs.add.glyph}
-                </Text>
-              </Pressable>
-            )}
-            {/* Subtasks being edited without notes: the quiet "+ NOTE" affordance (PLAN §9.7). */}
-            {!isQuest && field === 'title' && !task.notes ? (
-              <Pressable
-                onPress={() => actions.setEditing(task.id, null, 'notes')}
-                hitSlop={HIT_SLOP}
-                style={styles.addNote}
-                accessibilityRole="button"
-                accessibilityLabel="Add notes"
-              >
-                <Text style={[type.meta, styles.addNoteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                  + NOTE
-                </Text>
-              </Pressable>
-            ) : null}
-            {/* "+N XP" from this check, over everything (left of a quest's "+"). */}
-            <XpFloat fire={fire} xp={gain} inset={isQuest ? QUEST_PLUS_WIDTH : 0} />
-          </Pressable>
-        </SwipeableRow>
-        {menu && <ContextMenu id={task.id} onClose={actions.closeMenu} />}
+              {isQuest && (field === null || field === 'title') && (
+                <Pressable
+                  onPress={() => actions.addSubtask(task.id)}
+                  hitSlop={HIT_SLOP}
+                  style={({ pressed }) => [styles.addSub, pressed && styles.addSubPressed]}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Add subtask to ${task.title || 'group'}`}
+                >
+                  <Text style={[type.glyph, styles.addSubText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                    {glyphs.add.glyph}
+                  </Text>
+                </Pressable>
+              )}
+              {/* Subtasks being edited without notes: the quiet "+ NOTE" affordance (PLAN §9.7). */}
+              {!isQuest && field === 'title' && !task.notes ? (
+                <Pressable
+                  onPress={() => actions.setEditing(task.id, null, 'notes')}
+                  hitSlop={HIT_SLOP}
+                  style={styles.addNote}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add notes"
+                >
+                  <Text style={[type.meta, styles.addNoteText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                    + NOTE
+                  </Text>
+                </Pressable>
+              ) : null}
+              {/* "+N XP" from this check, over everything (left of a quest's "+"). */}
+              <XpFloat fire={fire} xp={gain} inset={isQuest ? QUEST_PLUS_WIDTH : 0} />
+            </Pressable>
+          </SwipeableRow>
+          {menu && <ContextMenu id={task.id} onClose={actions.closeMenu} />}
+        </Animated.View>
       </Animated.View>
     );
   },

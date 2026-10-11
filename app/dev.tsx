@@ -12,13 +12,16 @@
  *     originally specified, so the substitutes can be judged side by side.
  *
  * The STORE panel (components/dev/StorePanel.tsx) loads the 7,500-task
- * seed for performance checks (PLAN §5) and clears data.
+ * seed for performance checks (PLAN §5) and clears data. The KEYBOARD LOG
+ * (components/dev/KeyboardLogPanel.tsx) shows what the keyboard trackers
+ * reported, to diagnose the quick-add bar stuck mid-screen.
  */
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { KeyboardLogPanel } from '@/components/dev/KeyboardLogPanel';
 import { StorePanel } from '@/components/dev/StorePanel';
 
 import {
@@ -101,6 +104,10 @@ export default function DevScreen() {
       {/* Test data: seed and clear (both replace your tasks; undo is not available). */}
       <Section title="STORE" />
       <StorePanel />
+
+      {/* What the keyboard trackers reported, for the stuck quick-add bar (keyboardLog.ts). */}
+      <Section title="KEYBOARD LOG" />
+      <KeyboardLogPanel />
 
       <Section title="COLORS" />
       {tokens.map((t) => (

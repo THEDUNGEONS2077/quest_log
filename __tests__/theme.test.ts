@@ -58,8 +58,9 @@ describe('motion', () => {
   });
 
   it("the store's waits last exactly as long as the animations they wait for", () => {
-    // A completed quest: hold, then slide out (TaskRow); then it leaves ACTIVE.
-    expect(LINGER_MS).toBe(timing.completeHold + duration.base);
+    // A completed quest: hold, slide and fade; its space starts closing `fast` into the
+    // slide and takes `slow` (TaskRow, rowCollapse.ts); then it leaves ACTIVE.
+    expect(LINGER_MS).toBe(timing.completeHold + duration.fast + duration.slow);
     // A repeating task: strike, hold, then un-strike with its next date.
     expect(ADVANCE_MS).toBe(duration.base + timing.repeatHold);
   });

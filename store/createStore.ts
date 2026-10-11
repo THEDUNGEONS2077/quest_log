@@ -90,9 +90,11 @@ export const ADVANCE_MS = 500;
 /**
  * How long a just-checked top-level task stays on ACTIVE: the strike, scan
  * and "+N XP" play (theme timing.completeHold, 600 ms), then it slides out
- * (200 ms). Long enough to read the XP, short enough not to wait on.
+ * and fades (200 ms); 120 ms into that, its space starts closing and the
+ * rows below glide up (320 ms, components/list/rowCollapse.ts). It's taken
+ * off the list once that space is closed, so nothing jumps.
  */
-export const LINGER_MS = 800;
+export const LINGER_MS = 1040;
 
 /** `dueSheetFor` value meaning "the whole multi-select selection" (PLAN §9.14 DUE). */
 export const SELECTION = '*selection*';
@@ -193,13 +195,21 @@ export interface AppStore {
    */
   revealTop: number;
   /**
-   * The quest order locked while a task is being edited (lib/flatten.ts
-   * questOrder), so the list can't re-sort under the editor, and while a
-   * completed quest plays its exit (it would otherwise jump to the top as
-   * "just modified" and leave from there). Released when neither is going
-   * on. Not persisted.
+   * The quest order, held (lib/flatten.ts questOrder) while you work in a
+   * view, so nothing moves away under you: while a task is being edited,
+   * while a completed quest plays its exit, and once something was checked
+   * or unchecked in the view shown (`orderHeldHere`). Released when none of
+   * these holds; the list then sorts by priority and last change again.
+   * Not persisted.
    */
   questOrderLock: ID[] | null;
+  /**
+   * Something was checked or unchecked in the view shown: the quest order
+   * holds until the view changes (tab switch, re-tap, home). Ticking off an
+   * objective counts as a change to its quest, which would otherwise jump
+   * to the top mid-tap (animation pass 2026-10-11). Not persisted.
+   */
+  orderHeldHere: boolean;
   /** How the tasks were loaded at startup (for diagnostics and recovery messages). */
   loadStatus: LoadResult['status'];
 
@@ -524,7 +534,25 @@ export function createAppStore(deps: StoreDeps) {
   /** Undo/redo can remove the task being edited; editing then ends instead of pointing at nothing. */
   const stopEditingIfGone = (next: TasksState): Partial<AppStore> => {
     const id = store.getState().editingId;
-    return id !== null && !findTask(next, id) ? { editingId: null, editingCaret: null, questOrderLock: null } : {};
+    return id !== null && !findTask(next, id) ? { editingId: null, editingCaret: null } : {};
+  };
+
+  /** Whether the quest order must hold now (see AppStore.questOrderLock). */
+  const holdsOrder = (s: Pick<AppStore, 'editingId' | 'lingering' | 'orderHeldHere'>) =>
+    s.editingId !== null || s.lingering.length > 0 || s.orderHeldHere;
+
+  /** Takes or drops the order lock to match holdsOrder. Taking it records the order as it is now. */
+  const syncOrderLock = () => {
+    const s = store.getState();
+    if (holdsOrder(s)) {
+      if (s.questOrderLock === null) store.setState({ questOrderLock: questOrder(s.tasks) });
+    } else if (s.questOrderLock !== null) store.setState({ questOrderLock: null });
+  };
+
+  /** The view changed (tab switch, re-tap, home): the order no longer holds for checks made in the old one. */
+  const freshView = () => {
+    if (store.getState().orderHeldHere) store.setState({ orderHeldHere: false });
+    syncOrderLock();
   };
 
   const store = createStore<AppStore>()(
@@ -558,6 +586,7 @@ export function createAppStore(deps: StoreDeps) {
       quickAddRelease: 0,
       revealTop: 0,
       questOrderLock: null,
+      orderHeldHere: false,
       loadStatus: loaded.status,
 
       dispatch(op, options = {}) {
@@ -578,6 +607,7 @@ export function createAppStore(deps: StoreDeps) {
           history: { past: past.slice(0, -1), future: [...future, { ...entry, redo: result.inverse }] },
           ...stopEditingIfGone(result.state),
         });
+        syncOrderLock();
         return true;
       },
 
@@ -592,6 +622,7 @@ export function createAppStore(deps: StoreDeps) {
           history: { past: [...past, { undo: result.inverse, redo: entry.redo }], future: future.slice(0, -1) },
           ...stopEditingIfGone(result.state),
         });
+        syncOrderLock();
         return true;
       },
 
@@ -720,6 +751,10 @@ export function createAppStore(deps: StoreDeps) {
       toggleDone(id) {
         const tasks = get().tasks;
         const task = getTask(tasks, id);
+        // Ticking things off doesn't move quests around under you: the order holds until
+        // the view changes. Taken before the change lands, so it's the order as you saw it.
+        set({ orderHeldHere: true });
+        syncOrderLock();
         if (task.done) {
           get().dispatch(complete.uncheck(tasks, id, now()));
           set({ lastGain: null });
@@ -732,8 +767,8 @@ export function createAppStore(deps: StoreDeps) {
         // Timed here, not by its row: zoomed into the quest, that row isn't on screen.
         const leaving = r.advanced ? null : r.completedTopLevel;
         if (leaving) {
-          // The order as it was: the quest leaves from where it is (questOrderLock).
-          set({ lingering: [...get().lingering, leaving], questOrderLock: get().questOrderLock ?? questOrder(tasks) });
+          // The order already holds (above): the quest leaves from where it is.
+          set({ lingering: [...get().lingering, leaving] });
           setTimeout(() => get().releaseLingering(leaving), LINGER_MS);
         }
         get().dispatch(r.op);
@@ -766,10 +801,8 @@ export function createAppStore(deps: StoreDeps) {
 
       releaseLingering(id) {
         if (!get().lingering.includes(id)) return;
-        const lingering = get().lingering.filter((x) => x !== id);
-        // The last exit done and nothing being edited: the list may re-sort again.
-        const unlock = lingering.length === 0 && get().editingId === null;
-        set({ lingering, ...(unlock && { questOrderLock: null }) });
+        set({ lingering: get().lingering.filter((x) => x !== id) });
+        syncOrderLock();
       },
 
       restoreTask(id) {
@@ -889,6 +922,7 @@ export function createAppStore(deps: StoreDeps) {
         if (tab === get().ui.tab) return;
         leaveListModes();
         set({ ui: { ...get().ui, tab } });
+        freshView();
       },
 
       toTabTop() {
@@ -896,9 +930,10 @@ export function createAppStore(deps: StoreDeps) {
         if (s.ui.tab === 'active' && s.ui.zoomRootId !== null) {
           leaveListModes();
           s.setZoom(null);
-          return;
+        } else {
+          set({ revealTop: s.revealTop + 1 });
         }
-        set({ revealTop: s.revealTop + 1 });
+        freshView();
       },
 
       goHome() {
@@ -909,6 +944,7 @@ export function createAppStore(deps: StoreDeps) {
         leaveListModes();
         if (get().search.active.open) s.closeSearch('active');
         set({ ui: { ...get().ui, zoomRootId: null }, quickAddParent: null, revealTop: get().revealTop + 1 });
+        freshView();
       },
 
       setCategoryTab(category) {
@@ -916,6 +952,7 @@ export function createAppStore(deps: StoreDeps) {
         // Leave modes tied to quests the new tab may not show.
         leaveListModes();
         set({ ui: { ...get().ui, category, zoomRootId: null }, quickAddParent: null });
+        freshView();
       },
 
       backStep() {
@@ -965,10 +1002,10 @@ export function createAppStore(deps: StoreDeps) {
         // first, exactly as Enter would, so its shorthand is never left as raw text.
         const prev = get().editingId;
         if (prev !== null && prev !== editingId) commitEdit(prev, get().editingStartTitle);
-        // A new editing session starts a new undo step for typing. The quest order locks
-        // when editing starts and unlocks when it ends (not when moving between tasks),
-        // unless a completed quest is still leaving (releaseLingering unlocks it then).
-        const holdOrder = editingId !== null || get().lingering.length > 0;
+        // A new editing session starts a new undo step for typing. The quest order holds
+        // while editing (not released when moving between tasks), and stays held after if
+        // something else still holds it (holdsOrder).
+        const holdOrder = holdsOrder({ ...get(), editingId });
         set({
           questOrderLock: holdOrder ? (get().questOrderLock ?? questOrder(get().tasks)) : null,
           editingId,

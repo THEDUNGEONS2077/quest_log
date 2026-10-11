@@ -17,6 +17,7 @@
 import { useEffect, useRef } from 'react';
 import { type NativeSyntheticEvent, StyleSheet, TextInput, type TextInputKeyPressEventData } from 'react-native';
 
+import { ensureKeyboard } from '@/components/common/keyboard';
 import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { useKeepInView } from '@/components/list/keepInView';
 import { type TitleVariant, titleStyles } from '@/components/list/titleStyle';
@@ -79,6 +80,8 @@ export function InlineEditor({ id, title, variant }: Props) {
 
   // On mount: focus, and put the caret where the action asked (default: end).
   // After an outside change (new epoch): refocus with the caret at the end.
+  // The keyboard opens with it: `autoFocus` (below) focuses once the field is on
+  // screen, and ensureKeyboard asks again if no keyboard came (bug 2026-10-11).
   useEffect(() => {
     const wanted = epoch === 0 ? store.getState().editingCaret : null;
     const at = wanted === null ? title.length : Math.min(wanted, title.length);
@@ -86,6 +89,7 @@ export function InlineEditor({ id, title, variant }: Props) {
     input.current?.focus();
     // setSelection is missing on some TextInput implementations (tests); optional call.
     input.current?.setSelection?.(at, at);
+    return ensureKeyboard(input);
     // Only on mount and on a new epoch: later caret moves come from the user.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [epoch]);
@@ -122,6 +126,9 @@ export function InlineEditor({ id, title, variant }: Props) {
       // The text when this field (re)mounted, never the live title: Android re-sends
       // defaultValue on every render too (useOwnedText.ts).
       defaultValue={initial}
+      // Focused by Android itself once the field is on screen, keyboard included
+      // (a focus() from the effect can come too early for a brand-new row).
+      autoFocus
       onChangeText={onChangeText}
       onSelectionChange={(e) => (caret.current = e.nativeEvent.selection)}
       onKeyPress={onKeyPress}

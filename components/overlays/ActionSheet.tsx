@@ -18,7 +18,7 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SheetModal } from './SheetModal';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 export interface SheetAction {
   glyph: string;
@@ -94,6 +94,6 @@ const styles = StyleSheet.create({
   divider: { height: shape.hairline, backgroundColor: colors.line, marginTop: space.md },
   action: { flexDirection: 'row', alignItems: 'center', minHeight: size.rowMinHeight, paddingHorizontal: space.lg },
   pressed: { backgroundColor: colors.surface },
-  glyph: { color: colors.accent, width: size.indent + space.sm, ...platformText },
+  glyph: { color: colors.accent, width: size.indent + space.sm, ...glowTextSoft, ...platformText },
   label: { color: colors.text, ...platformText },
 });

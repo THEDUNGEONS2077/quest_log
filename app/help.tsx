@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
       },
       {
         key: 'Order',
-        what: 'Priority first (!!! then !! then !), then the newest or most recently changed. Nothing moves while you edit; when you finish, the list follows your quest. Opening or closing a quest is not a change. Objectives keep the order you give them.',
+        what: 'Priority first (!!! then !! then !), then the newest or most recently changed. Nothing moves while you work in a tab (editing, ticking things off); the list sorts itself again when you switch tabs. New quests still appear at the top. Opening or closing a quest is not a change. Objectives keep the order you give them.',
       },
     ],
   },
@@ -222,7 +222,7 @@ const SECTIONS: Section[] = [
   },
   {
     title: 'TYPING SHORTCUTS',
-    intro: 'Type these anywhere you type a task; chips under the text show what they’ll do.',
+    intro: 'Type these anywhere you type a task; small chips just above the text show what they’ll do.',
     lines: [
       { key: '! !! !!!', what: 'Priority low, medium, high.' },
       { key: '@today @tomorrow', what: 'Due that day at 09:00.' },

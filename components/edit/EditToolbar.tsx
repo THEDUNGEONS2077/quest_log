@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { registerFloor } from '@/components/list/keepInView';
 import { useActions, useAppStore, useStoreBundle } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 interface ButtonSpec {
   glyph: string;
@@ -121,6 +121,6 @@ const styles = StyleSheet.create({
   // Equal-width buttons, each at least the 44 pt tap target in both directions.
   button: { flex: 1, minHeight: size.toolbarHeight, alignItems: 'center', justifyContent: 'center', paddingVertical: space.xs },
   pressed: { backgroundColor: colors.surface },
-  glyph: { color: colors.accent, ...platformText },
+  glyph: { color: colors.accent, ...glowTextSoft, ...platformText },
   label: { color: colors.text, ...platformText },
 });

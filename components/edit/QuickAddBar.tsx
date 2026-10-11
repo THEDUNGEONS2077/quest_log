@@ -21,8 +21,9 @@
  *     A typed draft stays in the field.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Keyboard, type LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { KeyboardStickyView } from '@/components/common/keyboard';
+import { type LayoutChangeEvent, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ensureKeyboard, KeyboardStickyView, onKeyboardHidden } from '@/components/common/keyboard';
+import { logKeyboard } from '@/components/common/keyboardLog';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BlockCursor } from '@/components/common/BlockCursor';
@@ -31,7 +32,7 @@ import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { findTask } from '@/lib/taskMap';
 import { shownTitle } from '@/lib/title';
 import { useActions, useAppStore, useStoreBundle } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 interface Props {
   /** Reports the bar's height, so the list can leave room for it. */
@@ -78,9 +79,17 @@ export function QuickAddBar({ onHeight }: Props) {
   useEffect(() => {
     if (focusRequest === handledFocus) return;
     handledFocus = focusRequest;
-    // After this frame's layout, so the keyboard opens under a placed bar.
-    const t = setTimeout(() => input.current?.focus(), 0);
-    return () => clearTimeout(t);
+    // After this frame's layout, so the keyboard opens under a placed bar; then make
+    // sure it did open (ensureKeyboard).
+    let cancel = () => {};
+    const t = setTimeout(() => {
+      input.current?.focus();
+      cancel = ensureKeyboard(input);
+    }, 0);
+    return () => {
+      clearTimeout(t);
+      cancel();
+    };
   }, [focusRequest]);
 
   // Let go when asked (Android back, store backStep) or when the keyboard closes.
@@ -90,12 +99,14 @@ export function QuickAddBar({ onHeight }: Props) {
     handledRelease = releaseRequest;
     input.current?.blur();
   }, [releaseRequest]);
-  useEffect(() => {
-    const sub = Keyboard.addListener('keyboardDidHide', () => {
-      if (input.current?.isFocused()) input.current.blur();
-    });
-    return () => sub.remove();
-  }, []);
+  // Either keyboard tracker seeing it close is enough (each can miss what the other sees).
+  useEffect(
+    () =>
+      onKeyboardHidden(() => {
+        if (input.current?.isFocused()) input.current.blur();
+      }),
+    [],
+  );
   // Unmounted while focused (editing starts, the tab changes): it no longer has focus.
   // (The store handle is stable; `actions` changes with every state change.)
   const { store } = useStoreBundle();
@@ -122,7 +133,8 @@ export function QuickAddBar({ onHeight }: Props) {
     // Sits at the bottom edge when the keyboard is closed and rides on top of
     // it when open. `opened` shifts it down by the safe-area inset, because
     // the keyboard already covers that strip.
-    <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }} style={styles.sticky}>
+    // Rides the keyboard only while its field has focus (KeyboardStickyView `riding`).
+    <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }} riding={focused} style={styles.sticky}>
       <View
         style={[styles.bar, { paddingBottom: space.sm + insets.bottom }]}
         onLayout={(e: LayoutChangeEvent) => onHeight?.(e.nativeEvent.layout.height)}
@@ -172,11 +184,13 @@ export function QuickAddBar({ onHeight }: Props) {
               onChangeText={onChangeText}
               onSubmitEditing={submit}
               onFocus={() => {
+                logKeyboard('quick-add focus');
                 setFocused(true);
                 actions.setQuickAddActive(true);
                 actions.setEditing(null); // only one editor at a time (PLAN §6.5)
               }}
               onBlur={() => {
+                logKeyboard('quick-add blur');
                 setFocused(false);
                 actions.setQuickAddActive(false);
               }}
@@ -209,12 +223,13 @@ const styles = StyleSheet.create({
     borderRadius: shape.radius,
     backgroundColor: colors.surface,
   },
-  fieldFocused: { borderColor: colors.accent },
+  // Typing: the frame lights up (accent border and the faint glow).
+  fieldFocused: { borderColor: colors.accent, boxShadow: glowShadow.faint },
   chips: { marginTop: 0, marginBottom: space.sm },
   targetRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
   target: { color: colors.accent, flexShrink: 1, ...platformText },
   targetClear: { color: colors.text, paddingHorizontal: space.sm, ...platformText },
-  prompt: { color: colors.accent, marginRight: space.sm, ...platformText },
+  prompt: { color: colors.accent, marginRight: space.sm, ...glowTextSoft, ...platformText },
   inputWrap: { flex: 1, justifyContent: 'center' },
   input: { color: colors.text, padding: 0, ...platformText },
   // Exactly where the input's text starts; touches pass through to the input.

@@ -7,6 +7,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 
+import { EditingChips } from '@/components/edit/EditingChips';
 import { TaskRow } from '@/components/list/TaskRow';
 import { createAppStore } from '@/store/createStore';
 import { createMemoryKV } from '@/store/kv';
@@ -27,6 +28,8 @@ async function savedTask(title: string, fields = {}) {
   await render(
     <StoreProvider value={bundle}>
       <TaskRow row={row!} />
+      {/* The editing chips float above the typed line, outside the row (EditingChips.tsx). */}
+      <EditingChips container={{ current: null }} />
     </StoreProvider>,
   );
   return store;

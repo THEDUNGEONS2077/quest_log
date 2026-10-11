@@ -15,7 +15,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { currentDayStreak, levelInfo } from '@/lib/xp';
 import { useActions, useAppStore, useSelectors } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { useMinute } from './useMinute';
 
@@ -120,7 +120,8 @@ const styles = StyleSheet.create({
   icons: { flexDirection: 'row', gap: space.xs },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   titleBox: { flexShrink: 1, marginRight: space.sm },
-  title: { color: colors.accent, ...platformText },
+  // The name glows softly: the app's one effect, on its one name.
+  title: { color: colors.accent, ...glowTextSoft, ...platformText },
   bracket: { color: colors.textDim },
   level: { color: colors.textBright },
   // Smaller boxes (user request 2026-10-09): 34 pt drawn, still 44 pt to tap (hitSlop).

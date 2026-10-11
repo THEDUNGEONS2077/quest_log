@@ -21,7 +21,7 @@ import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withSeque
 import { CATEGORIES, type CategoryTab } from '@/lib/quests';
 import { useActions, useAppStore, useSelectors } from '@/store/react';
 import type { Tab } from '@/store/uiState';
-import { colors, duration, easing, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, duration, easing, glowShadow, glowTextSoft, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** The quest tabs in order: ALL, then each category. */
 const QUEST_TABS: readonly { key: CategoryTab; label: string; a11y: string }[] = [
@@ -105,7 +105,7 @@ function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
       onPress={() => (selected ? actions.toTabTop() : actions.setTab(tab))}
       // A slim switch, but still 44 pt to tap.
       hitSlop={{ top: SWITCH_SLOP, bottom: SWITCH_SLOP }}
-      style={[styles.switch, selected && styles.switchOn]}
+      style={styles.switch}
       accessibilityRole="tab"
       accessibilityState={{ selected }}
       aria-selected={selected}
@@ -119,12 +119,14 @@ function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
         {`${label} · `}
         <Animated.Text style={countStyle}>{count}</Animated.Text>
       </Animated.Text>
+      {/* The bar under it: its own view, so the selected one can glow without lighting the whole half. */}
+      <View style={[styles.bar, selected && styles.barOn]} />
     </Pressable>
   );
 }
 
-/** The ACTIVE / COMPLETED switch: 10% smaller than before (28 → 25 pt drawn). */
-const SWITCH_HEIGHT = 25;
+/** The ACTIVE / COMPLETED switch, drawn height: 28 → 25 pt (2026-10-09), then 10% smaller again: 22.5 pt (user request 2026-10-11). */
+const SWITCH_HEIGHT = 22.5;
 /** Extra touch area above and below, so it's still 44 pt to tap. */
 const SWITCH_SLOP = Math.ceil((size.hitTarget - SWITCH_HEIGHT) / 2);
 
@@ -141,20 +143,17 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: shape.radius,
   },
-  questOn: { borderColor: colors.accent, backgroundColor: colors.surface },
+  // Selected: accent frame on surface, with the faint glow (user request 2026-10-11: subtle accents).
+  questOn: { borderColor: colors.accent, backgroundColor: colors.surface, boxShadow: glowShadow.faint },
   // The switch: slimmer and unfilled, so it reads as secondary to the quest tabs.
-  switch: {
-    flex: 1,
-    minHeight: SWITCH_HEIGHT,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderBottomWidth: shape.dropIndicator,
-    borderBottomColor: colors.line,
-  },
-  switchOn: { borderBottomColor: colors.accent },
-  // 10% smaller than the meta role (13/18 → 12/16, user request 2026-10-09).
-  switchText: { fontSize: 12, lineHeight: 16, ...platformText },
+  switch: { flex: 1, minHeight: SWITCH_HEIGHT, alignItems: 'center', justifyContent: 'center' },
+  // A 2 pt bar along its bottom: `line`, or accent with the glow when selected.
+  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: shape.dropIndicator, backgroundColor: colors.line },
+  barOn: { backgroundColor: colors.accent, boxShadow: glowShadow.outset },
+  // The meta role made smaller twice by 10% (user requests 2026-10-09, 2026-10-11): 13/18 → 12/16 → 10.8/14.4.
+  switchText: { fontSize: 10.8, lineHeight: 14.4, ...platformText },
   bright: { color: colors.textBright, ...platformText },
-  accent: { color: colors.accent, ...platformText },
+  // The selected tab's count glows softly.
+  accent: { color: colors.accent, ...glowTextSoft, ...platformText },
   dim: { color: colors.textDim, ...platformText },
 });

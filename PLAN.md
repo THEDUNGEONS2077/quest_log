@@ -255,6 +255,8 @@ check task T
 ```
 
 > **Change (2026-10-09, v1.5.0):** every check now plays a *completion burst* with the strike: the checkbox pops, a scan line sweeps the row, and `+N XP` rises from it. A completed quest holds **600 ms** in place (the quest order is locked so it doesn't jump to the top as "just modified"), then **slides right while fading** (200 ms) instead of collapsing. Zoomed into a quest that completes, you're taken back out once this has played. See ARCHITECTURE.md §6c.
+>
+> **Change (2026-10-11, v1.6.0):** the row collapse is built after all. Since 120 ms into the slide-out, the quest's space closes over 320 ms and the rows below glide up; it leaves ACTIVE at 1040 ms. FlashList re-measures a row whose size changes, so the row shrinks its own space (`components/list/rowCollapse.ts`); React Native's LayoutAnimation is off on Android in this version. The quest order also holds once something is checked in a view, until the view changes, so a ticked-off objective no longer sends its quest to the top mid-tap.
 
 ---
 
@@ -795,7 +797,7 @@ Checking a parent always completes its subtasks, parents always auto-complete, a
 | 10.1 | **Boot sequence** | Lines type at about 8 ms per character (≤ 1.2 s total) **in parallel** with app readiness: `> quest_log v1.0` · `> MOUNTING /quests ...... OK` · `> 12 ACTIVE · 1 OVERDUE` · `> READY█`. It shows on cold start only, is skippable by tap, never shows with Reduce Motion, and exits with a 160 ms fade. |
 | 10.2 | **Cursor blink** | A block `█` in `accent` at a 530 ms interval, using one shared Reanimated value for every block cursor. |
 | 10.3 | **Strikethrough** | 200 ms draw with a color fade in parallel. |
-| 10.4 | **Move to COMPLETED** | 500 ms hold after the strike, a 200 ms row collapse, and a tab counter glow pulse. *As built (v1.5.0): the completion burst (pop, scan line, `+N XP`), a 600 ms hold in place, then a 48 pt slide right with a fade (200 ms). A row collapse isn't possible with FlashList (see above).* |
+| 10.4 | **Move to COMPLETED** | 500 ms hold after the strike, a 200 ms row collapse, and a tab counter glow pulse. *As built (v1.5.0): the completion burst (pop, scan line, `+N XP`), a 600 ms hold in place, then a 48 pt slide right with a fade (200 ms). As of v1.6.0 the row collapse is built too (its space closes over 320 ms, the rows below glide up; §6.6).* |
 | 10.5 | **Repeat advance** | Strike draws (200 ms), holds 300 ms, un-draws (200 ms), and the date chip crossfades to the new date. |
 | 10.6 | **Row insert / delete** | 120 ms height expand or collapse with fade. |
 | 10.7 | **Collapse / expand** | Caret rotates 90° over 120 ms. With more than 50 children, skip the animation. |
@@ -1235,6 +1237,7 @@ Whatever the choice, the release script gets an iOS counterpart that attaches th
 | 17 | **XP and levels** *(added 2026-10-09, built)* | Completing tasks earns XP. Quests earn more per subtask, with an on-time bonus, a repeat-streak multiplier and a day-streak multiplier. The level shows in the `<lvl>_quest_log` title, with an XP bar under the tabs and a quest meter on groups. See ARCHITECTURE.md §6f. |
 | 18 | **Quest tabs** *(added 2026-10-09, built)* | Quest tabs ALL / DAILY / MAIN / MISC (replacing ACTIVE / COMPLETED), each with an ACTIVE / COMPLETED switch. Quests sort newest-modified first, and a quest added on DAILY repeats daily. See ARCHITECTURE.md §6g. |
 | 19 | **Navigation and feel pass** *(added 2026-10-09, built: v1.5.0)* | Tap the title for home, re-tap a tab for its top, each view keeps its scroll position and slides in from its side, and zoom follows the tree. Adds the completion burst and capitalized objectives. Fixes the stuck `> new quest` bar (sheets now wait for the keyboard to close). See ARCHITECTURE.md §6g, §6h. |
+| 20 | **Polish pass** *(added 2026-10-11, built: v1.6.0)* | The keyboard opens for every field that opens by itself. Shorthand chips float above the typed line. The quick-add bar rides the keyboard only while focused and checks itself (keyboard log on the developer screen). Rows leaving close their gap smoothly. The order holds while you work in a view. Subtle glow accents, and a 10% smaller switch. See ARCHITECTURE.md §6c, §6g, §6h. |
 
 ---
 

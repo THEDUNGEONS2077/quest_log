@@ -11,12 +11,13 @@
  * 12 pt vertically (that's a scroll). All motion runs on the UI thread;
  * only the commit callback crosses to JS.
  */
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
+import { useSameItem } from '@/components/common/motion';
 import { haptics } from '@/services/haptics';
 import { colors, duration, easing, maxFontSizeMultiplier, platformText, space, type } from '@/theme';
 
@@ -27,9 +28,16 @@ export interface SwipeAction {
   /** Track label, for example "[x] DONE" or "✕ DEL". */
   label: string;
   onCommit: () => void;
+  /**
+   * The row leaves the list (delete, restore): it stays slid out instead of
+   * springing back, while its gap closes (rowCollapse.ts).
+   */
+  leaves?: boolean;
 }
 
 interface Props {
+  /** The task shown: when the list reuses the row for another one, it starts centred again. */
+  id: string;
   children: ReactNode;
   /** Swipe right (track on the left). */
   right?: SwipeAction;
@@ -44,8 +52,13 @@ interface Props {
   drag?: ReturnType<typeof Gesture.Pan> | null;
 }
 
-export function SwipeableRow({ children, right, left, enabled, drag }: Props) {
+export function SwipeableRow({ id, children, right, left, enabled, drag }: Props) {
   const x = useSharedValue(0);
+  // A row left slid out (it was leaving) and reused by the list for another task: centred.
+  const sameItem = useSameItem(id);
+  useEffect(() => {
+    if (!sameItem()) x.set(0);
+  }, [sameItem, x]);
   const width = useSharedValue(1);
   // Which side is past the threshold right now (-1, 0, 1), so the haptic ticks once per crossing.
   const armed = useSharedValue(0);
@@ -71,12 +84,14 @@ export function SwipeableRow({ children, right, left, enabled, drag }: Props) {
         x.set(withTiming(0, { duration: duration.fast, easing }));
         return;
       }
-      // Slide fully out in the swipe direction, run the action, then reset.
-      // Rows that stay (a checked subtask) come back; rows that leave are recycled.
+      // Slide fully out in the swipe direction and run the action. Rows that stay
+      // (a checked subtask) come back; rows that leave stay out while their gap closes.
+      const action = side > 0 ? right! : left!;
+      const leaves = action.leaves === true;
       x.set(
         withTiming(side * width.get(), { duration: duration.fast, easing }, () => {
-          scheduleOnRN(side > 0 ? right!.onCommit : left!.onCommit);
-          x.set(withTiming(0, { duration: duration.base, easing }));
+          scheduleOnRN(action.onCommit);
+          if (!leaves) x.set(withTiming(0, { duration: duration.base, easing }));
         }),
       );
     });

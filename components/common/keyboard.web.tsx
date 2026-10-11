@@ -38,6 +38,8 @@ export function KeyboardProvider({ children }: { children: ReactNode }) {
 interface StickyProps {
   /** Same shape as the native component; on web only `opened` is used (added while the keyboard is up). */
   offset?: { closed?: number; opened?: number };
+  /** Native: whether the content may ride the keyboard. The browser's own measurement can't go stale, so it's unused here. */
+  riding?: boolean;
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
 }
@@ -58,4 +60,14 @@ export function useAfterKeyboardCloses(visible: boolean): boolean {
 /** Web: no native keyboard tracker to protect (see keyboard.tsx), so run it now. */
 export function closeKeyboardThen(then: () => void): void {
   then();
+}
+
+/** Web: the browser reports the keyboard itself; nothing to subscribe to (see keyboard.tsx). */
+export function onKeyboardHidden(_then: () => void): () => void {
+  return () => {};
+}
+
+/** Web: the browser opens (or, on iPhone, may not open) the keyboard itself; nothing to retry. */
+export function ensureKeyboard(_input: unknown): () => void {
+  return () => {};
 }

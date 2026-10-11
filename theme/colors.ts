@@ -74,6 +74,8 @@ export const focusGlow = {
 export const glowShadow = {
   inset: 'inset 0 0 6px 0 rgba(57, 255, 20, 0.35)',
   outset: '0 0 6px 0 rgba(57, 255, 20, 0.35)',
+  /** Fainter and wider, for frames that stay lit: the selected quest tab, a focused field. */
+  faint: '0 0 8px 0 rgba(57, 255, 20, 0.22)',
   /** Stronger, for marks too thin for the soft glow to show: the completion scan's leading edge. */
   bright: '0 0 6px 0 rgba(57, 255, 20, 0.6)',
 } as const;
@@ -81,5 +83,16 @@ export const glowShadow = {
 /** The same glow on text: the floating "+N XP" labels. Spread into a text style. */
 export const glowText = {
   textShadowColor: 'rgba(57, 255, 20, 0.6)',
+  textShadowRadius: 6,
+} as const;
+
+/**
+ * A softer text glow for accent text in the app's chrome (the title, the
+ * prompt and toolbar glyphs, UNDO, the selected tab's count): the accent
+ * reads as lit, like a terminal's phosphor. Not used inside list rows, which
+ * stay calm (user request 2026-10-11: "accentuate, subtly").
+ */
+export const glowTextSoft = {
+  textShadowColor: 'rgba(57, 255, 20, 0.35)',
   textShadowRadius: 6,
 } as const;

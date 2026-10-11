@@ -2,6 +2,18 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.6.0 (build 33)
+
+Polish: the keyboard, shorthand, a smoother finish, and a subtle glow.
+
+- **Fixed: the keyboard opens when you add a subtask.** The same goes for every field that opens by itself: a new subtask (from `+`, `+ SUB` or the hold menu), notes, and the quick-add bar when it's asked to take focus. Before, the field could open without a keyboard until you tapped it.
+- **Shorthand chips show just above the text you're typing,** small and quiet, in the same style when adding and when editing. Typing `@tomorrow 10am` shows `◔ TOMORROW 10:00` right over the line, not hidden under the keyboard.
+- **Fixed: the `> new quest` bar hanging in the middle of the screen.** The bar now rides the keyboard only while you're typing in it. Both keyboard trackers can end typing, and the bar checks itself regularly while it's up. If it ever happens again, long-press the title for the developer screen, which has a KEYBOARD LOG to send me.
+- **Completing a quest is smooth to the end.** It slides away, and then the list closes the gap: the quests below glide up instead of jumping. The same happens when you swipe a task away, or restore or delete one on COMPLETED.
+- **Nothing jumps away while you work.** Ticking off an objective no longer sends its quest to the top mid-tap. The list sorts itself again when you switch tabs. New quests still appear at the top.
+- **A subtle glow:** the title, the selected tab and the ACTIVE / COMPLETED bar, the quick-add field while you type, the toolbar and menu icons, and UNDO.
+- **The ACTIVE · COMPLETED switch is 10% smaller.**
+
 ## 1.5.3 (build 32)
 
 - **Fixed for good: the `> new quest` bar hanging in the middle of the screen.** The earlier fix covered one cause; others remained, such as switching to another app while typing, or closing **Move to…** with its search keyboard up. The bar now checks itself against the real keyboard: whenever it comes to rest, whenever you return to the app, and whenever the keyboard closes. If it's up with no keyboard under it, it slides back down.

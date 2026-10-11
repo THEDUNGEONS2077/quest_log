@@ -49,6 +49,7 @@ import { FocusGlow } from './FocusGlow';
 import { HighlightFlash } from './HighlightFlash';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { NestingGuides } from './NestingGuides';
+import { useRowLeave } from './rowCollapse';
 import { useKeyboardHeight } from './useKeyboardHeight';
 import { useViewPlace } from './useViewPlace';
 import { SwipeableRow } from './SwipeableRow';
@@ -161,15 +162,18 @@ const CompletedRow = memo(
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
     const [menu, setMenu] = useState(false);
+    // Restored or deleted, the row leaves COMPLETED: its space closes and the rows below
+    // glide up, then the store change runs (rowCollapse.ts).
+    const exit = useRowLeave(row.id);
     if (!task) return null;
 
     const restore = () => {
       haptics.check();
-      actions.restoreTask(task.id);
+      exit.leave({ then: () => actions.restoreTask(task.id) });
     };
     const remove = () => {
       haptics.delete();
-      actions.deleteTask(task.id);
+      exit.leave({ then: () => actions.deleteTask(task.id) });
     };
     const menuActions: SheetAction[] = [
       { glyph: glyphs.undo.glyph, label: 'Restore', onPress: restore },
@@ -189,11 +193,12 @@ const CompletedRow = memo(
 
     return (
       <>
-        <View style={context && styles.context}>
+        <Animated.View style={[exit.style, context && styles.context]} onLayout={exit.onLayout}>
           <SwipeableRow
+            id={task.id}
             enabled={swipeOn && !editing}
-            right={{ label: `${glyphs.undo.glyph} RESTORE`, onCommit: restore }}
-            left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove }}
+            right={{ label: `${glyphs.undo.glyph} RESTORE`, onCommit: restore, leaves: true }}
+            left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove, leaves: true }}
           >
             <Pressable
               onLongPress={() => setMenu(true)}
@@ -293,7 +298,7 @@ const CompletedRow = memo(
               </Pressable>
             </Pressable>
           </SwipeableRow>
-        </View>
+        </Animated.View>
         {menu && <ActionSheet visible title={task.title || 'Untitled task'} actions={menuActions} onClose={() => setMenu(false)} />}
       </>
     );
