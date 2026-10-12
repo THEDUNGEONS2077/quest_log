@@ -6,12 +6,19 @@
  *   FEEL           boot screen · haptics · reduce motion
  *   NOTIFICATIONS  permission status · open system settings
  *   DATA           save backup · share backup · import · restore · Trash
+ *                  Markdown for Obsidian: set up (first time), then SYNC
  *   HELP           guide · what's new · version
  *
  * Layer: UI (Expo Router screen). Settings save as soon as they change
  * (store `updateSettings`, persisted as `settings.v1`). Import and restore
  * are previewed first, then applied as one undo step; the screen then
  * returns to the list, where the toast offers UNDO.
+ *
+ * Markdown sync (2026-10-12): the first time, "Set up Markdown sync…" asks
+ * for a folder (an Obsidian vault) and writes quest_log.md there (lib/
+ * markdown.ts); from then on the row is SYNC, which overwrites that same
+ * file (services/markdownSync.ts), with Change folder and Stop syncing.
+ * The JSON backup is separate and unchanged.
  */
 import { router } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
@@ -20,11 +27,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionSheet, type SheetAction } from '@/components/overlays/ActionSheet';
 import { backupFileName, countDocument, type DocCounts, makeBackup } from '@/lib/backup';
-import { atTimeOfDay, formatMinutes, startOfDay } from '@/lib/dates';
+import { atTimeOfDay, formatMinutes, formatRelative, startOfDay } from '@/lib/dates';
+import { MARKDOWN_FILE_NAME, toMarkdown } from '@/lib/markdown';
+import { fromDocument } from '@/lib/tree';
 import type { TasksDocument } from '@/lib/types';
 import { appBuild, appVersion } from '@/services/appInfo';
 import { hasDialogPicker, pickTime } from '@/services/datePicker';
 import { backupUi, pickBackupText, saveBackupToFolder, shareBackup } from '@/services/backup';
+import { MarkdownSyncError, markdownSyncSupported, setUpMarkdownSync, syncMarkdown } from '@/services/markdownSync';
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
 import { BackupError, parseBackup } from '@/store/backup';
 import { useActions, useAppStore } from '@/store/react';
@@ -125,6 +135,38 @@ export default function SettingsScreen() {
       setStatus('COULDN’T OPEN SHARING.');
     }
   };
+  // --- Markdown (Obsidian) ---
+  const markdownText = (now: number) => toMarkdown(fromDocument(actions.exportDocument()), now, { version: appVersion(), build: appBuild() });
+  /** First time, or Change folder: pick a folder and write the note there. */
+  const setUpMarkdown = async () => {
+    const now = Date.now();
+    try {
+      const target = await setUpMarkdownSync(markdownText(now), now);
+      if (!target) return; // picker closed
+      set({ markdownSync: target });
+      setStatus(`MARKDOWN SAVED: ${MARKDOWN_FILE_NAME} IN ${target.folderName.toUpperCase()}`);
+    } catch (e) {
+      setStatus(e instanceof MarkdownSyncError ? e.message : 'COULDN’T WRITE THE MARKDOWN FILE.');
+    }
+  };
+  /** SYNC: overwrite the same note with everything as it is now. */
+  const syncMarkdownNow = () => {
+    const target = settings.markdownSync;
+    if (!target) return;
+    const now = Date.now();
+    try {
+      set({ markdownSync: syncMarkdown(target, markdownText(now), now) });
+      setStatus(`SYNCED: ${MARKDOWN_FILE_NAME} IN ${target.folderName.toUpperCase()}`);
+    } catch (e) {
+      setStatus(e instanceof MarkdownSyncError ? e.message : 'COULDN’T WRITE THE MARKDOWN FILE.');
+    }
+  };
+  /** Forget the folder (the file stays where it is). */
+  const stopMarkdown = () => {
+    set({ markdownSync: null });
+    setStatus(`MARKDOWN SYNC OFF. ${MARKDOWN_FILE_NAME} STAYS WHERE IT IS.`);
+  };
+
   /** Back to the list, where the UNDO toast for the import is shown. */
   const doneWithData = () => router.back();
   const importBackup = async () => {
@@ -278,6 +320,33 @@ export default function SettingsScreen() {
           <Action glyph={g.load.glyph} label="Import a backup…" onPress={() => void importBackup()} />
           <Action glyph={g.undo.glyph} label="Restore a daily snapshot…" onPress={restore} />
           <Action glyph={g.delete.glyph} label="Trash" onPress={() => router.push('/trash')} />
+          {markdownSyncSupported && (
+            <>
+              <Text style={[type.meta, styles.dim, styles.subheading]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                MARKDOWN (OBSIDIAN)
+              </Text>
+              {settings.markdownSync === null ? (
+                <HintAction
+                  glyph={g.save.glyph}
+                  label="Set up Markdown sync…"
+                  hint={`Choose a folder, such as your Obsidian vault. ${MARKDOWN_FILE_NAME} is made there with your quests and objectives; after that, SYNC updates the same file.`}
+                  onPress={() => void setUpMarkdown()}
+                />
+              ) : (
+                <>
+                  <HintAction
+                    glyph={g.sync.glyph}
+                    label="SYNC"
+                    hint={`${MARKDOWN_FILE_NAME} in ${settings.markdownSync.folderName} · synced ${syncedAgo(settings.markdownSync.syncedAt)}`}
+                    onPress={syncMarkdownNow}
+                    strong
+                  />
+                  <Action glyph={g.moveTo.glyph} label="Change folder…" onPress={() => void setUpMarkdown()} />
+                  <Action glyph={g.delete.glyph} label="Stop Markdown sync" onPress={stopMarkdown} />
+                </>
+              )}
+            </>
+          )}
           {status !== null && (
             <Text
               style={[type.meta, styles.accent, styles.status]}
@@ -376,6 +445,37 @@ function Action({ glyph, label, onPress }: { glyph: string; label: string; onPre
   );
 }
 
+/** "just now", "5m ago", "YESTERDAY", "MAR 14": when the note was last written. */
+function syncedAgo(ts: number): string {
+  const r = formatRelative(ts, Date.now());
+  return r === 'NOW' ? 'just now' : /^\d/.test(r) ? `${r} ago` : r.toLowerCase();
+}
+
+/** An action with a line of explanation under it; `strong` makes the label bright (the main action). */
+function HintAction({ glyph, label, hint, onPress, strong }: { glyph: string; label: string; hint: string; onPress: () => void; strong?: boolean }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={hint}
+    >
+      <Text style={[type.glyph, styles.accent, styles.actionGlyph]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        {glyph}
+      </Text>
+      <View style={styles.grow}>
+        <Text style={[type.body, strong ? styles.bright : styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          {label}
+        </Text>
+        <Text style={[type.meta, styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          {hint}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
 function RowText({ label, hint }: { label: string; hint: string }) {
   return (
     <View style={styles.grow}>
@@ -415,6 +515,7 @@ const styles = StyleSheet.create({
   section: { paddingTop: space.lg, borderBottomWidth: shape.hairline, borderBottomColor: colors.line, paddingBottom: space.sm },
   sectionTitle: { marginBottom: space.xs },
   intro: { marginBottom: space.sm },
+  subheading: { marginTop: space.lg, marginBottom: space.xs, letterSpacing: 1 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.rowMinHeight, paddingVertical: space.sm },
   grow: { flex: 1 },
   actionGlyph: { width: size.indent, textAlign: 'center' },

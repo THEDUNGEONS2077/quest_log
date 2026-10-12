@@ -69,6 +69,8 @@ export const glyphs = {
   /** Import a backup: up out of a file. */
   load: g('↥'),
   share: g('⇧'),
+  /** SYNC the Markdown note: out to the file (U+21C9; the circular sync arrows aren't in the font). */
+  sync: g('⇉'),
 
   // --- Terminal chrome ---
   cursor: g('█'),

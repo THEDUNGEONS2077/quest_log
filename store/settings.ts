@@ -19,6 +19,23 @@ export interface Settings {
   haptics: boolean;
   /** 'system' follows the OS Reduce Motion setting. */
   reduceMotion: 'system' | 'on' | 'off';
+  // --- Data ---
+  /**
+   * Where Settings → Markdown sync writes its note (services/markdownSync.ts),
+   * or null before it's set up. Phone-specific: not part of backups.
+   * Added 2026-10-12 (loadJSON fills null for older settings).
+   */
+  markdownSync: MarkdownTarget | null;
+}
+
+/** Where the Markdown note lives: the picked folder and the file in it (content:// URIs). */
+export interface MarkdownTarget {
+  folderUri: string;
+  fileUri: string;
+  /** The folder's name, to show in Settings ("in Obsidian"). */
+  folderName: string;
+  /** When the note was last written (epoch ms). */
+  syncedAt: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -29,4 +46,5 @@ export const DEFAULT_SETTINGS: Settings = {
   bootSequence: true,
   haptics: true,
   reduceMotion: 'system',
+  markdownSync: null,
 };

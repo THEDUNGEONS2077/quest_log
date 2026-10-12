@@ -279,6 +279,10 @@ const SECTIONS: Section[] = [
         key: `${g.load.glyph} Import`,
         what: 'Shows what a backup holds, then Merge (add tasks you don’t have) or Replace (swap everything). UNDO works for both.',
       },
+      {
+        key: `${g.sync.glyph} Markdown sync`,
+        what: 'Settings → Set up Markdown sync… asks for a folder (your Obsidian vault, say) and writes quest_log.md there: quests as checkboxes with their objectives under them, plus due dates, priorities and repeats. After that the button reads SYNC: tap it to update the same file. Edit tasks in the app; each SYNC replaces the file.',
+      },
       { key: 'Snapshots', what: 'The app keeps a copy of your tasks from each of the last 3 days. Restore one if something goes wrong.' },
       {
         key: 'Report a problem',

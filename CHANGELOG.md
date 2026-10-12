@@ -2,6 +2,19 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.7.0 (build 34)
+
+Your quests in Obsidian (or any Markdown app).
+
+- **New: Markdown sync, in Settings → Data.** The first time, tap **Set up Markdown sync…** and choose a folder, such as your Obsidian vault. quest_log writes **quest_log.md** there with all your quests and objectives. After that the button reads **SYNC**: tap it to update that same file, which is overwritten rather than duplicated. **Change folder…** moves it somewhere else, and **Stop Markdown sync** forgets the folder (the file stays).
+- **Made to make sense in Obsidian:**
+  - one heading per tab (DAILY, MAIN, MISC), then COMPLETED;
+  - each quest is a checkbox, with its objectives nested under it;
+  - notes appear as a quote under their task;
+  - due dates, priorities, repeats and completion dates use the Obsidian Tasks plugin's format (📅 ⏫ 🔁 ✅), so that plugin can list what's due, sort and filter, and the due time is shown as 🕐;
+  - the note starts with properties (when it was synced, counts, level, XP) that Obsidian and Dataview can read.
+- The note is a copy: change tasks in the app, and the next SYNC replaces the file. Trash isn't included. The JSON backup works exactly as before.
+
 ## 1.6.0 (build 33)
 
 Polish: the keyboard, shorthand, a smoother finish, and a subtle glow.
