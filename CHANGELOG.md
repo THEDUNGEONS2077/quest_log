@@ -2,6 +2,11 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.7.2 (build 36)
+
+- **Fixed: a long quest title no longer flickers while you type.** From about three lines on, the whole title flashed with every letter. The cause was the quest title's capitals: on Android, drawing typed text in capitals rewrites the field with each keystroke. While you edit a quest, its title now shows exactly as you type it, and it's back in capitals as soon as you're done (it was always saved as typed).
+- **Steadier typing near the keyboard.** The list only scrolls to keep your text in view when a line is really hidden, and only checks when the text box actually changes height, not on every keystroke.
+
 ## 1.7.1 (build 35)
 
 - **Fixed: completing a quest ends smoothly.** After the burst, the quest slides away and fades, then the quests below glide up into its place in one smooth motion. Before, the space closed in uneven steps, because the list had to redo its layout for every frame, a little late each time. Now the glide runs entirely on the phone's display thread, with nothing for the app to catch up on, the same as the desktop version.

@@ -15,7 +15,13 @@
  * Structure while editing (OUT / IN / + SUB) comes from the EditToolbar.
  */
 import { useEffect, useRef } from 'react';
-import { type NativeSyntheticEvent, StyleSheet, TextInput, type TextInputKeyPressEventData } from 'react-native';
+import {
+  type NativeSyntheticEvent,
+  StyleSheet,
+  TextInput,
+  type TextInputContentSizeChangeEventData,
+  type TextInputKeyPressEventData,
+} from 'react-native';
 
 import { ensureKeyboard } from '@/components/common/keyboard';
 import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
@@ -35,6 +41,9 @@ import { colors, maxFontSizeMultiplier, platformText } from '@/theme';
  */
 let focusedEditorId: string | null = null;
 
+/** The focused editor's last reported text height (onContentSizeChange), -1 when unknown. */
+let lastHeight = -1;
+
 /** How long a blur waits for the same task's editor to take focus again. */
 const REFOCUS_GRACE_MS = 150;
 
@@ -49,11 +58,21 @@ export function useEditorFocus(id: string) {
   return {
     onFocus: () => {
       focusedEditorId = id;
+      lastHeight = -1;
       // Whatever is being typed must be visible (keepInView.tsx).
       keepInView.ensure();
     },
-    /** The text box grew (a new line): keep its bottom above the toolbar. */
-    onContentSizeChange: () => keepInView.ensure(),
+    /**
+     * The text box grew or shrank (a new line): keep its bottom above the
+     * toolbar. Only a real height change counts: Android can report the size
+     * on every keystroke, and each check may scroll the list (bug 2026-10-15).
+     */
+    onContentSizeChange: (e: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
+      const height = Math.round(e.nativeEvent.contentSize.height);
+      if (height === lastHeight) return;
+      lastHeight = height;
+      keepInView.ensure();
+    },
     onBlur: () => {
       focusedEditorId = null;
       setTimeout(() => {
@@ -149,7 +168,11 @@ export function InlineEditor({ id, title, variant }: Props) {
       autoCorrect
       autoCapitalize="sentences"
       maxFontSizeMultiplier={maxFontSizeMultiplier}
-      style={[styles.input, [titleStyles[variant], variant === 'group' && styles.group]]}
+      // No textTransform on the field (styles.asTyped): quest titles show UPPERCASE in the
+      // list, but on an Android TextInput the transform rewrites the field's text on every
+      // keystroke, and a long title flickered while typing (bug 2026-10-15). While editing,
+      // a quest's title shows as typed; it's stored as typed either way.
+      style={[styles.input, [titleStyles[variant], variant === 'group' && styles.group], styles.asTyped]}
       accessibilityLabel="Task title"
       accessibilityHint="Done saves. Backspace on an empty title deletes the task."
     />
@@ -161,4 +184,5 @@ const styles = StyleSheet.create({
   // Main-task (top-level) titles are drawn bright, as in the list.
   group: { color: colors.textBright },
   input: { flex: 1, color: colors.text, padding: 0, margin: 0, textAlignVertical: 'top', ...platformText },
+  asTyped: { textTransform: 'none' },
 });

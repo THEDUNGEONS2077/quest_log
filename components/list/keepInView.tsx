@@ -75,7 +75,9 @@ export function useKeepInViewController(container: RefObject<View | null>, list:
     const overlapBelow = input.bottom + MARGIN - floor.top; // hidden behind the toolbar/keyboard
     const overlapAbove = ceiling.top + MARGIN - input.top; // scrolled off the top
     const delta = overlapBelow > 0 ? overlapBelow : overlapAbove > 0 ? -overlapAbove : 0;
-    if (delta === 0) return;
+    // Less than a point is rounding, not a hidden line: scrolling for it only made the list
+    // twitch on each check (bug 2026-10-15).
+    if (Math.abs(delta) < 1) return;
     // A snap, not an animation: the settle re-check must measure the final position.
     const offset = list.current.getAbsoluteLastScrollOffset();
     list.current.scrollToOffset({ offset: Math.max(0, offset + delta), animated: false });
