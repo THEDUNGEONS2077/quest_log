@@ -36,6 +36,7 @@ import { useActions, useAppStore, useSelectors, useStoreBundle } from '@/store/r
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { DragOverlay, DragProvider, useDragController } from './drag';
+import { GlideCell } from './GlideCell';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { TaskRow } from './TaskRow';
 import { useKeyboardHeight } from './useKeyboardHeight';
@@ -142,15 +143,20 @@ export function TaskList({ bottomInset }: Props) {
     }
   };
 
-  // The first row skips its top divider: the fixed header divider is right above it.
-  const renderItem = useCallback(({ item, index }: { item: Row; index: number }) => <TaskRow row={item} first={index === 0} />, []);
+  const renderItem = useCallback(({ item }: { item: Row }) => <TaskRow row={item} />, []);
 
   return (
     <View ref={container} style={styles.container} collapsable={false}>
       <KeepInViewProvider value={keepInView}>
         <DragProvider value={drag.api}>
-          <Animated.View style={[styles.container, place.style]}>
+          <Animated.View style={[styles.container, styles.clip, place.style]}>
             <FlashList
+              // Every quest has a divider above it, the first too: the list starts that far up,
+              // under this view's top edge, so the first one isn't seen (the fixed header divider
+              // is right above). When the top quest leaves, the next one's divider is already there.
+              style={styles.tucked}
+              // Cells glide to their new places when a completed quest leaves (GlideCell).
+              CellRendererComponent={GlideCell}
               // A fresh list for every tab switch: it always opens at the top (useViewPlace).
               key={place.listKey}
               ref={list}
@@ -239,9 +245,16 @@ function EmptyState() {
   );
 }
 
+/** How far the list starts above its view: one quest divider (TaskRow topLevel: margin + line). */
+const DIVIDER_TUCK = space.sm + shape.hairline;
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  empty: { paddingHorizontal: space.lg, paddingTop: space.xl },
+  // The list's view clips what's tucked above its top edge.
+  clip: { overflow: 'hidden' },
+  tucked: { marginTop: -DIVIDER_TUCK },
+  // The empty state sits where it did before the tuck.
+  empty: { paddingHorizontal: space.lg, paddingTop: space.xl + DIVIDER_TUCK },
   emptyText: { color: colors.textDim, ...platformText },
   example: {
     alignSelf: 'flex-start',

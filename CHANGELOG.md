@@ -2,6 +2,11 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.7.1 (build 35)
+
+- **Fixed: completing a quest ends smoothly.** After the burst, the quest slides away and fades, then the quests below glide up into its place in one smooth motion. Before, the space closed in uneven steps, because the list had to redo its layout for every frame, a little late each time. Now the glide runs entirely on the phone's display thread, with nothing for the app to catch up on, the same as the desktop version.
+- **No more little jump at the end,** including when the quest at the top of the list leaves: the next quest's divider is already where it belongs.
+
 ## 1.7.0 (build 34)
 
 Your quests in Obsidian (or any Markdown app).

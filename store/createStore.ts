@@ -88,13 +88,26 @@ export type ToggleOutcome = 'checked' | 'unchecked' | 'parent-completed' | 'move
 export const ADVANCE_MS = 500;
 
 /**
- * How long a just-checked top-level task stays on ACTIVE: the strike, scan
- * and "+N XP" play (theme timing.completeHold, 600 ms), then it slides out
- * and fades (200 ms); 120 ms into that, its space starts closing and the
- * rows below glide up (320 ms, components/list/rowCollapse.ts). It's taken
- * off the list once that space is closed, so nothing jumps.
+ * The latest a just-checked top-level task stays on ACTIVE. Its row plays
+ * the strike, scan and "+N XP" (theme timing.completeHold, 600 ms), then
+ * slides out and fades (200 ms), and as soon as the fade is done the row
+ * itself releases it (TaskRow → releaseLingering). The list then drops it in
+ * one update and the rows below glide up on the UI thread (the list's
+ * `glide`, TaskList GlideCell). This timer is only the fallback, for when
+ * the row isn't on screen (zoomed into the quest, scrolled away).
+ *
+ * Smooth-exit fix 2026-10-15: the space used to close by animating the
+ * row's height, which FlashList could only follow from the JS thread, a
+ * relayout for every frame, so the rows below moved late and unevenly.
  */
 export const LINGER_MS = 1040;
+
+/**
+ * How long the list's glide stays on after the last leaving quest is gone:
+ * long enough for the rows below to finish gliding up (duration.slow, 320 ms)
+ * with a margin.
+ */
+export const GLIDE_TAIL_MS = 600;
 
 /** `dueSheetFor` value meaning "the whole multi-select selection" (PLAN §9.14 DUE). */
 export const SELECTION = '*selection*';
@@ -164,6 +177,12 @@ export interface AppStore {
    * strikethrough plays and holds (PLAN §6.6). Not persisted.
    */
   lingering: ID[];
+  /**
+   * True while list rows should glide to new positions instead of jumping
+   * (TaskList's GlideCell: a native layout transition): from a quest's
+   * completion until GLIDE_TAIL_MS after it has left. Not persisted.
+   */
+  glide: boolean;
   /**
    * Repeating tasks just checked: their strike plays and holds, then
    * un-strikes with the new date (PLAN §10.5). Not persisted.
@@ -264,7 +283,11 @@ export interface AppStore {
   // --- Completion (rules in lib/complete.ts) ---
   /** Checkbox tap or swipe right: checks or unchecks, with cascade and auto-complete. */
   toggleDone(id: ID): ToggleOutcome;
-  /** The lingering animation for a completed top-level task is over: let it leave ACTIVE. */
+  /**
+   * The lingering animation for a completed top-level task is over: let it
+   * leave ACTIVE. Called by the quest's row once its fade has finished, or by
+   * the LINGER_MS fallback timer; a second call does nothing.
+   */
   releaseLingering(id: ID): void;
   /** The repeat animation for task `id` is over. */
   releaseAdvancing(id: ID): void;
@@ -577,6 +600,7 @@ export function createAppStore(deps: StoreDeps) {
       editSession: 0,
       settings,
       lingering: [],
+      glide: false,
       advancing: [],
       lastGain: null,
       toast: null,
@@ -768,7 +792,9 @@ export function createAppStore(deps: StoreDeps) {
         const leaving = r.advanced ? null : r.completedTopLevel;
         if (leaving) {
           // The order already holds (above): the quest leaves from where it is.
-          set({ lingering: [...get().lingering, leaving] });
+          // The glide goes on now, a render before the quest leaves the list, so the rows'
+          // layout transitions are in place when their positions change.
+          set({ lingering: [...get().lingering, leaving], glide: true });
           setTimeout(() => get().releaseLingering(leaving), LINGER_MS);
         }
         get().dispatch(r.op);
@@ -803,6 +829,11 @@ export function createAppStore(deps: StoreDeps) {
         if (!get().lingering.includes(id)) return;
         set({ lingering: get().lingering.filter((x) => x !== id) });
         syncOrderLock();
+        // The rows below are gliding up now; the glide stays on until they've arrived
+        // (unless another quest started leaving meanwhile).
+        setTimeout(() => {
+          if (get().glide && get().lingering.length === 0) set({ glide: false });
+        }, GLIDE_TAIL_MS);
       },
 
       restoreTask(id) {

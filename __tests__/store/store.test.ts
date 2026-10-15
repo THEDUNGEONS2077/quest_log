@@ -3,7 +3,7 @@
  * wiring (store/createStore.ts, store/history.ts, store/selectors.ts).
  */
 import { childIds } from '@/lib/tree';
-import { createAppStore, installPersistence, LINGER_MS } from '@/store/createStore';
+import { createAppStore, GLIDE_TAIL_MS, installPersistence, LINGER_MS } from '@/store/createStore';
 import { HISTORY_LIMIT } from '@/store/history';
 import { createMemoryKV } from '@/store/kv';
 import { saveTasks } from '@/store/persist';
@@ -953,6 +953,33 @@ describe('navigation (second pass, 2026-10-09)', () => {
       jest.advanceTimersByTime(LINGER_MS);
       expect(store.getState().lingering).toEqual([]);
       expect(store.getState().ui.zoomRootId).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('a completed quest: the glide goes on with it, its row can release it early, the glide ends after the tail', () => {
+    jest.useFakeTimers();
+    try {
+      const { store } = makeStore();
+      const s = store.getState();
+      const a = s.addTask(null, 'a');
+      s.addTask(null, 'b');
+      expect(store.getState().glide).toBe(false);
+      s.toggleDone(a);
+      // On before the quest leaves the list, so the rows' transitions are in place.
+      expect(store.getState().glide).toBe(true);
+      expect(store.getState().lingering).toEqual([a]);
+      // The row's fade finished (TaskRow): it releases the quest before the fallback.
+      store.getState().releaseLingering(a);
+      expect(store.getState().lingering).toEqual([]);
+      expect(store.getState().glide).toBe(true); // the rows below are gliding up
+      jest.advanceTimersByTime(GLIDE_TAIL_MS);
+      expect(store.getState().glide).toBe(false);
+      // The fallback timer later finds nothing to do.
+      jest.advanceTimersByTime(LINGER_MS);
+      expect(store.getState().lingering).toEqual([]);
+      expect(store.getState().glide).toBe(false);
     } finally {
       jest.useRealTimers();
     }

@@ -10,7 +10,7 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 
-import { ADVANCE_MS, LINGER_MS } from '@/store/createStore';
+import { ADVANCE_MS, GLIDE_TAIL_MS, LINGER_MS } from '@/store/createStore';
 import { backgroundTokens, colors, distance, duration, space, textTokens, timing } from '@/theme';
 
 /** WCAG relative luminance of a #RRGGBB color. */
@@ -58,9 +58,11 @@ describe('motion', () => {
   });
 
   it("the store's waits last exactly as long as the animations they wait for", () => {
-    // A completed quest: hold, slide and fade; its space starts closing `fast` into the
-    // slide and takes `slow` (TaskRow, rowCollapse.ts); then it leaves ACTIVE.
-    expect(LINGER_MS).toBe(timing.completeHold + duration.fast + duration.slow);
+    // A completed quest: hold, then slide and fade (base); its row releases it when the fade
+    // is done. The store's fallback must not cut that short, even with the row's animation
+    // starting a render late; and the glide must outlast the rows' move (slow).
+    expect(LINGER_MS).toBeGreaterThanOrEqual(timing.completeHold + duration.base + 200);
+    expect(GLIDE_TAIL_MS).toBeGreaterThan(duration.slow);
     // A repeating task: strike, hold, then un-strike with its next date.
     expect(ADVANCE_MS).toBe(duration.base + timing.repeatHold);
   });

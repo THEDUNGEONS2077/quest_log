@@ -23,6 +23,7 @@
 import { memo, useEffect } from 'react';
 import { type AccessibilityActionEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
 import { useMinute, useMinuteIf } from '@/components/common/useMinute';
 import { InlineEditor } from '@/components/edit/InlineEditor';
@@ -79,7 +80,7 @@ export function hapticFor(outcome: ToggleOutcome): void {
 const PRIORITY_COLOR = [colors.textDim, colors.textDim, colors.text, colors.accent] as const;
 
 export const TaskRow = memo(
-  function TaskRow({ row, first = false }: { row: Row; first?: boolean }) {
+  function TaskRow({ row }: { row: Row }) {
     const task = useAppStore((s) => findTask(s.tasks, row.id));
     const editing = useAppStore((s) => s.editingId === row.id);
     // Which field is being edited, only meaningful (and only subscribed) for the editing row.
@@ -99,6 +100,8 @@ export const TaskRow = memo(
     const now = useMinuteIf(task?.dueAt != null);
     // A just-completed quest, or a row inside one: they leave ACTIVE together.
     const lingering = useAppStore((s) => s.lingering.some((l) => isInSubtree(s.tasks, row.id, l)));
+    // The completed quest itself (not one of its subtask rows): it says when the fade is done.
+    const leavingRoot = useAppStore((s) => s.lingering.includes(row.id));
     // A repeating task just checked: struck for a moment, then back with its next date (PLAN §10.5).
     const advancing = useAppStore((s) => s.advancing.includes(row.id));
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
@@ -114,13 +117,16 @@ export const TaskRow = memo(
     }, [advancing, actions, row.id]);
 
     // A just-completed top-level task: hold while the burst plays, then slide out to the
-    // right while fading (the exit curve: it speeds up as it goes) and its space closes,
-    // the rows below gliding up (rowCollapse.ts); its subtask rows go with it. The store
-    // takes it off ACTIVE after LINGER_MS (toggleDone), when the space is closed.
+    // right while fading (the exit curve: it speeds up as it goes); its subtask rows go
+    // with it. When the fade is done, the quest's row releases it (releaseLingering): the
+    // list drops it in one update and the rows below glide up on the UI thread (TaskList's
+    // GlideCell). Smooth-exit fix 2026-10-15: the space used to close by shrinking this
+    // row frame by frame, which FlashList followed from the JS thread, late and unevenly.
     const opacity = useSharedValue(1);
     const slide = useSharedValue(0);
     const exit = useRowLeave(row.id);
     const { leave, stay } = exit;
+    const release = actions.releaseLingering;
     useEffect(() => {
       if (!lingering) {
         opacity.set(1);
@@ -129,12 +135,18 @@ export const TaskRow = memo(
         return;
       }
       const out = { duration: duration.base, easing: easingExit };
-      opacity.set(withDelay(timing.completeHold, withTiming(0, out)));
+      const id = row.id;
+      opacity.set(
+        withDelay(
+          timing.completeHold,
+          withTiming(0, out, (finished) => {
+            // Faded out completely: now it can leave the list (the store's timer is the fallback).
+            if (finished && leavingRoot) scheduleOnRN(release, id);
+          }),
+        ),
+      );
       slide.set(withDelay(timing.completeHold, withTiming(distance.exit, out)));
-      // The space closes once the slide is well under way, so the rows gliding up
-      // never cover the quest while it can still be seen.
-      leave({ delay: timing.completeHold + duration.fast, fade: false });
-    }, [lingering, opacity, slide, leave, stay]);
+    }, [lingering, leavingRoot, opacity, slide, stay, release, row.id]);
     const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: slide.get() }] }));
 
     if (!task) return null; // removed between flatten and render
@@ -194,8 +206,9 @@ export const TaskRow = memo(
               style={[
                 styles.row,
                 { paddingLeft: space.lg + visualDepth * size.indent },
-                // The first quest sits right under the fixed header divider: no second line.
-                isQuest && !first && styles.topLevel,
+                // Every quest has its divider, the first too: TaskList tucks the first one under
+                // the header divider, so when the top quest leaves, nothing below it snaps.
+                isQuest && styles.topLevel,
                 editing && styles.editing,
                 selected && styles.selected,
               ]}
@@ -320,8 +333,7 @@ export const TaskRow = memo(
     a.row.depth === b.row.depth &&
     a.row.hasChildren === b.row.hasChildren &&
     a.row.progress.done === b.row.progress.done &&
-    a.row.progress.total === b.row.progress.total &&
-    a.first === b.first,
+    a.row.progress.total === b.row.progress.total,
 );
 
 /** The room a quest's "+" button takes at the row's right edge (its width plus its gap). */
