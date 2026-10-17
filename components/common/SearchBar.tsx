@@ -15,7 +15,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import type { Filter } from '@/lib/search';
 import { useActions, useAppStore } from '@/store/react';
 import type { Tab } from '@/store/uiState';
-import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** Debounce between typing and filtering (PLAN §9.11). */
 const DEBOUNCE_MS = 120;
@@ -122,6 +122,8 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     borderRadius: shape.radius,
     backgroundColor: colors.surface,
+    // Typing here: lit like the focused quick-add field.
+    boxShadow: glowShadow.faint,
   },
   input: { flex: 1, color: colors.text, padding: 0, ...platformText },
   close: { minWidth: size.hitTarget - space.md, alignItems: 'center' },
@@ -136,7 +138,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: shape.radius,
   },
-  chipOn: { borderColor: colors.accent, backgroundColor: colors.surface },
+  // The chosen filter: lit like the selected quest tab.
+  chipOn: { borderColor: colors.accent, backgroundColor: colors.surface, boxShadow: glowShadow.faint },
   accent: { color: colors.accent, ...glowTextSoft, ...platformText },
   text: { color: colors.text, ...platformText },
 });

@@ -1,5 +1,21 @@
 [
   {
+    "version": "1.8.0",
+    "build": 37,
+    "lines": [
+      "A visual pass: quest_log now looks like a lit terminal screen.",
+      "- **The XP bar is a terminal gauge,** as on the desktop: 20 blocks between brackets, each lighting up as you earn it, brightest at the leading edge. The XP you've earned in this level reads first, in bright.",
+      "- **A lit screen behind the title.** A faint green phosphor glow and fine scanlines sit behind the top panel and every page's header (Settings, Help, What's new, Trash), and the dividers under them are lit in the middle.",
+      "- **The boot screen warms up like an old monitor:** the text glows, and a soft band passes down the screen once.",
+      "- **Lit feedback when you press.** The header and close buttons light their frames, and rows in menus, Settings and Move to… light up from the left edge. A selected option (priority, repeat, search filter) glows like the selected tab.",
+      "- **Menus and sheets** have a lit top edge, and their `>` prompt glows.",
+      "- **Messages** (the UNDO toast and tips) have a lit left edge.",
+      "- **Settings and What's new read more clearly:** each section title is followed by a rule that fades out, and settings that are ON glow.",
+      "- **The list fades out** just above the `> new quest` bar, instead of being cut off.",
+      "- **On an empty list,** the prompt glows and LOAD EXAMPLE TASKS stands out as the thing to do."
+    ]
+  },
+  {
     "version": "1.7.2",
     "build": 36,
     "lines": [
@@ -51,21 +67,6 @@
       "- **Fixed for good: the `> new quest` bar hanging in the middle of the screen.** The earlier fix covered one cause; others remained, such as switching to another app while typing, or closing **Move to…** with its search keyboard up. The bar now checks itself against the real keyboard: whenever it comes to rest, whenever you return to the app, and whenever the keyboard closes. If it's up with no keyboard under it, it slides back down.",
       "- **Back never closes the app from the middle of something.** While typing a new quest, back (or closing the keyboard) ends typing and leaves the bar as `> new quest`; what you typed stays. Back also ends editing a task, and clears an `IN: GROUP` target, before anything else. The app only closes when nothing is selected or open.",
       "- **Every tab switch shows the list from the top,** including ACTIVE ↔ COMPLETED, which used to keep the old position. Zooming out of a quest still takes you back to where you were. All 32 one-tap moves between the tabs are now checked automatically."
-    ]
-  },
-  {
-    "version": "1.5.2",
-    "build": 31,
-    "lines": [
-      "- **Fixed: completed daily quests now show on DAILY · COMPLETED.** A daily quest from before the quest tabs existed dropped to MAIN once completed. Ones already filed there move back to DAILY by themselves. **Run again** also puts a quest back on its own tab now, instead of on MAIN.",
-      "- **Switching between ALL · DAILY · MAIN · MISC always shows the list from the top.** Inside a tab, zooming out of a quest still takes you back to where you were.",
-      "- **Smoother, more consistent animations:**",
-      "  - The `+18` on the XP bar now floats in step with the `+18 XP` on the task you completed, in the same style.",
-      "  - The toast slides away instead of vanishing, and its UNDO can't be tapped by accident while it leaves.",
-      "  - A dragged task lifts smoothly instead of jumping up.",
-      "  - The editing glow fades in the same way everywhere.",
-      "  - Progress meters no longer fill or drain on their own while you scroll.",
-      "  - A \"found it\" flash no longer carries over onto another task."
     ]
   }
 ]

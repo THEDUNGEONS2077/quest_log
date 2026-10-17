@@ -13,10 +13,11 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LitEdge } from '@/components/common/Rule';
 import { haptics } from '@/services/haptics';
 import { SELECTION } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 export function SelectionBar() {
   const selection = useAppStore((s) => s.selection);
@@ -56,6 +57,8 @@ export function SelectionBar() {
 
   return (
     <View style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="toolbar">
+      {/* The bar's top edge, lit in the middle (over its hairline border). */}
+      <LitEdge at="top" />
       <View style={styles.head}>
         <Text style={[type.tab, styles.count]} maxFontSizeMultiplier={maxFontSizeMultiplier} accessibilityLiveRegion="polite">
           {`${selection.length} SELECTED`}
@@ -99,11 +102,12 @@ const styles = StyleSheet.create({
     borderTopColor: colors.line,
   },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingLeft: space.lg },
-  count: { color: colors.accent, ...platformText },
+  count: { color: colors.accent, ...glowTextSoft, ...platformText },
   cancel: { minHeight: size.hitTarget, justifyContent: 'center', paddingHorizontal: space.lg },
   buttons: { flexDirection: 'row' },
   button: { flex: 1, minHeight: size.toolbarHeight, alignItems: 'center', justifyContent: 'center' },
   pressed: { backgroundColor: colors.surface },
-  accent: { color: colors.accent, ...platformText },
+  // The glyphs glow softly, like the editing toolbar's.
+  accent: { color: colors.accent, ...glowTextSoft, ...platformText },
   text: { color: colors.text, ...platformText },
 });

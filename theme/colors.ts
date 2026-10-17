@@ -24,6 +24,12 @@ const decoration = {
   line: '#12301A',
   /** The quest meter's fill behind its text: accent at 16% over black, as a solid color. */
   xpWash: '#092903',
+  /**
+   * A lit frame: accent at about 35% over black, as a solid color (aesthetic
+   * pass 2026-10-17). For frames that light up while pressed (the header's
+   * buttons) and the edges of lit chrome.
+   */
+  lineLit: '#145907',
 } as const;
 
 /** Text and icon tokens, dimmest to brightest. */
@@ -78,6 +84,11 @@ export const glowShadow = {
   faint: '0 0 8px 0 rgba(57, 255, 20, 0.22)',
   /** Stronger, for marks too thin for the soft glow to show: the completion scan's leading edge. */
   bright: '0 0 6px 0 rgba(57, 255, 20, 0.6)',
+  /**
+   * A lit 2 pt left edge, drawn inside (no layout change): a pressed option in
+   * a sheet or settings, like the selected row's bar (aesthetic pass 2026-10-17).
+   */
+  edge: 'inset 2px 0 0 0 #39FF14',
 } as const;
 
 /** The same glow on text: the floating "+N XP" labels. Spread into a text style. */

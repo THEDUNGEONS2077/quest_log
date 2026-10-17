@@ -6,6 +6,8 @@
  *   - a dimmed backdrop that fades in; tapping it closes the sheet,
  *   - the sheet, which rises into place from just below while fading in
  *     (200 ms, the app's easing).
+ * The sheet's top edge is lit in the middle (LitEdge, aesthetic pass
+ * 2026-10-17), the same rule as under the main screen's top panel.
  * The motion is a plain shared-value animation (the same technique as the
  * toast), not a layout animation, so it behaves the same inside a modal on
  * every Android version. With Reduce Motion it appears at once (Reanimated's
@@ -23,6 +25,7 @@ import { Modal, Pressable, type StyleProp, StyleSheet, View, type ViewStyle } fr
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { useAfterKeyboardCloses } from '@/components/common/keyboard';
+import { LitEdge } from '@/components/common/Rule';
 import { distance, duration, easing } from '@/theme';
 
 interface Props {
@@ -59,7 +62,11 @@ function SheetBody({ onClose, sheetStyle, children }: Omit<Props, 'visible'>) {
       </Animated.View>
       {/* box-none: taps above the sheet reach the backdrop. */}
       <View style={styles.bottom} pointerEvents="box-none">
-        <Animated.View style={[sheetStyle, sheet]}>{children}</Animated.View>
+        <Animated.View style={[sheetStyle, sheet]}>
+          {children}
+          {/* The sheet's top edge, lit in the middle (over its hairline border). */}
+          <LitEdge at="top" />
+        </Animated.View>
       </View>
     </Modal>
   );

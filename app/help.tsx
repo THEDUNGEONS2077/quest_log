@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PageHeader } from '@/components/common/PageHeader';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** One guide line: what you do → what happens. */
@@ -333,22 +334,7 @@ export default function HelpScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {/* Header: same shape as the main screen, with a close button. */}
-      <View style={styles.header}>
-        <Text style={[type.display, styles.accent]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {`${g.prompt.glyph} help`}
-        </Text>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.close, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Close guide"
-        >
-          <Text style={[type.glyph, styles.accent]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {g.delete.glyph}
-          </Text>
-        </Pressable>
-      </View>
+      <PageHeader title="help" closeLabel="Close guide" />
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xl }]}>
         {SECTIONS.map((section) => {
@@ -411,25 +397,6 @@ export default function HelpScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-    borderBottomWidth: shape.hairline,
-    borderBottomColor: colors.line,
-  },
-  close: {
-    width: size.hitTarget,
-    height: size.hitTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: shape.hairline,
-    borderColor: colors.line,
-    borderRadius: shape.radius,
-  },
   pressed: { backgroundColor: colors.surface },
   content: { paddingHorizontal: space.lg, maxWidth: size.maxContentWidth, width: '100%', alignSelf: 'center' },
   section: { borderBottomWidth: shape.hairline, borderBottomColor: colors.line },

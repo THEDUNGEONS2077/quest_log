@@ -39,6 +39,7 @@ import { haptics } from '@/services/haptics';
 import { useActions, useAppStore, useSelectors, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
+import { Prompted } from '@/components/common/Prompted';
 import { useMinute } from '@/components/common/useMinute';
 import { InlineEditor } from '@/components/edit/InlineEditor';
 import { NotesEditor, NotesView } from '@/components/edit/NotesField';
@@ -148,7 +149,7 @@ function ListHeader({ hasRows }: { hasRows: boolean }) {
 function Empty() {
   return (
     <Text style={[type.body, styles.empty]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-      {`${glyphs.prompt.glyph} NOTHING COMPLETED YET.`}
+      <Prompted>NOTHING COMPLETED YET.</Prompted>
     </Text>
   );
 }

@@ -6,12 +6,18 @@
  * - Motion durations match the spec, the store's waits match the
  *   animations they wait for, and components take every animation number
  *   from the motion tokens (animation pass 2026-10-09).
+ * - Every phosphor effect (theme/effects.ts) parses with React Native's own
+ *   parser: a gradient it rejects is silently not drawn.
  */
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 
 import { ADVANCE_MS, GLIDE_TAIL_MS, LINGER_MS } from '@/store/createStore';
-import { backgroundTokens, colors, distance, duration, space, textTokens, timing } from '@/theme';
+import processBackgroundImage from 'react-native/Libraries/StyleSheet/processBackgroundImage';
+import processBackgroundRepeat from 'react-native/Libraries/StyleSheet/processBackgroundRepeat';
+import processBackgroundSize from 'react-native/Libraries/StyleSheet/processBackgroundSize';
+
+import { backgroundTokens, colors, distance, duration, effects, scanlineTile, space, textTokens, timing } from '@/theme';
 
 /** WCAG relative luminance of a #RRGGBB color. */
 function luminance(hex: string): number {
@@ -104,5 +110,17 @@ describe('app.config accent', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports -- read the file as text, not as a module
     const src: string = require('fs').readFileSync(require('path').join(__dirname, '..', 'app.config.ts'), 'utf8');
     expect(src).toContain(`const ACCENT = '${colors.accent}'`);
+  });
+});
+
+describe('phosphor effects (theme/effects.ts)', () => {
+  it.each(Object.entries(effects))('%s parses as a background image', (_name, css) => {
+    const parsed = processBackgroundImage(css);
+    expect(Array.isArray(parsed) ? parsed.length : 0).toBe(1);
+  });
+
+  it('the scanline tile parses (size and repeat)', () => {
+    expect(processBackgroundSize(scanlineTile.size)).toHaveLength(1);
+    expect(processBackgroundRepeat(scanlineTile.repeat)).toHaveLength(1);
   });
 });

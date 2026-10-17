@@ -27,7 +27,7 @@ import { shownTitle } from '@/lib/title';
 import { childIds, isInSubtree } from '@/lib/tree';
 import type { ID, TasksState } from '@/lib/types';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 interface Dest {
   id: ID;
@@ -145,7 +145,8 @@ function Option({ label, depth, disabled, onPress }: { label: string; depth: num
 const styles = StyleSheet.create({
   sheet: { flex: 1, backgroundColor: colors.bg },
   head: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: space.lg, gap: space.md },
-  title: { flex: 1, color: colors.accent, ...platformText },
+  // Glows softly, like every page's title.
+  title: { flex: 1, color: colors.accent, ...glowTextSoft, ...platformText },
   // Framed like every other screen's close button.
   close: {
     width: size.hitTarget,
@@ -175,7 +176,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: shape.hairline,
     borderBottomColor: colors.line,
   },
-  pressed: { backgroundColor: colors.surfaceRaised },
+  // Pressed: the row lights up from its left edge (like the selected row's bar in the list).
+  pressed: { backgroundColor: colors.surfaceRaised, boxShadow: glowShadow.edge },
   bright: { color: colors.textBright, ...platformText },
   text: { color: colors.text, ...platformText },
   // Still readable (dim), clearly different from the bright/normal destinations.

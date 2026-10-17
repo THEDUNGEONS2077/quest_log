@@ -22,6 +22,7 @@ import {
   duration,
   easing,
   easingExit,
+  glowShadow,
   glowTextSoft,
   maxFontSizeMultiplier,
   platformText,
@@ -107,6 +108,9 @@ const styles = StyleSheet.create({
     borderWidth: shape.hairline,
     borderColor: colors.line,
     borderRadius: shape.radius,
+    // News from the app: a lit left edge (like the selected row's bar) and the faint glow
+    // (aesthetic pass 2026-10-17).
+    boxShadow: `${glowShadow.edge}, ${glowShadow.faint}`,
   },
   message: { flex: 1, color: colors.textBright, ...platformText },
   undo: { minHeight: size.hitTarget, minWidth: size.hitTarget, paddingHorizontal: space.lg, justifyContent: 'center' },

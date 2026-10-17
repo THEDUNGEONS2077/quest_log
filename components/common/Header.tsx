@@ -15,7 +15,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { currentDayStreak, levelInfo } from '@/lib/xp';
 import { useActions, useAppStore, useSelectors } from '@/store/react';
-import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { useMinute } from './useMinute';
 
@@ -134,7 +134,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: shape.radius,
   },
-  pressed: { backgroundColor: colors.surface },
+  // Pressed: the frame lights up (lineLit) with the faint glow (aesthetic pass 2026-10-17).
+  pressed: { backgroundColor: colors.surface, borderColor: colors.lineLit, boxShadow: glowShadow.faint },
   icon: { color: colors.accent, ...platformText },
   meta: { color: colors.textDim, marginTop: space.xs, ...platformText },
 });

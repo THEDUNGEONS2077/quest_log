@@ -2,6 +2,20 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.8.0 (build 37)
+
+A visual pass: quest_log now looks like a lit terminal screen.
+
+- **The XP bar is a terminal gauge,** as on the desktop: 20 blocks between brackets, each lighting up as you earn it, brightest at the leading edge. The XP you've earned in this level reads first, in bright.
+- **A lit screen behind the title.** A faint green phosphor glow and fine scanlines sit behind the top panel and every page's header (Settings, Help, What's new, Trash), and the dividers under them are lit in the middle.
+- **The boot screen warms up like an old monitor:** the text glows, and a soft band passes down the screen once.
+- **Lit feedback when you press.** The header and close buttons light their frames, and rows in menus, Settings and Move to… light up from the left edge. A selected option (priority, repeat, search filter) glows like the selected tab.
+- **Menus and sheets** have a lit top edge, and their `>` prompt glows.
+- **Messages** (the UNDO toast and tips) have a lit left edge.
+- **Settings and What's new read more clearly:** each section title is followed by a rule that fades out, and settings that are ON glow.
+- **The list fades out** just above the `> new quest` bar, instead of being cut off.
+- **On an empty list,** the prompt glows and LOAD EXAMPLE TASKS stands out as the thing to do.
+
 ## 1.7.2 (build 36)
 
 - **Fixed: a long quest title no longer flickers while you type.** From about three lines on, the whole title flashed with every letter. The cause was the quest title's capitals: on Android, drawing typed text in capitals rewrites the field with each keystroke. While you edit a quest, its title now shows exactly as you type it, and it's back in capitals as soon as you're done (it was always saved as typed).

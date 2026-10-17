@@ -32,7 +32,20 @@ import { isEnterInsert, TITLE_MAX } from '@/lib/paste';
 import { findTask } from '@/lib/taskMap';
 import { shownTitle } from '@/lib/title';
 import { useActions, useAppStore, useStoreBundle } from '@/store/react';
-import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import {
+  backgroundStyle,
+  colors,
+  effects,
+  glowShadow,
+  glowTextSoft,
+  glyphs,
+  maxFontSizeMultiplier,
+  platformText,
+  shape,
+  size,
+  space,
+  type,
+} from '@/theme';
 
 interface Props {
   /** Reports the bar's height, so the list can leave room for it. */
@@ -139,6 +152,8 @@ export function QuickAddBar({ onHeight }: Props) {
         style={[styles.bar, { paddingBottom: space.sm + insets.bottom }]}
         onLayout={(e: LayoutChangeEvent) => onHeight?.(e.nativeEvent.layout.height)}
       >
+        {/* The list fades out as it reaches the bar, rather than being cut off (aesthetic pass 2026-10-17). */}
+        <View pointerEvents="none" style={[styles.fade, backgroundStyle(effects.fadeToBg)]} />
         {/* Group target and shorthand preview, above the field. */}
         {target !== null && (
           <View style={styles.targetRow}>
@@ -210,9 +225,14 @@ export function QuickAddBar({ onHeight }: Props) {
   );
 }
 
+/** The fade above the bar: as tall as the spare space the list leaves at its end. */
+const FADE = space.lg;
+
 const styles = StyleSheet.create({
   sticky: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   bar: { paddingHorizontal: space.lg, paddingTop: space.sm, backgroundColor: colors.bg },
+  // Just above the bar, over the list's spare space at its end (the list's inset adds space.lg).
+  fade: { position: 'absolute', left: 0, right: 0, top: -FADE, height: FADE },
   field: {
     flexDirection: 'row',
     alignItems: 'center',

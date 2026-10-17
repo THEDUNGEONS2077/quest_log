@@ -28,7 +28,7 @@ import { shownTitle } from '@/lib/title';
 import type { Priority } from '@/lib/types';
 import { haptics } from '@/services/haptics';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { useState } from 'react';
 
@@ -189,6 +189,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: shape.radius,
   },
-  segmentOn: { borderColor: colors.accent, backgroundColor: colors.surface },
+  // Selected: accent frame on surface with the faint glow, like the selected quest tab.
+  segmentOn: { borderColor: colors.accent, backgroundColor: colors.surface, boxShadow: glowShadow.faint },
   text: { ...platformText },
 });

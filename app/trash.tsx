@@ -12,10 +12,11 @@
  * in its original place, with its subtasks; DELETE NOW and EMPTY TRASH are
  * permanent, so they ask first.
  */
-import { router } from 'expo-router';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PageHeader } from '@/components/common/PageHeader';
+import { Prompted } from '@/components/common/Prompted';
 import { useMinute } from '@/components/common/useMinute';
 import { trashed } from '@/lib/bulk';
 import { formatRelative } from '@/lib/dates';
@@ -43,16 +44,7 @@ export default function TrashScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={[type.display, styles.title]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {`${glyphs.prompt.glyph} trash`}
-        </Text>
-        <Pressable onPress={() => router.back()} style={styles.close} accessibilityRole="button" accessibilityLabel="Close trash">
-          <Text style={[type.glyph, styles.accent]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {glyphs.delete.glyph}
-          </Text>
-        </Pressable>
-      </View>
+      <PageHeader title="trash" closeLabel="Close trash" />
       <Text style={[type.meta, styles.note]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {`Deleted tasks are kept for ${TRASH_DAYS} days, then removed for good.`}
       </Text>
@@ -63,7 +55,7 @@ export default function TrashScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + space.xl }}
         ListEmptyComponent={
           <Text style={[type.body, styles.empty]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {`${glyphs.prompt.glyph} TRASH IS EMPTY.`}
+            <Prompted>TRASH IS EMPTY.</Prompted>
           </Text>
         }
         renderItem={({ item }) => {
@@ -121,27 +113,6 @@ function Button({ label, onPress }: { label: string; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    // Same header as Help, Settings and What's new: a hairline divider under it.
-    paddingBottom: space.sm,
-    borderBottomWidth: shape.hairline,
-    borderBottomColor: colors.line,
-  },
-  title: { color: colors.accent, ...platformText },
-  close: {
-    width: size.hitTarget,
-    height: size.hitTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: shape.hairline,
-    borderColor: colors.line,
-    borderRadius: shape.radius,
-  },
   note: { color: colors.textDim, paddingHorizontal: space.lg, paddingVertical: space.sm, ...platformText },
   empty: { color: colors.textDim, padding: space.lg, ...platformText },
   item: { paddingHorizontal: space.lg, paddingVertical: space.md, borderTopWidth: shape.hairline, borderTopColor: colors.line },

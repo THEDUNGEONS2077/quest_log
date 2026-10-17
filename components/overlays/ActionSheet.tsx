@@ -18,7 +18,8 @@ import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SheetModal } from './SheetModal';
-import { colors, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { Prompted } from '@/components/common/Prompted';
+import { colors, glowShadow, glowTextSoft, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 export interface SheetAction {
   glyph: string;
@@ -52,7 +53,7 @@ export function ActionSheet({ visible, title, actions, onClose, children }: Prop
       sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.sm, maxHeight: height * MAX_HEIGHT_SHARE }]}
     >
       <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} ${title}`}
+        <Prompted>{title}</Prompted>
       </Text>
       <View style={styles.divider} />
       <ScrollView bounces={false}>
@@ -93,7 +94,8 @@ const styles = StyleSheet.create({
   title: { color: colors.textBright, paddingHorizontal: space.lg, ...platformText },
   divider: { height: shape.hairline, backgroundColor: colors.line, marginTop: space.md },
   action: { flexDirection: 'row', alignItems: 'center', minHeight: size.rowMinHeight, paddingHorizontal: space.lg },
-  pressed: { backgroundColor: colors.surface },
+  // Pressed: the row lights up from its left edge (like the selected row's bar in the list).
+  pressed: { backgroundColor: colors.surface, boxShadow: glowShadow.edge },
   glyph: { color: colors.accent, width: size.indent + space.sm, ...glowTextSoft, ...platformText },
   label: { color: colors.text, ...platformText },
 });

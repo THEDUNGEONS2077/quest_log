@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SheetModal } from './SheetModal';
 
+import { Prompted } from '@/components/common/Prompted';
 import { useMinute } from '@/components/common/useMinute';
 import { addDays, atTimeOfDay, duePresets, formatDue, minutesOfDay, nudgeDue, startOfDay, withDay } from '@/lib/dates';
 import { repeatLabel } from '@/lib/recurrence';
@@ -36,7 +37,7 @@ import { hasDialogPicker, pickDate, pickDateTime, pickTime } from '@/services/da
 import { getPermissionState, openNotificationSettings, type PermissionState } from '@/services/notifications';
 import { SELECTION } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** The sheet never covers more than this share of the screen; its options scroll. */
 const MAX_HEIGHT_SHARE = 0.85;
@@ -127,7 +128,7 @@ function DueSheetBody({ id }: { id: string }) {
       sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md, maxHeight: height * MAX_HEIGHT_SHARE }]}
     >
       <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} ${forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : shownTitle(task) || 'Untitled task'}`}
+        <Prompted>{forSelection ? `${selection?.length ?? 0} SELECTED TASKS` : shownTitle(task) || 'Untitled task'}</Prompted>
       </Text>
       {task.dueAt !== null && (
         <Text style={[type.meta, styles.current]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
@@ -292,7 +293,8 @@ const styles = StyleSheet.create({
   third: { flexBasis: '28%' },
   section: { color: colors.textDim, marginBottom: space.sm, ...platformText },
   sectionGap: { marginTop: space.md },
-  pressed: { borderColor: colors.accent },
+  // Pressed: the frame lights up with the faint glow.
+  pressed: { borderColor: colors.accent, boxShadow: glowShadow.faint },
   optionText: { color: colors.accent, ...platformText },
   toggleRow: {
     flexDirection: 'row',
@@ -302,7 +304,8 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
   },
   text: { color: colors.text, ...platformText },
-  on: { color: colors.accent, ...platformText },
+  // NOTIFY on: lit, with the soft text glow (as a setting that's on).
+  on: { color: colors.accent, ...glowTextSoft, ...platformText },
   off: { color: colors.textDim, ...platformText },
   note: { paddingVertical: space.sm },
   noteText: { color: colors.textBright, ...platformText },

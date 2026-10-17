@@ -11,3 +11,4 @@ export * from './spacing';
 export * from './motion';
 export * from './glyphs';
 export * from './platform';
+export * from './effects';

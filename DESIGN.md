@@ -30,7 +30,7 @@ The look is a **cyberdeck terminal**: green phosphor on pure black, one monospac
 5. **Controls live at the bottom**, within thumb reach: the quick-add bar, the editing toolbar, sheets and toasts.
 6. **Calm density.** Rows are generous (52 pt minimum), details sit on their own line under the title, and dividers separate top-level items.
 7. **Accessible by construction.** All text meets WCAG AA, every gesture has a screen-reader action, text scales with the system, and Reduce Motion is honoured.
-8. **One effect only:** a soft green glow, for what's focused, selected or lit. There are no other shadows, gradients or blurs.
+8. **One effect: phosphor light.** A soft green glow marks what's focused, selected or lit. The chrome (the top panel, page headers, sheets, the boot screen) reads as a lit terminal screen: a faint phosphor wash from the top-left corner, fine static scanlines, and rules lit in the middle (`theme/effects.ts`, aesthetic pass 2026-10-17). It's all green at low strength, never inside list rows, and static, apart from the boot screen's one refresh band. There are no drop shadows, blurs or other gradients.
 
 ---
 
@@ -44,6 +44,8 @@ The look is a **cyberdeck terminal**: green phosphor on pure black, one monospac
 | `surface` | `#060D08` | Editing row, sheets, input fields, toast, pressed state |
 | `surfaceRaised` | `#0B160D` | Context menus and sheets, selected rows, the lifted drag row, pressed state on surfaces |
 | `line` | `#12301A` | Hairline borders and dividers (decoration only, never text) |
+| `lineLit` | `#145907` | A lit frame: accent at about 35% over black. Pressed header and page buttons, the example-tasks button (decoration only) |
+| `xpWash` | `#092903` | Accent at 16% over black: the quest meter's fill, the XP gauge's unlit cells (decoration only) |
 | `textDim` | `#2B903F` | Completed items, metadata, placeholders, hints, notes |
 | `text` | `#2FB344` | Body text, icons, labels |
 | `accent` | `#39FF14` | Focus, the caret, active controls, high priority, the drop indicator, primary buttons, the `>` prompt |
@@ -71,7 +73,21 @@ Every text token passes AA (4.5:1) on every background. `textDim` was brightened
   - **Faint** (22%, 8 px) for frames that stay lit: the selected quest tab, the quick-add field while typing.
   - **Soft text glow** (35%, 6 px) on accent text in the chrome: the title, the prompt and toolbar glyphs, menu icons, UNDO, the selected tab's count.
   - **Bright** (60%) only for thin marks and small floating text: the scan line's edge, `+N XP`.
+  - **Edge** (`glowShadow.edge`: a 2 pt `accent` bar inset on the left) for a pressed row in a sheet, Settings or the move picker, and on the toast: like the selected row's bar.
   - **Where it never goes:** inside list rows (apart from the row being edited or dragged, and the completion burst). Rows stay calm; the glow marks the chrome that's lit or selected (2026-10-11: "accentuate, subtly").
+- **Phosphor effects** (`theme/effects.ts`, applied with `backgroundStyle()`: React Native's `experimental_backgroundImage` on Android, CSS `background-image` on the web; a test runs each through React Native's parser, since one it rejects is silently not drawn):
+  - **Phosphor wash:** a radial `accent` light at 10% from the top-left corner, fading out by 70%. Behind the top panel, page headers and the boot screen (`Phosphor`).
+  - **Scanlines:** a 1 pt `accent` line at 5% every 3 pt, over the same areas. Static: a moving pattern would cost battery for no information.
+  - **Lit rule** (`LitEdge`): a hairline from transparent through `line` to `accent` at 35% in the middle and back, laid over a hairline border. Under the top panel and page headers, on the top edge of sheets and of the editing and selection bars.
+  - **Heading rule** (`Rule`): runs on from a heading to the right edge, fading out; lit (from `accent` at 35%) after Settings section titles and the newest version in What's new, `line` for older versions.
+  - **Fade to black:** 16 pt over the list just above the quick-add bar, so rows fade out rather than being cut off.
+  - **Gauge fill:** `textDim` to `accent`, left to right (the XP bar's lit cells).
+- **States, the same everywhere:**
+  - *Selected* (it stays): `accent` frame on `surface` with the faint glow. The selected quest tab, search filter, priority, repeat option.
+  - *Pressed* (while the finger is down), framed buttons: the frame lights (`lineLit`, or `accent` on sheet options) on `surface`, with the faint glow.
+  - *Pressed* rows: `surface` with the lit left edge.
+  - *On* (a setting): `[ON ]` in `accent` with the soft text glow; `[OFF]` in `textDim`.
+  - *Call to action* (the one thing to do: `[ LOAD EXAMPLE TASKS ]`, `[ CONTINUE ]`): a lit frame with the faint glow at rest.
 
 ---
 
@@ -178,7 +194,8 @@ All measurements are in pt (dp on Android, px on the web).
 12 ACTIVE · 4 DONE TODAY · 3-DAY STREAK
 ```
 - **Title:** `<level>_quest_log` in the `title` role (29 / 38 bold, 30% larger than `display`). The brackets are `textDim`, the level `textBright`, the name `accent`. It shrinks to fit (down to 70%); the buttons never move.
-- **Buttons:** 34 pt glyph boxes, 4 apart, at the top right; `hitSlop` keeps them 44 pt to tap.
+- **Buttons:** 34 pt glyph boxes, 4 apart, at the top right; `hitSlop` keeps them 44 pt to tap. Pressed, the frame lights (`lineLit`) with the faint glow.
+- **The panel's light:** the whole top panel (header, tabs, XP bar) sits over the phosphor wash and scanlines, and its bottom divider is lit in the middle.
 - **Status line:** `meta`, `textDim`, items joined with ` · `. The day streak appears from 2 days.
 - **Tapping the title goes home:** the default view (ALL, ACTIVE, top level, no search), scrolled to the top.
 
@@ -198,13 +215,14 @@ All measurements are in pt (dp on Android, px on the web).
 
 ### XP bar (under the tabs)
 ```
-[■■■■■■■■■■■■■■□□□□□□□□□□]  340/425 XP
+[▮▮▮▮▮▮▮▮▮▮▮▮▮▮▯▯▯▯▯▯]  340/425 XP
 ```
-- **Track:** 10 pt tall, hairline `line` frame, `surface` inside, radius 2.
-- **Fill:** `accent` with the outset glow, split into 10 segments by 1 pt `bg` separators (a terminal gauge).
-- **Label:** `into/needed XP` in `meta` `textDim`.
+A terminal gauge, as on the desktop (aesthetic pass 2026-10-17).
+- **Cells:** 20 blocks, 10 pt tall with 2 pt `bg` gaps, between `[` `]` brackets in `meta` `textDim`. Unlit cells are `xpWash`.
+- **Lit cells:** the gauge gradient, brightest at the leading edge, whose outset glow spills softly onto the next cell. Whole cells only (rounded down), and at least one as soon as anything is earned into the level.
+- **Label:** `into` in `textBright`, then `/needed XP` in `textDim` (`meta`).
 - **Opacity:** 80%, quieter than the tabs above it.
-- **Gain:** the fill eases forward (320 ms), and a `+18` in `accent` floats up 12 pt and fades (1.2 s). On a level-up the fill runs to the end, then restarts from empty.
+- **Gain:** the fill glides forward (320 ms) by translation, with fixed gaps over it, so nothing is laid out again while it moves; a `+18` in `accent` floats up 16 pt and fades (the float rhythm). On a level-up the fill runs to the end, then restarts from empty.
 - **Screen readers:** `role=progressbar`, "Level 7: 340 of 425 XP to level 8".
 
 ### Quest meter (on a row with subtasks)
@@ -227,7 +245,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **Details go on their own line under the title** (priority, notes `≡`, due date, progress `[2/5]`), wrapping as needed. *Why:* side-by-side details squeezed long titles into broken wraps.
 - **The whole title column is the tap target,** not just the letters.
 - **Top-level rows** get a hairline divider above them and 8 pt extra top margin, whether or not they have children, except the first row: it sits right under the top panel's fixed divider.
-- **The top panel** (title, tabs, XP bar, search, breadcrumb) never scrolls. Its bottom hairline divider stays put while the list scrolls under it.
+- **The top panel** (title, tabs, XP bar, search, breadcrumb) never scrolls. Its bottom hairline divider (lit in the middle) stays put while the list scrolls under it.
 - **Nesting guides:** 1 pt vertical `line` hairlines, one per level, centred under each ancestor's caret column.
 - **Quest `+` button:** every top-level task (a quest) has a bordered `+` on the right that adds an objective (subtask), from the moment it's created. While a quest is being edited, the `+` takes the place of `+ NOTE`. Every quest is meant to become a group.
 - **States:**
@@ -247,7 +265,7 @@ All measurements are in pt (dp on Android, px on the web).
 │ > new quest█                     │
 └──────────────────────────────────┘
 ```
-- **Placement:** pinned to the bottom, riding on top of the keyboard when it's open.
+- **Placement:** pinned to the bottom, riding on top of the keyboard when it's open. The list fades to black over the 16 pt just above it, rather than being cut off.
 - **Field:** `surface` with a hairline `line` border, which turns `accent` when focused. The prompt `>` is in `accent`.
 - **Idle state:** `new quest` plus a **blinking █ cursor** (a placeholder can't blink, so it's an overlay).
 - **Enter adds the item and closes the keyboard.** Live chips above the field preview parsed shorthand.
@@ -258,8 +276,9 @@ All measurements are in pt (dp on Android, px on the web).
  ←    →    +    !    ≡    ◔    ↩    ✓
 OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 ```
-- 56 pt tall, `surface` background, sitting above the keyboard.
-- Each button is a glyph over a `meta` label; the primary action (`✓ DONE`) is at the far right.
+- 56 pt tall, `surfaceRaised` background with a hairline top border lit in the middle, sitting above the keyboard.
+- Each button is a glyph (`accent`, soft text glow) over a `meta` label; the primary action (`✓ DONE`) is at the far right.
+- **The selection bar** (`n SELECTED`, then DONE PRI DUE MOVE GROUP DEL) has the same look.
 
 ### Bottom sheet
 ```
@@ -270,9 +289,10 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 ⊞  Duplicate
 ✕  Delete
 ```
-- **Sheet:** `surfaceRaised`, hairline top border, radius 2 at the top corners, 16 pt top padding, at most 85% of the screen height (scrolls if longer).
-- **Title:** `> title` in `body`, `textBright`, at most 2 lines, then a hairline divider.
-- **Options:** 52 pt rows with a 32 pt glyph column in `accent` and the label in `text`; pressed state is `surface`.
+- **Sheet:** `surfaceRaised`, hairline top border lit in the middle, radius 2 at the top corners, 16 pt top padding, at most 85% of the screen height (scrolls if longer).
+- **Title:** `> title` in `body`, `textBright`, with the `>` in `accent` and the soft text glow, at most 2 lines, then a hairline divider.
+- **Options:** 52 pt rows with a 32 pt glyph column in `accent` and the label in `text`; pressed, the row is `surface` with the lit left edge.
+- **Option buttons:** a selected one (priority, repeat choices) has an `accent` frame with the faint glow; a due-date option lights the same way while pressed.
 - **Opening:** the backdrop fades in while the sheet rises 72 pt and fades in, over 200 ms.
 - **Closing:** tap outside or press back. The backdrop isn't a screen-reader element (it would swallow the sheet's text).
 
@@ -282,7 +302,7 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 │ COMPLETED                   UNDO │
 └──────────────────────────────────┘
 ```
-- **Look:** `surfaceRaised`, hairline border, radius 2, 16 pt from the screen edges, just above the bottom bar.
+- **Look:** `surfaceRaised`, hairline border, radius 2, 16 pt from the screen edges, just above the bottom bar. News from the app: a lit left edge and the faint glow.
 - **Text:** the message in `meta` `textBright`, UPPERCASE and past tense ("DELETED", "ADDED 3 TASKS"). **UNDO** is in `accent`.
 - **Timing:** slides up 16 pt with a fade over 200 ms, holds for 5 s, and is a polite live region for screen readers.
 
@@ -292,17 +312,19 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 
 [ LOAD EXAMPLE TASKS ]
 ```
-- A terminal line in `body` `textDim` with a blinking cursor, plus one bordered bracket button.
+- A terminal line in `body` `textDim` (its `>` in `accent` with the soft text glow) with a blinking cursor, plus one bracket button: the call to action, with a lit frame and the faint glow.
 - **Search and filtered views get their own wording** ("> NO MATCHES."). Never show the first-run empty state there.
 
 ### Settings rows
-- **Toggle:** label (`body` `text`) with a hint below (`meta` `textDim`) on the left, `[ON ]` in `accent` or `[OFF]` in `textDim` on the right. The whole row is the switch.
+- **Toggle:** label (`body` `text`) with a hint below (`meta` `textDim`) on the left, `[ON ]` in `accent` with the soft text glow or `[OFF]` in `textDim` on the right. The whole row is the switch.
 - **Choice:** the same, with the current value in UPPERCASE `accent`. It opens a sheet.
 - **Action:** glyph column plus label.
-- **Section titles:** `group` in `textBright`, separated by hairlines.
+- **Pressed:** the whole row, edge to edge, is `surface` with the lit left edge.
+- **Section titles:** `group` in `textBright`, followed by a lit rule that fades out; 24 pt above each section, no borders between them.
 
 ### Full-screen pages (settings, help, what's new)
-- **Header:** `> page name` in `display` `accent`, plus a 44 pt bordered `✕` close button at the top right, with a hairline below.
+- **Header** (`PageHeader`, shared): `> page name` in `display` `accent` with the soft text glow, plus a 44 pt bordered `✕` close button at the top right (pressed, its frame lights). Like the main screen's top panel, it sits over the phosphor wash and scanlines, and the hairline below it is lit in the middle.
+- **What's new:** each version heading (`group`, `accent`) is followed by a rule that fades out: lit for the newest version, `line` for older ones. `[ CONTINUE ]` is the call to action.
 - **Help sections:** collapsible (caret plus `group` title, 52 pt rows). Each opens with one plain sentence saying what the feature is for, then "do this → this happens" lines: the key in `accent`, the explanation in `text`.
 
 ### Boot screen (optional flourish)
@@ -314,6 +336,7 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
                 tap to skip
 ```
 - Lines type at 8 ms per character (about 1 s total), hold for 350 ms, then fade in 160 ms.
+- **The look:** a lit terminal screen: the phosphor wash and scanlines, the lines in `accent` with the soft text glow, and one soft bright band (`accent` at 5%, `textBright` at 7%, 30% of the screen tall) passing down the screen once while they type (`timing.bootSweep`, linear), like a CRT warming up.
 - It runs **in parallel with the app loading** (it never delays use), only on a cold start. A tap skips it. It's skipped entirely with Reduce Motion, and the user can turn it off.
 
 ### Crash screen
@@ -333,6 +356,8 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 | `slow` | 320 ms | Larger transitions, pulse decay |
 | easing | `Easing.out(Easing.cubic)` | Everything that arrives, changes or settles |
 | easingExit | `Easing.in(Easing.cubic)` | Things leaving (a completed quest's slide, the toast going): slow to start, then away |
+| easingScan | `Easing.linear` | The scan effects only (the boot screen's refresh band): a CRT's beam doesn't ease |
+| boot sweep | 900 ms | The boot screen's refresh band, one pass down the screen |
 | cursor blink | 530 ms on / 530 ms off | All `█` cursors share one animated value (they blink in step, at the cost of one animation) |
 | float | in `fast`, hold 450 ms, out `slow`, rising throughout | Every floating `+N XP` (the row and the XP bar move in step) |
 | `distance.nudge` | 16 pt | Small arrivals: the toast, a view sliding in, the XP bar's `+N` |
@@ -463,7 +488,7 @@ These are the rules that make the app feel good. Most were refined through devic
 ### TypeScript / React Native
 ```ts
 export const colors = {
-  bg: '#000000', surface: '#060D08', surfaceRaised: '#0B160D', line: '#12301A',
+  bg: '#000000', surface: '#060D08', surfaceRaised: '#0B160D', line: '#12301A', lineLit: '#145907', xpWash: '#092903',
   textDim: '#2B903F', text: '#2FB344', accent: '#39FF14', textBright: '#B6FFB0',
 } as const;
 
@@ -491,16 +516,29 @@ export const size = {
 export const shape = { radius: 2, hairline: 1, strike: 1.5, checkboxTracking: -4, dropIndicator: 2 } as const;
 
 export const duration = { fast: 120, base: 200, slow: 320 } as const;
-export const timing = { cursorBlink: 530, completeHold: 600, repeatHold: 300, bootFade: 160, toastHold: 5000, highlight: 800, longPress: 300, hoverExpand: 600, floatHold: 450 } as const;
+export const timing = { cursorBlink: 530, completeHold: 600, repeatHold: 300, bootFade: 160, bootSweep: 900, toastHold: 5000, highlight: 800, longPress: 300, hoverExpand: 600, floatHold: 450 } as const;
 export const distance = { nudge: 16, float: 24, exit: 48, sheet: 72 } as const;
 export const scale = { lift: 1.02, pop: 1.3 } as const;
-// easing: Easing.out(Easing.cubic)   easingExit: Easing.in(Easing.cubic)
+// easing: Easing.out(Easing.cubic)   easingExit: Easing.in(Easing.cubic)   easingScan: Easing.linear
 
 export const glowShadow = {
   inset: 'inset 0 0 6px 0 rgba(57, 255, 20, 0.35)',
   outset: '0 0 6px 0 rgba(57, 255, 20, 0.35)',
   faint: '0 0 8px 0 rgba(57, 255, 20, 0.22)',
   bright: '0 0 6px 0 rgba(57, 255, 20, 0.6)',
+  edge: 'inset 2px 0 0 0 #39FF14',
+} as const;
+
+// The phosphor effects: CSS gradients (React Native's experimental_backgroundImage).
+export const effects = {
+  phosphor: 'radial-gradient(circle at 0% 0%, rgba(57, 255, 20, 0.1), transparent 70%)',
+  scanlines: 'linear-gradient(to bottom, rgba(57, 255, 20, 0.05) 0px, rgba(57, 255, 20, 0.05) 1px, transparent 1px, transparent 3px)', // tile: size '100% 3px', repeat
+  litRule: 'linear-gradient(to right, transparent, #12301A 15%, rgba(57, 255, 20, 0.35) 50%, #12301A 85%, transparent)',
+  fadeRule: 'linear-gradient(to right, #12301A, transparent)',
+  fadeRuleLit: 'linear-gradient(to right, rgba(57, 255, 20, 0.35), transparent)',
+  gauge: 'linear-gradient(to right, #2B903F, #39FF14)',
+  fadeToBg: 'linear-gradient(to bottom, transparent, #000000)',
+  band: 'linear-gradient(to bottom, transparent, rgba(57, 255, 20, 0.05) 60%, rgba(182, 255, 176, 0.07) 70%, transparent)',
 } as const;
 export const glowTextSoft = { textShadowColor: 'rgba(57, 255, 20, 0.35)', textShadowRadius: 6 } as const;
 export const glowText = { textShadowColor: 'rgba(57, 255, 20, 0.6)', textShadowRadius: 6 } as const;
@@ -518,6 +556,11 @@ export const backdrop = 'rgba(0,0,0,0.6)';
   --glow: 0 0 6px 0 rgba(57, 255, 20, 0.35);
   --glow-faint: 0 0 8px 0 rgba(57, 255, 20, 0.22);
   --glow-text: 0 0 6px rgba(57, 255, 20, 0.35);
+  --glow-edge: inset 2px 0 0 0 #39FF14;
+  --line-lit: #145907; --xp-wash: #092903;
+  --phosphor: radial-gradient(circle at 0% 0%, rgba(57, 255, 20, 0.1), transparent 70%);
+  --scanlines: repeating-linear-gradient(to bottom, rgba(57, 255, 20, 0.05) 0 1px, transparent 1px 3px);
+  --lit-rule: linear-gradient(to right, transparent, #12301A 15%, rgba(57, 255, 20, 0.35) 50%, #12301A 85%, transparent);
 
   /* type */
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -554,7 +597,7 @@ export const backdrop = 'rgba(0,0,0,0.6)';
 ## 13. Checklist for a new screen
 
 - [ ] Only tokens: no hex values, raw font sizes or one-off spacing.
-- [ ] The title is `> name` (display, accent). There's a close or back control at the top right, 44 pt.
+- [ ] The header is `PageHeader`: `> name` (display, accent, soft glow) over the phosphor light, a close control at the top right (44 pt), a lit divider below.
 - [ ] Primary actions are at the bottom, within thumb reach.
 - [ ] Every tappable thing is at least 44 × 44, and rows are at least 52.
 - [ ] Destructive actions undo through a toast; no confirmation dialog unless there's no undo.

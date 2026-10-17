@@ -34,6 +34,11 @@ export const timing = {
   repeatHold: 300,
   /** Boot sequence fade-out. */
   bootFade: 160,
+  /**
+   * The boot screen's refresh band passing down the screen, once, while the
+   * lines type (aesthetic pass 2026-10-17): about as long as the typing.
+   */
+  bootSweep: 900,
   /** Undo toast visible time. */
   toastHold: 5000,
   /** Highlight-on-open flash (two pulses). */
@@ -76,3 +81,9 @@ export const easing = Easing.out(Easing.cubic);
  * pass 2026-10-11).
  */
 export const easingExit = Easing.in(Easing.cubic);
+
+/**
+ * Constant speed, for the scan effects only (the boot screen's refresh
+ * band): a CRT's beam doesn't ease, and the desktop's scanlines run linear too.
+ */
+export const easingScan = Easing.linear;

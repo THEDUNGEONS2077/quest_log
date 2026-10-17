@@ -26,6 +26,7 @@ import Animated from 'react-native-reanimated';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BlockCursor } from '@/components/common/BlockCursor';
+import { Prompted } from '@/components/common/Prompted';
 import { EditingChips } from '@/components/edit/EditingChips';
 
 import type { Row } from '@/lib/flatten';
@@ -33,7 +34,7 @@ import type { TasksState } from '@/lib/types';
 import { CATEGORY_TABS } from '@/lib/quests';
 import { findTask } from '@/lib/taskMap';
 import { useActions, useAppStore, useSelectors, useStoreBundle } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glowTextSoft, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 import { DragOverlay, DragProvider, useDragController } from './drag';
 import { GlideCell } from './GlideCell';
@@ -217,7 +218,7 @@ function EmptyState() {
     return (
       <View style={styles.empty}>
         <Text style={[type.body, styles.emptyText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {searching ? `${glyphs.prompt.glyph} NO MATCHES.` : `${glyphs.prompt.glyph} EMPTY GROUP. TYPE BELOW TO ADD`}
+          <Prompted>{searching ? 'NO MATCHES.' : 'EMPTY GROUP. TYPE BELOW TO ADD'}</Prompted>
         </Text>
       </View>
     );
@@ -225,7 +226,7 @@ function EmptyState() {
   return (
     <View style={styles.empty}>
       <Text style={[type.body, styles.emptyText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} NO ${category === 'all' ? 'ACTIVE' : category.toUpperCase()} QUESTS. TYPE BELOW TO BEGIN`}
+        <Prompted>{`NO ${category === 'all' ? 'ACTIVE' : category.toUpperCase()} QUESTS. TYPE BELOW TO BEGIN`}</Prompted>
         <BlockCursor />
       </Text>
       {noQuests && (
@@ -263,9 +264,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     justifyContent: 'center',
     borderWidth: shape.hairline,
-    borderColor: colors.line,
     borderRadius: shape.radius,
+    // The one thing to do on an empty list: a lit frame with the faint glow (aesthetic pass 2026-10-17).
+    borderColor: colors.lineLit,
+    boxShadow: glowShadow.faint,
   },
-  examplePressed: { backgroundColor: colors.surface },
-  exampleText: { color: colors.accent, ...platformText },
+  examplePressed: { backgroundColor: colors.surface, borderColor: colors.accent },
+  exampleText: { color: colors.accent, ...glowTextSoft, ...platformText },
 });

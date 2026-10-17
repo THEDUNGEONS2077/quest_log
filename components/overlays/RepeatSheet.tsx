@@ -22,12 +22,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { SheetModal } from './SheetModal';
 
+import { Prompted } from '@/components/common/Prompted';
+
 import { PRESETS, repeatLabel } from '@/lib/recurrence';
 import { findTask } from '@/lib/taskMap';
 import { shownTitle } from '@/lib/title';
 import type { RepeatRule } from '@/lib/types';
 import { useActions, useAppStore } from '@/store/react';
-import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const;
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
@@ -69,7 +71,7 @@ function RepeatSheetBody({ id }: { id: string }) {
   return (
     <SheetModal visible onClose={close} sheetStyle={[styles.sheet, { paddingBottom: insets.bottom + space.md }]}>
       <Text style={[type.body, styles.title]} numberOfLines={2} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {`${glyphs.prompt.glyph} ${shownTitle(task) || 'Untitled task'}`}
+        <Prompted>{shownTitle(task) || 'Untitled task'}</Prompted>
       </Text>
       <Text style={[type.meta, styles.summary]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {`${glyphs.repeat.glyph} ${repeatLabel(rule)}`}
@@ -226,7 +228,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   grow: { flexGrow: 1 },
-  selected: { borderColor: colors.accent },
+  // Selected: accent frame with the faint glow, like the selected quest tab.
+  selected: { borderColor: colors.accent, boxShadow: glowShadow.faint },
   pressed: { backgroundColor: colors.bg },
   step: {
     width: size.hitTarget,

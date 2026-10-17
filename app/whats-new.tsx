@@ -21,9 +21,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import changelog from '@/assets/changelog.json';
+import { PageHeader } from '@/components/common/PageHeader';
+import { Rule } from '@/components/common/Rule';
 import { type ChangelogEntry, entriesSince } from '@/lib/changelog';
 import { appBuild } from '@/services/appInfo';
-import { colors, fonts, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, fonts, glowShadow, glowTextSoft, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** Which versions to list for the route's `since` param. */
 function entriesFor(since: string | undefined): ChangelogEntry[] {
@@ -41,29 +43,22 @@ export default function WhatsNewScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      {/* Header: same shape as the help screen. */}
-      <View style={styles.header}>
-        <Text style={[type.display, styles.accent]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {`${glyphs.prompt.glyph} what's new`}
-        </Text>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.close, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Close what's new"
-        >
-          <Text style={[type.glyph, styles.accent]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {glyphs.delete.glyph}
-          </Text>
-        </Pressable>
-      </View>
+      <PageHeader title="what's new" closeLabel="Close what's new" />
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xl }]}>
-        {entries.map((entry) => (
+        {entries.map((entry, i) => (
           <View key={entry.version} style={styles.entry}>
-            <Text style={[type.group, styles.accent]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              {`v${entry.version} · BUILD ${entry.build}`}
-            </Text>
+            {/* The version, then a rule that fades out: lit for the newest, the line color for older ones. */}
+            <View style={styles.versionRow}>
+              <Text
+                style={[type.group, i === 0 ? styles.lit : styles.accent]}
+                accessibilityRole="header"
+                maxFontSizeMultiplier={maxFontSizeMultiplier}
+              >
+                {`v${entry.version} · BUILD ${entry.build}`}
+              </Text>
+              <Rule lit={i === 0} />
+            </View>
             {entry.lines.map((line, i) => (
               <ChangelogLine key={i} line={line} />
             ))}
@@ -133,31 +128,15 @@ function Inline({ text }: { text: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-    borderBottomWidth: shape.hairline,
-    borderBottomColor: colors.line,
-  },
-  close: {
-    width: size.hitTarget,
-    height: size.hitTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: shape.hairline,
-    borderColor: colors.line,
-    borderRadius: shape.radius,
-  },
   pressed: { backgroundColor: colors.surface },
   content: { paddingHorizontal: space.lg, maxWidth: size.maxContentWidth, width: '100%', alignSelf: 'center' },
-  entry: { paddingVertical: space.lg, borderBottomWidth: shape.hairline, borderBottomColor: colors.line, gap: space.xs },
+  // Versions are divided by their headings' rules, not by borders.
+  entry: { paddingTop: space.lg, paddingBottom: space.sm, gap: space.xs },
+  versionRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.xs },
   paragraph: { marginBottom: space.sm },
   bulletRow: { flexDirection: 'row', gap: space.sm, paddingVertical: space.xs },
   bulletText: { flex: 1 },
+  // The one way on: an accent frame with the faint glow (the app's call-to-action look).
   continue: {
     marginTop: space.xl,
     minHeight: size.hitTarget,
@@ -166,8 +145,11 @@ const styles = StyleSheet.create({
     borderWidth: shape.hairline,
     borderColor: colors.accent,
     borderRadius: shape.radius,
+    boxShadow: glowShadow.faint,
   },
   accent: { color: colors.accent, ...platformText },
+  // The newest version's heading: lit, with the soft text glow.
+  lit: { color: colors.accent, ...glowTextSoft, ...platformText },
   bright: { color: colors.textBright, ...platformText },
   strong: { color: colors.textBright, fontFamily: fonts.bold },
   text: { color: colors.text, ...platformText },

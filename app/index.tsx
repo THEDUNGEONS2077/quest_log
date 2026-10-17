@@ -35,6 +35,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { Header } from '@/components/common/Header';
+import { Phosphor } from '@/components/common/Phosphor';
+import { LitEdge } from '@/components/common/Rule';
 import { SearchBar } from '@/components/common/SearchBar';
 import { Tabs } from '@/components/common/Tabs';
 import { XpBar } from '@/components/common/XpBar';
@@ -89,13 +91,17 @@ export default function ListScreen() {
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.content}>
         {/* The top panel never scrolls; its bottom divider stays put while the list
-            scrolls under it (user request 2026-10-09). */}
+            scrolls under it (user request 2026-10-09). It's the terminal's lit screen:
+            a soft phosphor light behind the title and fine scanlines (Phosphor), and its
+            divider is lit in the middle (LitEdge) (aesthetic pass 2026-10-17). */}
         <View style={styles.topPanel}>
+          <Phosphor />
           <Header />
           <Tabs />
           <XpBar />
           {searchOpen && <SearchBar key={tab} tab={tab} />}
           {tab === 'active' && zoomed && <Breadcrumb />}
+          <LitEdge at="bottom" />
         </View>
         <Animated.View style={[styles.list, entrance]}>
           <View style={[styles.list, tab !== 'active' && styles.hidden]}>

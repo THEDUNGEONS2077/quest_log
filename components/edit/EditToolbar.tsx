@@ -18,6 +18,7 @@
 import { useEffect } from 'react';
 import { Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import { KeyboardStickyView } from '@/components/common/keyboard';
+import { LitEdge } from '@/components/common/Rule';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { registerFloor } from '@/components/list/keepInView';
@@ -87,6 +88,8 @@ export function EditToolbar({ editingId, structure }: Props) {
     <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }} style={styles.sticky}>
       {/* Registered as the "floor": typed text is kept above this bar's top edge. */}
       <View ref={registerFloor} collapsable={false} style={[styles.bar, { paddingBottom: insets.bottom }]} accessibilityRole="toolbar">
+        {/* The bar's top edge, lit in the middle (over its hairline border). */}
+        <LitEdge at="top" />
         {buttons.map((b) => (
           <Pressable
             key={b.label}

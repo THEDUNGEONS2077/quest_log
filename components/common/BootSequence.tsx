@@ -19,19 +19,38 @@
  *
  * useBooting() tells the main screen when the boot screen is up, so things
  * like first-run tips and What's new wait until it has gone.
+ *
+ * The look (aesthetic pass 2026-10-17): a lit terminal screen, with the
+ * phosphor light and scanlines of the main screen's top panel (Phosphor),
+ * the lines glowing softly, and one soft refresh band passing down the
+ * screen while they type, like a CRT warming up.
  */
 import { createContext, type ReactNode, useContext, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appVersion } from '@/services/appInfo';
 import { launchedFromShortcut } from '@/services/quickActions';
 import { useAppStore, useSelectors } from '@/store/react';
-import { colors, easing, glyphs, maxFontSizeMultiplier, platformText, space, timing, type } from '@/theme';
+import {
+  backgroundStyle,
+  colors,
+  easing,
+  easingScan,
+  effects,
+  glowTextSoft,
+  glyphs,
+  maxFontSizeMultiplier,
+  platformText,
+  space,
+  timing,
+  type,
+} from '@/theme';
 
 import { BlockCursor } from './BlockCursor';
 import { useReduceMotion } from './motion';
+import { Phosphor } from './Phosphor';
 import { useMinute } from './useMinute';
 
 /** Typing speed (PLAN §10.1). */
@@ -131,6 +150,8 @@ function BootScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.screen, fade]}>
+      <Phosphor />
+      <RefreshBand />
       <Pressable
         style={[styles.press, { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.xl }]}
         onPress={() => setLeaving(true)}
@@ -154,9 +175,27 @@ function BootScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
+/** The refresh band's height, as a share of the screen. */
+const BAND_SHARE = 0.3;
+
+/** A soft bright band that passes down the screen once (timing.bootSweep), then is gone. */
+function RefreshBand() {
+  const { height } = useWindowDimensions();
+  const band = height * BAND_SHARE;
+  // 0 = just above the screen, 1 = just below it.
+  const pass = useSharedValue(0);
+  useEffect(() => {
+    pass.set(withTiming(1, { duration: timing.bootSweep, easing: easingScan }));
+  }, [pass]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: -band + pass.get() * (height + band) }] }));
+  return <Animated.View pointerEvents="none" style={[styles.band, { height: band }, backgroundStyle(effects.band), style]} />;
+}
+
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.bg },
   press: { flex: 1, justifyContent: 'space-between', paddingHorizontal: space.lg },
-  line: { color: colors.accent, ...platformText },
+  // The boot lines glow softly, like the title they lead to.
+  line: { color: colors.accent, ...glowTextSoft, ...platformText },
+  band: { position: 'absolute', top: 0, left: 0, right: 0 },
   skip: { color: colors.textDim, textAlign: 'center', ...platformText },
 });

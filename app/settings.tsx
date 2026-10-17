@@ -25,6 +25,8 @@ import { type ReactNode, useEffect, useState } from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PageHeader } from '@/components/common/PageHeader';
+import { Rule } from '@/components/common/Rule';
 import { ActionSheet, type SheetAction } from '@/components/overlays/ActionSheet';
 import { backupFileName, countDocument, type DocCounts, makeBackup } from '@/lib/backup';
 import { atTimeOfDay, formatMinutes, formatRelative, startOfDay } from '@/lib/dates';
@@ -39,7 +41,7 @@ import { getPermissionState, openNotificationSettings, type PermissionState } fr
 import { BackupError, parseBackup } from '@/store/backup';
 import { useActions, useAppStore } from '@/store/react';
 import type { Settings } from '@/store/settings';
-import { colors, glyphs as g, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, glowShadow, glowTextSoft, glyphs as g, maxFontSizeMultiplier, platformText, size, space, type } from '@/theme';
 
 /** Where beta testers report problems (opened in the browser, only when tapped). */
 const ISSUES_URL = 'https://github.com/THEDUNGEONS2077/quest_log/issues/new';
@@ -223,21 +225,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Text style={[type.display, styles.accent]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
-          {`${g.prompt.glyph} settings`}
-        </Text>
-        <Pressable
-          onPress={() => router.back()}
-          style={({ pressed }) => [styles.close, pressed && styles.pressed]}
-          accessibilityRole="button"
-          accessibilityLabel="Close settings"
-        >
-          <Text style={[type.glyph, styles.accent]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {g.delete.glyph}
-          </Text>
-        </Pressable>
-      </View>
+      <PageHeader title="settings" closeLabel="Close settings" />
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + space.xl }]}>
         <Section title="BEHAVIOR">
@@ -373,17 +361,16 @@ export default function SettingsScreen() {
   );
 }
 
-/** A titled group of rows. */
+/** A titled group of rows: `BEHAVIOR ━━━━──────` (the rule after the heading divides the sections). */
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <View style={styles.section}>
-      <Text
-        style={[type.group, styles.bright, styles.sectionTitle]}
-        accessibilityRole="header"
-        maxFontSizeMultiplier={maxFontSizeMultiplier}
-      >
-        {title}
-      </Text>
+      <View style={styles.sectionHead}>
+        <Text style={[type.group, styles.bright]} accessibilityRole="header" maxFontSizeMultiplier={maxFontSizeMultiplier}>
+          {title}
+        </Text>
+        <Rule lit />
+      </View>
       {children}
     </View>
   );
@@ -401,7 +388,7 @@ function Toggle({ label, hint, value, onChange }: { label: string; hint: string;
       accessibilityHint={hint}
     >
       <RowText label={label} hint={hint} />
-      <Text style={[type.tab, value ? styles.accent : styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+      <Text style={[type.tab, value ? styles.lit : styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
         {value ? '[ON ]' : '[OFF]'}
       </Text>
     </Pressable>
@@ -491,37 +478,31 @@ function RowText({ label, hint }: { label: string; hint: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-    borderBottomWidth: shape.hairline,
-    borderBottomColor: colors.line,
-  },
-  close: {
-    width: size.hitTarget,
-    height: size.hitTarget,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: shape.hairline,
-    borderColor: colors.line,
-    borderRadius: shape.radius,
-  },
-  pressed: { backgroundColor: colors.surface },
+  // Pressed: the row lights up from its left edge (like the selected row's bar in the list).
+  pressed: { backgroundColor: colors.surface, boxShadow: glowShadow.edge },
   content: { paddingHorizontal: space.lg, maxWidth: size.maxContentWidth, width: '100%', alignSelf: 'center' },
-  section: { paddingTop: space.lg, borderBottomWidth: shape.hairline, borderBottomColor: colors.line, paddingBottom: space.sm },
-  sectionTitle: { marginBottom: space.xs },
+  section: { paddingTop: space.xl, paddingBottom: space.xs },
+  // The heading, then its rule to the right edge.
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.xs },
   intro: { marginBottom: space.sm },
   subheading: { marginTop: space.lg, marginBottom: space.xs, letterSpacing: 1 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: size.rowMinHeight, paddingVertical: space.sm },
+  // Out to the screen edges (the content's padding moved inside), so a press lights the whole row.
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    minHeight: size.rowMinHeight,
+    paddingVertical: space.sm,
+    marginHorizontal: -space.lg,
+    paddingHorizontal: space.lg,
+  },
   grow: { flex: 1 },
   actionGlyph: { width: size.indent, textAlign: 'center' },
   status: { marginTop: space.sm },
   version: { marginTop: space.md },
   accent: { color: colors.accent, ...platformText },
+  // A setting that's on: lit, with the soft text glow.
+  lit: { color: colors.accent, ...glowTextSoft, ...platformText },
   bright: { color: colors.textBright, ...platformText },
   text: { color: colors.text, ...platformText },
   dim: { color: colors.textDim, ...platformText },
