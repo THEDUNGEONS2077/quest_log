@@ -39,6 +39,14 @@ export const timing = {
    * lines type (aesthetic pass 2026-10-17): about as long as the typing.
    */
   bootSweep: 900,
+  /**
+   * The top panel's scanlines drifting down one line-pitch (3 pt), over and
+   * over (user request 2026-10-17, as on the desktop's masthead: 1.8 s).
+   */
+  scanDrift: 1800,
+  /** The top panel's refresh band passing down, then resting out of sight: every 7 s, as on desktop. */
+  scanBandPass: 2800,
+  scanBandRest: 4200,
   /** Undo toast visible time. */
   toastHold: 5000,
   /** Highlight-on-open flash (two pulses). */
@@ -97,3 +105,11 @@ export const easingFold = Easing.bezier(0.25, 0.1, 0.25, 1);
  * band): a CRT's beam doesn't ease, and the desktop's scanlines run linear too.
  */
 export const easingScan = Easing.linear;
+
+/**
+ * The top panel's scanline drift, in `steps` even jumps per line-pitch (about
+ * one pixel each, made by Phosphor from the screen's density). The panel is
+ * then redrawn a few times a second rather than every frame (battery), and
+ * jumps that small, that slowly, read as a smooth crawl.
+ */
+export const easingScanSteps = (steps: number) => Easing.steps(steps, false);

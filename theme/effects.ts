@@ -45,5 +45,8 @@ export const effects = {
   band: `linear-gradient(to bottom, transparent, rgba(${ACCENT}, 0.05) 60%, rgba(${BRIGHT}, 0.07) 70%, transparent)`,
 } as const;
 
-/** The scanline tile: full width, one 3 pt step. */
-export const scanlineTile = { size: '100% 3px', repeat: 'repeat' } as const;
+/** The scanlines' pitch (pt): one line every this many points. */
+export const SCAN_PITCH = 3;
+
+/** The scanline tile: full width, one pitch tall. */
+export const scanlineTile = { size: `100% ${SCAN_PITCH}px`, repeat: 'repeat' } as const;

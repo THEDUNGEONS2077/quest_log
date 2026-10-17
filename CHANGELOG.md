@@ -2,6 +2,11 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.11.0 (build 41)
+
+- **The top panel's scanlines move, gently,** as on the desktop: they drift slowly down, and every 7 seconds a soft band of light passes down the panel. They move only while the main screen is showing, and they stay still with Reduce Motion on. The drift moves a pixel at a time, a few times a second, so it costs very little battery.
+- **Fixed: closing a quest near the end of the list sometimes nudged it** by a few points. It now stays exactly where it is.
+
 ## 1.10.0 (build 40)
 
 - **An opened quest comes into focus.** Open a quest whose subtasks don't fit on the screen below it, say one near the bottom with a long list, and the list glides it up so its title is at the top, with its subtasks filling the screen below. A quest whose subtasks fit opens where it is.

@@ -146,6 +146,7 @@ export function TaskList({ bottomInset }: Props) {
   const chipsMeasure = useRef<(() => void) | null>(null);
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     place.onScroll(e.nativeEvent.contentOffset.y);
+    fold.onScroll(e.nativeEvent.contentOffset.y);
     if (editingId) chipsMeasure.current?.();
     const start = dragStartY.current;
     if (start !== null && Math.abs(e.nativeEvent.contentOffset.y - start) > DISMISS_DRAG_DISTANCE) {
@@ -188,11 +189,11 @@ export function TaskList({ bottomInset }: Props) {
               // The list stays still while a task is dragged (auto-scroll moves it instead).
               scrollEnabled={!dragging}
               onScrollBeginDrag={onScrollBeginDrag}
-              onScrollEndDrag={() => {
+              onScrollEndDrag={(e) => {
                 dragStartY.current = null;
-                fold.settle();
+                fold.onScrollEnd(e);
               }}
-              onMomentumScrollEnd={fold.settle}
+              onMomentumScrollEnd={fold.onScrollEnd}
               onLayout={fold.onLayout}
               onContentSizeChange={fold.onContentSizeChange}
               onScroll={onScroll}

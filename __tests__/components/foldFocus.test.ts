@@ -5,7 +5,7 @@
  * scrolls up to the top; a closed one never moves (the list keeps the room
  * it needs at its end).
  */
-import { blockEnd, focusOffset, slackNeeded, type ListView } from '@/components/list/useFoldFocus';
+import { blockEnd, focusOffset, SLACK_MARGIN, slackNeeded, trimSlack, type ListView } from '@/components/list/useFoldFocus';
 import type { Row } from '@/lib/flatten';
 
 const rows = (...depths: number[]): Row[] => depths.map((depth, i) => ({ id: `r${i}`, depth, hasChildren: false, progress: { done: 0, total: 0 } }));
@@ -58,5 +58,28 @@ describe('slackNeeded', () => {
 
   it('rounds up, so the scroll position always stays valid', () => {
     expect(slackNeeded(1399.4, { offset: 1000, height: 600 })).toBe(201);
+  });
+});
+
+describe('trimSlack (after a fold, and when a scroll ends)', () => {
+  const view = { offset: 1000, height: 600 };
+
+  it('never grows the slack', () => {
+    expect(trimSlack(10, 1000, view)).toBe(10);
+  });
+
+  it(`keeps what the view reaches past the content, plus ${SLACK_MARGIN} pt for a position a little out of date`, () => {
+    // The view reaches 200 past the content's end (1400): a trim keeps 200 + the margin.
+    expect(trimSlack(500, 1400, view)).toBe(200 + SLACK_MARGIN);
+  });
+
+  it('a position that was a few points out of date can no longer pull the view back (bug 2026-10-17)', () => {
+    // The list thought it was at 1000; it really was at 1012. The trim still leaves enough room.
+    const kept = trimSlack(500, 1400, view);
+    expect(1400 + kept).toBeGreaterThanOrEqual(1012 + 600);
+  });
+
+  it('goes entirely once the content ends well below the view', () => {
+    expect(trimSlack(300, 1600 + SLACK_MARGIN, view)).toBe(0);
   });
 });

@@ -78,10 +78,13 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
   const category = useAppStore((s) => s.ui.category);
   const shown = useAppStore((s) => s.ui.tab === 'completed');
   const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category), { tab: category, visible: shown });
-  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => place.onScroll(e.nativeEvent.contentOffset.y);
   // A quest opened comes into focus; one closed stays where it is (useFoldFocus.ts), as on ACTIVE.
   const padBottom = bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0);
   const fold = useFoldFocus(list, rows, { padBottom, topTuck: 0, coveredBottom: padBottom, shown, viewKey: place.listKey });
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    place.onScroll(e.nativeEvent.contentOffset.y);
+    fold.onScroll(e.nativeEvent.contentOffset.y);
+  };
 
   // The COMPLETED switch tapped again (store revealTop): back to the top, if it's on screen.
   const { store } = useStoreBundle();
@@ -117,8 +120,8 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
             ListEmptyComponent={Empty}
             // Plus the fold's slack: the room that keeps a closed quest where it was.
             contentContainerStyle={{ paddingBottom: padBottom + fold.slack }}
-            onScrollEndDrag={fold.settle}
-            onMomentumScrollEnd={fold.settle}
+            onScrollEndDrag={fold.onScrollEnd}
+            onMomentumScrollEnd={fold.onScrollEnd}
             onLayout={fold.onLayout}
             onContentSizeChange={fold.onContentSizeChange}
             onScroll={onScroll}

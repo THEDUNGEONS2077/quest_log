@@ -30,7 +30,7 @@ The look is a **cyberdeck terminal**: green phosphor on pure black, one monospac
 5. **Controls live at the bottom**, within thumb reach: the quick-add bar, the editing toolbar, sheets and toasts.
 6. **Calm density.** Rows are generous (52 pt minimum), details sit on their own line under the title, and dividers separate top-level items.
 7. **Accessible by construction.** All text meets WCAG AA, every gesture has a screen-reader action, text scales with the system, and Reduce Motion is honoured.
-8. **One effect: phosphor light.** A soft green glow marks what's focused, selected or lit. The chrome (the top panel, page headers, sheets, the boot screen) reads as a lit terminal screen: a faint phosphor wash from the top-left corner, fine static scanlines, and rules lit in the middle (`theme/effects.ts`, aesthetic pass 2026-10-17). It's all green at low strength, never inside list rows, and static, apart from the boot screen's one refresh band. There are no drop shadows, blurs or other gradients.
+8. **One effect: phosphor light.** A soft green glow marks what's focused, selected or lit. The chrome (the top panel, page headers, sheets, the boot screen) reads as a lit terminal screen: a faint phosphor wash from the top-left corner, fine scanlines, and rules lit in the middle (`theme/effects.ts`, aesthetic pass 2026-10-17). It's all green at low strength, never inside list rows, and still, apart from the boot screen's one refresh band and the main screen's top panel, whose scanlines drift slowly while a soft band passes over them every 7 s, as on the desktop (2026-10-17). There are no drop shadows, blurs or other gradients.
 
 ---
 
@@ -77,7 +77,12 @@ Every text token passes AA (4.5:1) on every background. `textDim` was brightened
   - **Where it never goes:** inside list rows (apart from the row being edited or dragged, and the completion burst). Rows stay calm; the glow marks the chrome that's lit or selected (2026-10-11: "accentuate, subtly").
 - **Phosphor effects** (`theme/effects.ts`, applied with `backgroundStyle()`: React Native's `experimental_backgroundImage` on Android, CSS `background-image` on the web; a test runs each through React Native's parser, since one it rejects is silently not drawn):
   - **Phosphor wash:** a radial `accent` light at 10% from the top-left corner, fading out by 70%. Behind the top panel, page headers and the boot screen (`Phosphor`).
-  - **Scanlines:** a 1 pt `accent` line at 5% every 3 pt, over the same areas. Static: a moving pattern would cost battery for no information.
+  - **Scanlines:** a 1 pt `accent` line at 5% every 3 pt (`SCAN_PITCH`), over the same areas. Still everywhere except the main screen's top panel (`<Phosphor animated />`, 2026-10-17: "animate the Top bar's scanlines … similar to the desktop app, keep it subtle"). There, as on the desktop's masthead, they drift down one pitch every 1.8 s, and a refresh band (`effects.band`, 45% of the panel tall) passes down every 7 s: it rests 4.2 s out of sight, then passes in 2.8 s.
+    - **Battery:** a screen that keeps changing keeps the phone drawing, so the motion is kept cheap.
+      - Both motions only move a layer: a transform on the UI thread, so nothing is laid out again.
+      - The drift goes in steps of about one pixel (`easingScanSteps`), so the panel is redrawn about five times a second, not every frame. Steps that small, that slowly, read as a smooth crawl.
+      - The band moves for 2.8 s of every 7.
+      - Both stop while the main screen isn't showing (another screen over it, the app in the background) and under Reduce Motion.
   - **Lit rule** (`LitEdge`): a hairline from transparent through `line` to `accent` at 35% in the middle and back, laid over a hairline border. Under the top panel and page headers, on the top edge of sheets and of the editing and selection bars.
   - **Heading rule** (`Rule`): runs on from a heading to the right edge, fading out; lit (from `accent` at 35%) after Settings section titles and the newest version in What's new, `line` for older versions.
   - **Fade to black:** 16 pt over the list just above the quick-add bar, so rows fade out rather than being cut off.
@@ -195,7 +200,7 @@ All measurements are in pt (dp on Android, px on the web).
 ```
 - **Title:** `<level>_quest_log` in the `title` role (29 / 38 bold, 30% larger than `display`). The brackets are `textDim`, the level `textBright`, the name `accent`. It shrinks to fit (down to 70%); the buttons never move.
 - **Buttons:** 34 pt glyph boxes, 4 apart, at the top right; `hitSlop` keeps them 44 pt to tap. Pressed, the frame lights (`lineLit`) with the faint glow.
-- **The panel's light:** the whole top panel (header, tabs, XP bar) sits over the phosphor wash and scanlines, and its bottom divider is lit in the middle.
+- **The panel's light:** the whole top panel (header, tabs, XP bar) sits over the phosphor wash and scanlines, and its bottom divider is lit in the middle. The scanlines drift slowly down and a soft band passes over them every 7 s, as on the desktop's masthead (see *Phosphor effects*).
 - **Status line:** `meta`, `textDim`, items joined with ` · `. The day streak appears from 2 days.
 - **Tapping the title goes home:** the default view (ALL, ACTIVE, top level, no search), scrolled to the top.
 
@@ -356,9 +361,12 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 | `slow` | 320 ms | Larger transitions, pulse decay |
 | easing | `Easing.out(Easing.cubic)` | Everything that arrives, changes or settles |
 | easingExit | `Easing.in(Easing.cubic)` | Things leaving (a completed quest's slide, the toast going): slow to start, then away |
-| easingScan | `Easing.linear` | The scan effects only (the boot screen's refresh band): a CRT's beam doesn't ease |
+| easingScan | `Easing.linear` | The scan effects only (the boot screen's and the top panel's refresh bands): a CRT's beam doesn't ease |
+| easingScanSteps(n) | `Easing.steps(n, false)` | The top panel's scanline drift: `n` even steps per pitch, about one pixel each (the screen's density decides `n`), so the panel is redrawn only at each step |
 | easingFold | `Easing.bezier(0.25, 0.1, 0.25, 1)` (CSS's `ease`) | Folds (a task's subtasks opening and closing) and the caret turning with them: a soft start and a long settle. A fold moves the rows below the furthest: `easing` would jump 15% of the way in its first frame (27 pt for five subtasks); this moves at most ~20 pt a frame |
 | boot sweep | 900 ms | The boot screen's refresh band, one pass down the screen |
+| scan drift | 1800 ms (`timing.scanDrift`) | The top panel's scanlines moving down one pitch (3 pt), over and over |
+| scan band | rest 4200 ms, pass 2800 ms (`timing.scanBandRest`, `timing.scanBandPass`) | The top panel's refresh band: every 7 s, as on the desktop |
 | cursor blink | 530 ms on / 530 ms off | All `█` cursors share one animated value (they blink in step, at the cost of one animation) |
 | float | in `fast`, hold 450 ms, out `slow`, rising throughout | Every floating `+N XP` (the row and the XP bar move in step) |
 | `distance.nudge` | 16 pt | Small arrivals: the toast, a view sliding in, the XP bar's `+N` |
@@ -389,7 +397,7 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 - **Every number comes from the motion tokens** (durations, the one easing, timings, distances, scales, the glow). Similar moves match: every small arrival travels the same distance, every `+N` floats with the same rhythm. A test fails on a literal duration or glow color in a component.
 - **What appears animates out the way it came** when it leaves by itself (the toast). Things the user dismisses (sheets, menus) close at once: the response to a choice should be immediate.
 - **List rows animate only real changes.** A recycling list reuses rows for other items while scrolling; a row that now shows another item jumps to its state instead of animating a change nobody made.
-- **Reduce Motion is global:** with the OS setting or the app setting on, every animation jumps to its end state (Reanimated's `ReducedMotionConfig`). Multi-step effects check it themselves: the boot screen is skipped, and the cursor stays solid.
+- **Reduce Motion is global:** with the OS setting or the app setting on, every animation jumps to its end state (Reanimated's `ReducedMotionConfig`). Multi-step effects check it themselves: the boot screen is skipped, the cursor stays solid, and the top panel's scanlines stay still.
 - **Inside modals, prefer plain value animations** (opacity and translate on a shared value) over layout or "entering" animations, which are less reliable there.
 
 ### Folds (how a task's subtasks open and close smoothly)
@@ -399,7 +407,7 @@ The list (FlashList) places each row in its own cell from the JS thread, so noth
 - **Fading and gliding never overlap.** Closing, the subtasks have faded before the rows below move into their space; opening, they stay invisible while the rows below glide most of the way, then fade in. So no row is ever drawn over another, and no stacking is needed.
 - **Never stack cells with `zIndex`.** On Android, React Native orders native views by `zIndex`; a `zIndex` that follows the row's index re-ordered the views every time rows were added or removed, and Reanimated's layout transitions then lost rows below a fold (they vanished or landed out of place: 1.9.0, fixed in 1.9.1).
 - **Smaller first guesses.** Subtasks, quests and groups are separate item types, so FlashList's size estimate for a subtask it hasn't measured yet is close to its real size.
-- **Focus and stillness** (`useFoldFocus`, 2026-10-17: "a quest in focus when it's expanded … collapsed, it should stay in the position it is in"). Opening: once the subtasks are laid out, if the block (the task's row to its last subtask) doesn't fit in the visible part of the list, the list scrolls the task's row to the top (`scrollToOffset`, animated). Closing: a scroll view can't stay scrolled past its end, so near the end of the list the shorter list would pull everything down; as the fold starts, the list gets extra room at its end (*slack*): what the view will reach past the shorter list, plus the rows going away (as rows go, FlashList first lays the rows moving up out at the heights of the rows that were in their places, so for one layout the list is shorter still, and the scroll view clamps right then). Once the fold has played the slack shrinks to what the view reaches into, and then only shrinks further as you scroll back up. The view's height and the content's end come from the scroll view itself (its layout and content-size events), not FlashList's estimates.
+- **Focus and stillness** (`useFoldFocus`, 2026-10-17: "a quest in focus when it's expanded … collapsed, it should stay in the position it is in"). Opening: once the subtasks are laid out, if the block (the task's row to its last subtask) doesn't fit in the visible part of the list, the list scrolls the task's row to the top (`scrollToOffset`, animated). Closing: a scroll view can't stay scrolled past its end, so near the end of the list the shorter list would pull everything down; as the fold starts, the list gets extra room at its end (*slack*): what the view will reach past the shorter list, plus the rows going away (as rows go, FlashList first lays the rows moving up out at the heights of the rows that were in their places, so for one layout the list is shorter still, and the scroll view clamps right then). Once the fold has played the slack shrinks to what the view reaches into, and then only shrinks further as you scroll back up. These trims leave `SLACK_MARGIN` (24 pt) past where the list last reported its position: scroll events are throttled, so a glide's last one can go unreported, and a trim to a slightly stale position clamped the view by those few points (a closed quest sometimes twitched, 2026-10-17). For `FOCUS_GLIDE_MS` (1.5 s) after a focus glide starts, the glide's target counts as where the view is, so a quest closed while the list still glides gets room for where the glide will leave it. The glide then finishes, because a smooth scroll can't be stopped from JS: stopping it at a position the list knows a frame late would jolt it back. A quest closed before its glide has begun doesn't glide at all. The view's height and the content's end come from the scroll view itself (its layout and content-size events), not FlashList's estimates.
 - Search results never fold. Groups of more than `FOLD_MAX_CHILDREN` (50) open and close at once.
 
 ---
@@ -527,10 +535,10 @@ export const size = {
 export const shape = { radius: 2, hairline: 1, strike: 1.5, checkboxTracking: -4, dropIndicator: 2 } as const;
 
 export const duration = { fast: 120, base: 200, slow: 320 } as const;
-export const timing = { cursorBlink: 530, completeHold: 600, repeatHold: 300, bootFade: 160, bootSweep: 900, toastHold: 5000, highlight: 800, longPress: 300, hoverExpand: 600, floatHold: 450 } as const;
+export const timing = { cursorBlink: 530, completeHold: 600, repeatHold: 300, bootFade: 160, bootSweep: 900, scanDrift: 1800, scanBandPass: 2800, scanBandRest: 4200, toastHold: 5000, highlight: 800, longPress: 300, hoverExpand: 600, floatHold: 450 } as const;
 export const distance = { nudge: 16, float: 24, exit: 48, sheet: 72 } as const;
 export const scale = { lift: 1.02, pop: 1.3 } as const;
-// easing: Easing.out(Easing.cubic)   easingExit: Easing.in(Easing.cubic)   easingScan: Easing.linear   easingFold: Easing.bezier(0.25, 0.1, 0.25, 1)
+// easing: Easing.out(Easing.cubic)   easingExit: Easing.in(Easing.cubic)   easingScan: Easing.linear   easingScanSteps: (n) => Easing.steps(n, false)   easingFold: Easing.bezier(0.25, 0.1, 0.25, 1)
 
 export const glowShadow = {
   inset: 'inset 0 0 6px 0 rgba(57, 255, 20, 0.35)',
@@ -541,6 +549,7 @@ export const glowShadow = {
 } as const;
 
 // The phosphor effects: CSS gradients (React Native's experimental_backgroundImage).
+export const SCAN_PITCH = 3; // the scanlines' pitch (pt)
 export const effects = {
   phosphor: 'radial-gradient(circle at 0% 0%, rgba(57, 255, 20, 0.1), transparent 70%)',
   scanlines: 'linear-gradient(to bottom, rgba(57, 255, 20, 0.05) 0px, rgba(57, 255, 20, 0.05) 1px, transparent 1px, transparent 3px)', // tile: size '100% 3px', repeat

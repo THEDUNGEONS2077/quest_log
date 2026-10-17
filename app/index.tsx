@@ -33,6 +33,7 @@ import { BackHandler, StyleSheet, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useBooting } from '@/components/common/BootSequence';
 import { Breadcrumb } from '@/components/common/Breadcrumb';
 import { Header } from '@/components/common/Header';
 import { Phosphor } from '@/components/common/Phosphor';
@@ -63,6 +64,8 @@ export default function ListScreen() {
   const selecting = useAppStore((s) => s.selection !== null);
   const searchOpen = useAppStore((s) => s.search[s.ui.tab].open);
   const zoomed = useAppStore((s) => s.ui.zoomRootId !== null);
+  // While the boot screen covers the app, the panel's scanlines stay still (nothing to see, nothing to draw).
+  const booting = useBooting();
   const { store } = useStoreBundle();
   // First-run tips, What's new after an update, first-launch focus.
   useOnboarding();
@@ -92,10 +95,11 @@ export default function ListScreen() {
       <View style={styles.content}>
         {/* The top panel never scrolls; its bottom divider stays put while the list
             scrolls under it (user request 2026-10-09). It's the terminal's lit screen:
-            a soft phosphor light behind the title and fine scanlines (Phosphor), and its
-            divider is lit in the middle (LitEdge) (aesthetic pass 2026-10-17). */}
+            a soft phosphor light behind the title and fine scanlines, drifting slowly as on
+            the desktop (Phosphor), and its divider is lit in the middle (LitEdge)
+            (aesthetic pass 2026-10-17). */}
         <View style={styles.topPanel}>
-          <Phosphor />
+          <Phosphor animated={!booting} />
           <Header />
           <Tabs />
           <XpBar />

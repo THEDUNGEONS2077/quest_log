@@ -43,7 +43,7 @@ All data lives **on the device**. There are no accounts.
 
 1. **Zero friction capture.** You can go from opening the app to typing a task in one tap, and add more tasks without leaving the keyboard.
 2. **Optional depth.** Notes, priority, reminders, and repeats are always one tap away and never in the way.
-3. **Calm terminal.** The hacker feel comes from type, color, and a few precise animations. Scanlines and glitch effects are out.
+3. **Calm terminal.** The hacker feel comes from type, color, and a few precise animations. Glitch effects are out. Scanlines are faint (5%), and only the main screen's top panel moves them: a slow drift and a soft band every 7 s, as on the desktop (user requests 2026-10-17).
 4. **Instant everything.** Every interaction responds within one frame. Nothing waits on storage.
 5. **Forgiving.** Every destructive action can be undone.
 

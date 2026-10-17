@@ -22,7 +22,11 @@
  *     view clamps its position the moment it is: 2026-10-17, a closed quest
  *     slid down 24 pt.) Once the fold has played, the slack shrinks to what
  *     the view still reaches into, and later only ever shrinks further, as
- *     you scroll back up: nothing on screen moves because of it.
+ *     you scroll back up: nothing on screen moves because of it. Trimming
+ *     allows SLACK_MARGIN for a scroll position a few points out of date
+ *     (the last scroll event of a glide can go unreported: a closed quest
+ *     sometimes moved by those few points, 2026-10-17); where the content
+ *     ends well below the screen, the slack still goes entirely.
  * Rows' places come from FlashList's layouts (an item's place on the list
  * is its layout's y plus the first item's offset; scroll offsets are on the
  * same scale). The view's height and the content's end come from the
@@ -31,7 +35,7 @@
  */
 import type { FlashListRef } from '@shopify/flash-list';
 import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
-import type { LayoutChangeEvent } from 'react-native';
+import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 
 import { useReduceMotion } from '@/components/common/motion';
 import type { Row } from '@/lib/flatten';
@@ -79,11 +83,38 @@ export function slackNeeded(contentEnd: number, view: Pick<ListView, 'offset' | 
   return Math.max(0, Math.ceil(view.offset + view.height - contentEnd));
 }
 
-/** What the scroll view last reported: its height, and its content's height with the slack it had then. */
+/**
+ * How far the scroll position the list knows can be behind the real one
+ * (pt): the last scroll event of a glide can go unreported. Trimming the
+ * slack allows this much, so a trim never pulls the view back.
+ */
+export const SLACK_MARGIN = 24;
+
+/**
+ * How long after a focus glide starts its target still stands for where the
+ * view is (ms): the glide (about 250 ms on Android) and its last, possibly
+ * unreported, scroll event.
+ */
+const FOCUS_GLIDE_MS = 1500;
+
+/**
+ * The slack after a trim: never more than before, and never less than what
+ * the view reaches past the content's end, allowing SLACK_MARGIN; nothing at
+ * all once the content ends that far below the view.
+ */
+export function trimSlack(slack: number, contentEnd: number, view: Pick<ListView, 'offset' | 'height'>): number {
+  return Math.min(slack, slackNeeded(contentEnd, { offset: view.offset + SLACK_MARGIN, height: view.height }));
+}
+
+/**
+ * What the scroll view last reported: its height, its content's height with
+ * the slack it had then, and its scroll offset (null until it scrolls).
+ */
 interface Measured {
   height: number;
   content: number;
   contentSlack: number;
+  offset: number | null;
 }
 
 /**
@@ -94,7 +125,7 @@ interface Measured {
 function viewOf(l: FlashListRef<Row>, measured: Measured, topTuck: number, coveredBottom: number, padBottom: number) {
   const first = l.getFirstItemOffset();
   const height = measured.height || l.getWindowSize().height;
-  const view: ListView = { offset: l.getAbsoluteLastScrollOffset(), height, topTuck, coveredBottom };
+  const view: ListView = { offset: measured.offset ?? l.getAbsoluteLastScrollOffset(), height, topTuck, coveredBottom };
   const contentEnd = measured.content ? measured.content - measured.contentSlack : first + l.getChildContainerDimensions().height + padBottom;
   return { first, view, contentEnd };
 }
@@ -114,10 +145,11 @@ interface Options {
 
 /**
  * For one list: focuses a task its user opens and keeps it still as it
- * closes. Returns the `slack` to add to the content's bottom padding,
- * `settle` to call when a scroll of the user's ends (the slack shrinks to
- * what's still needed), and the scroll view's `onLayout` and
- * `onContentSizeChange` (the view's true height and the content's end).
+ * closes. Returns the `slack` to add to the content's bottom padding, and
+ * the scroll view's handlers: `onScroll(y)` from the list's own scroll
+ * handler, `onScrollEnd` for its drag and momentum ends (the slack shrinks
+ * to what's still needed), `onLayout` and `onContentSizeChange` (the view's
+ * true height and the content's end).
  */
 export function useFoldFocus(listRef: RefObject<FlashListRef<Row> | null>, rows: readonly Row[], options: Options) {
   const { padBottom, topTuck, coveredBottom, shown, viewKey } = options;
@@ -131,7 +163,15 @@ export function useFoldFocus(listRef: RefObject<FlashListRef<Row> | null>, rows:
   }
 
   // The scroll view's own reports, and the slack its content had when it last reported.
-  const measured = useRef<Measured>({ height: 0, content: 0, contentSlack: 0 });
+  const measured = useRef<Measured>({ height: 0, content: 0, contentSlack: 0, offset: null });
+  // The last focus glide: where it goes, and when it started. Until it's surely over, the view
+  // counts as being there already (a fold closing mid-glide must make room for where it ends).
+  const glide = useRef<{ to: number; at: number } | null>(null);
+  /** The view's offset for room-making: where it is, or where a focus glide under way will leave it. */
+  const offsetFor = useCallback((view: ListView): ListView => {
+    const g = glide.current;
+    return g && performance.now() - g.at < FOCUS_GLIDE_MS ? { ...view, offset: Math.max(view.offset, g.to) } : view;
+  }, []);
   const slackShown = useRef(0);
   useEffect(() => {
     slackShown.current = slack;
@@ -149,9 +189,21 @@ export function useFoldFocus(listRef: RefObject<FlashListRef<Row> | null>, rows:
     const l = listRef.current;
     if (!l || store.getState().folding.length) return;
     const m = viewOf(l, measured.current, topTuck, coveredBottom, padBottom);
-    const need = slackNeeded(m.contentEnd, m.view);
-    setSlack((s) => (need < s ? need : s));
-  }, [listRef, store, topTuck, coveredBottom, padBottom]);
+    setSlack((s) => trimSlack(s, m.contentEnd, offsetFor(m.view)));
+  }, [listRef, store, offsetFor, topTuck, coveredBottom, padBottom]);
+
+  /** Every scroll position the scroll view reports (the list's own onScroll passes it on). */
+  const onScroll = useCallback((y: number) => {
+    measured.current.offset = y;
+  }, []);
+  /** A drag or a glide ended: its event has the exact position. Settle. */
+  const onScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      measured.current.offset = e.nativeEvent.contentOffset.y;
+      settle();
+    },
+    [settle],
+  );
 
   // The content's size changed (its final layout, after any in-between one): settle, next frame.
   const onContentSizeChange = useCallback(
@@ -188,12 +240,13 @@ export function useFoldFocus(listRef: RefObject<FlashListRef<Row> | null>, rows:
       return;
     }
     const m = viewOf(l, measured.current, topTuck, coveredBottom, padBottom);
-    // What the view will reach past the shorter list, plus the rows going (see the header).
-    const need = slackNeeded(m.contentEnd - removed, m.view) + Math.ceil(removed);
+    // What the view will reach past the shorter list (where a focus glide under way will leave
+    // it), plus the rows going (see the header).
+    const need = slackNeeded(m.contentEnd - removed, offsetFor(m.view)) + Math.ceil(removed);
     // On the next frame (well before the fold closes, after its subtasks' fade).
     const frame = requestAnimationFrame(() => setSlack((s) => Math.max(s, need)));
     return () => cancelAnimationFrame(frame);
-  }, [folding, rows, listRef, shown, settle, topTuck, coveredBottom, padBottom]);
+  }, [folding, rows, listRef, shown, settle, offsetFor, topTuck, coveredBottom, padBottom]);
 
   // Opening: focus the task once its subtasks are laid out.
   const focus = useAppStore((s) => s.foldFocus);
@@ -207,17 +260,25 @@ export function useFoldFocus(listRef: RefObject<FlashListRef<Row> | null>, rows:
     // Two frames: FlashList lays the new rows out in the first.
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => {
+        // Closed again before its focus began: it stays where it is. (Once the list is gliding
+        // it finishes: stopping it at a position the list only knows a frame or two late would
+        // jolt it back.)
+        if (store.getState().folding.includes(focus.id)) return;
         const l = listRef.current;
         const top = l?.getLayout(index);
         const last = l?.getLayout(blockEnd(rows, index));
         if (!l || !top || !last) return;
         const m = viewOf(l, measured.current, topTuck, coveredBottom, padBottom);
         const to = focusOffset(m.first + top.y, m.first + last.y + last.height, m.view);
-        if (to !== null) l.scrollToOffset({ offset: to, animated: !reduceMotion });
+        if (to === null) return;
+        l.scrollToOffset({ offset: to, animated: !reduceMotion });
+        // Where it ends up (the scroll view stops at its end), in case its last event goes unreported.
+        const end = measured.current.content ? Math.max(0, measured.current.content - m.view.height) : to;
+        glide.current = { to: Math.min(to, end), at: performance.now() };
       });
     });
     return () => cancelAnimationFrame(frame);
-  }, [focus, rows, listRef, shown, reduceMotion, topTuck, coveredBottom, padBottom]);
+  }, [focus, rows, listRef, store, shown, reduceMotion, topTuck, coveredBottom, padBottom]);
 
-  return { slack, settle, onLayout, onContentSizeChange };
+  return { slack, onScroll, onScrollEnd, onLayout, onContentSizeChange };
 }

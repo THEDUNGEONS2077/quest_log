@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.11.0",
+    "build": 41,
+    "lines": [
+      "- **The top panel's scanlines move, gently,** as on the desktop: they drift slowly down, and every 7 seconds a soft band of light passes down the panel. They move only while the main screen is showing, and they stay still with Reduce Motion on. The drift moves a pixel at a time, a few times a second, so it costs very little battery.",
+      "- **Fixed: closing a quest near the end of the list sometimes nudged it** by a few points. It now stays exactly where it is."
+    ]
+  },
+  {
     "version": "1.10.0",
     "build": 40,
     "lines": [
@@ -45,14 +53,6 @@
     "lines": [
       "- **Fixed: a long quest title no longer flickers while you type.** From about three lines on, the whole title flashed with every letter. The cause was the quest title's capitals: on Android, drawing typed text in capitals rewrites the field with each keystroke. While you edit a quest, its title now shows exactly as you type it, and it's back in capitals as soon as you're done (it was always saved as typed).",
       "- **Steadier typing near the keyboard.** The list only scrolls to keep your text in view when a line is really hidden, and only checks when the text box actually changes height, not on every keystroke."
-    ]
-  },
-  {
-    "version": "1.7.1",
-    "build": 35,
-    "lines": [
-      "- **Fixed: completing a quest ends smoothly.** After the burst, the quest slides away and fades, then the quests below glide up into its place in one smooth motion. Before, the space closed in uneven steps, because the list had to redo its layout for every frame, a little late each time. Now the glide runs entirely on the phone's display thread, with nothing for the app to catch up on, the same as the desktop version.",
-      "- **No more little jump at the end,** including when the quest at the top of the list leaves: the next quest's divider is already where it belongs."
     ]
   }
 ]
