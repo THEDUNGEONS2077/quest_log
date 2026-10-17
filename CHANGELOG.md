@@ -2,6 +2,13 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.12.0 (build 42)
+
+- **A shorter top panel,** so more of your list fits on the screen:
+  - the ALL, DAILY, MAIN and MISC tabs are half as tall, with the name and its count on one line;
+  - the line under the title (ACTIVE · DONE TODAY · streak) is gone;
+  - the **?** button moved into Settings: the user guide is under HELP there.
+
 ## 1.11.0 (build 41)
 
 - **The top panel's scanlines move, gently,** as on the desktop: they drift slowly down, and every 7 seconds a soft band of light passes down the panel. They move only while the main screen is showing, and they stay still with Reduce Motion on. The drift moves a pixel at a time, a few times a second, so it costs very little battery.

@@ -1,5 +1,15 @@
 [
   {
+    "version": "1.12.0",
+    "build": 42,
+    "lines": [
+      "- **A shorter top panel,** so more of your list fits on the screen:",
+      "  - the ALL, DAILY, MAIN and MISC tabs are half as tall, with the name and its count on one line;",
+      "  - the line under the title (ACTIVE · DONE TODAY · streak) is gone;",
+      "  - the **?** button moved into Settings: the user guide is under HELP there."
+    ]
+  },
+  {
     "version": "1.11.0",
     "build": 41,
     "lines": [
@@ -45,14 +55,6 @@
       "- **Settings and What's new read more clearly:** each section title is followed by a rule that fades out, and settings that are ON glow.",
       "- **The list fades out** just above the `> new quest` bar, instead of being cut off.",
       "- **On an empty list,** the prompt glows and LOAD EXAMPLE TASKS stands out as the thing to do."
-    ]
-  },
-  {
-    "version": "1.7.2",
-    "build": 36,
-    "lines": [
-      "- **Fixed: a long quest title no longer flickers while you type.** From about three lines on, the whole title flashed with every letter. The cause was the quest title's capitals: on Android, drawing typed text in capitals rewrites the field with each keystroke. While you edit a quest, its title now shows exactly as you type it, and it's back in capitals as soon as you're done (it was always saved as typed).",
-      "- **Steadier typing near the keyboard.** The list only scrolls to keep your text in view when a line is really hidden, and only checks when the text box actually changes height, not on every keystroke."
     ]
   }
 ]

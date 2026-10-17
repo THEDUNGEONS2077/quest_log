@@ -1,6 +1,6 @@
 /**
- * app/help.tsx: the user guide (PLAN §9.17 "Help"), opened from the `?`
- * button at the top right of the header.
+ * app/help.tsx: the user guide (PLAN §9.17 "Help"), opened from Settings →
+ * HELP (the header's `?` button went with the shorter top panel, 2026-10-17).
  *
  * Layer: UI (Expo Router screen). Rewritten for clarity (user request
  * 2026-10-08): collapsible sections in the app's terminal style. Each

@@ -195,13 +195,12 @@ All measurements are in pt (dp on Android, px on the web).
 
 ### Header
 ```
-<7>_quest_log                   [/][?][⊛]
-12 ACTIVE · 4 DONE TODAY · 3-DAY STREAK
+<7>_quest_log                      [/][⊛]
 ```
 - **Title:** `<level>_quest_log` in the `title` role (29 / 38 bold, 30% larger than `display`). The brackets are `textDim`, the level `textBright`, the name `accent`. It shrinks to fit (down to 70%); the buttons never move.
 - **Buttons:** 34 pt glyph boxes, 4 apart, at the top right; `hitSlop` keeps them 44 pt to tap. Pressed, the frame lights (`lineLit`) with the faint glow.
 - **The panel's light:** the whole top panel (header, tabs, XP bar) sits over the phosphor wash and scanlines, and its bottom divider is lit in the middle. The scanlines drift slowly down and a soft band passes over them every 7 s, as on the desktop's masthead (see *Phosphor effects*).
-- **Status line:** `meta`, `textDim`, items joined with ` · `. The day streak appears from 2 days.
+- **A shorter top panel** (user request 2026-10-17): no status line (it read `12 ACTIVE · 4 DONE TODAY · 3-DAY STREAK`) and no `?` button; the user guide opens from Settings → HELP.
 - **Tapping the title goes home:** the default view (ALL, ACTIVE, top level, no search), scrolled to the top.
 
 ### Tabs: quest categories plus a view switch
@@ -210,7 +209,7 @@ All measurements are in pt (dp on Android, px on the web).
     12       3       7        2
 [ ACTIVE · 12      ][ COMPLETED · 34 ]
 ```
-- **Quest tabs:** four equal segments, 52 pt tall, hairline border, radius 2. The label (`tab` role) sits over the count of open quests (`meta`).
+- **Quest tabs:** four equal segments, 26 pt tall (half the old 52, user request 2026-10-17; `hitSlop` keeps them 44 pt to tap), hairline border, radius 2. One line: the label (`tab` role at 12 / 16, bold) then its open-quest count (regular weight); it shrinks to fit at large text sizes.
   - **Selected:** `accent` border on `surface`, label in `textBright`, count in `accent`.
   - **Unselected:** both label and count in `textDim`.
 - **View switch:** two equal halves, 22.5 pt drawn (44 to tap), with no frame, just a 2 pt bar along the bottom: `line`, or `accent` with the outset glow when selected. Label `LABEL · n` at 10.8 / 14.4 (`meta` made 10% smaller twice). It reads as secondary to the tabs above. The selected quest tab has the faint glow on its frame, and its count glows softly.

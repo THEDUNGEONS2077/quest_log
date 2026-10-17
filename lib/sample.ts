@@ -14,7 +14,7 @@ export const SAMPLE_OUTLINE = `Welcome to quest_log
   Tap this task to edit it
   Swipe right on a task to complete it
   Hold a task still, then drag it to move it
-  Tap ? at the top right for the full guide
+  Open Settings (⊛) for the full guide
 Groceries
   Milk
   Eggs

@@ -102,12 +102,8 @@ try {
   await page.waitForTimeout(400);
   await shot('main');
 
-  await path('help: open and close', async () => {
-    await tap('User guide');
-    await see('> help');
-    await shot('help');
-    await tap('Close guide');
-    await onMain();
+  await path('the main screen has no ? button: the guide is in Settings (2026-10-17)', async () => {
+    if (await page.getByLabel('User guide').count()) throw new Error('the header still has the guide button');
   });
 
   await path('settings → guide → back to settings', async () => {
@@ -116,6 +112,7 @@ try {
     await shot('settings');
     await page.getByText('User guide').last().click();
     await see('> help');
+    await shot('help');
     await tap('Close guide');
     await see('> settings');
   });
@@ -139,8 +136,8 @@ try {
   });
 
   await path('browser back closes a pushed screen (stack behaves)', async () => {
-    await tap('User guide');
-    await see('> help');
+    await tap('Settings');
+    await see('> settings');
     await page.goBack();
     await onMain();
   });

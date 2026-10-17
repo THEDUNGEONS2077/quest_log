@@ -1,11 +1,12 @@
 /**
  * components/common/Header.tsx: the terminal header (PLAN §9.1).
  *
- *   > quest_log
- *   12 ACTIVE · 4 DONE TODAY · 1 OVERDUE
+ *   <7>_quest_log                       [/] [⊛]
  *
- * Layer: UI. Top right: `/` opens search on the current tab, `?` opens the
- * user guide (app/help.tsx), ⊛ opens Settings (app/settings.tsx).
+ * Layer: UI. Top right: `/` opens search on the current tab, ⊛ opens
+ * Settings (app/settings.tsx), where HELP opens the user guide. A shorter
+ * top panel (user request 2026-10-17): the status line (ACTIVE · DONE
+ * TODAY · streak) and the `?` button are gone.
  * Tapping the title goes home: ALL quests, ACTIVE, top level, scrolled up
  * (second navigation pass, 2026-10-09). Long-pressing it opens the developer screen
  * (theme check and test data), a deliberately hidden gesture.
@@ -13,30 +14,16 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { currentDayStreak, levelInfo } from '@/lib/xp';
-import { useActions, useAppStore, useSelectors } from '@/store/react';
+import { levelInfo } from '@/lib/xp';
+import { useActions, useAppStore } from '@/store/react';
 import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
-import { useMinute } from './useMinute';
 
 export function Header() {
-  const selectors = useSelectors();
-  const now = useMinute();
-  // Counts are memoized per structural change and per minute (store/selectors.ts).
-  const counts = useAppStore((s) => selectors.counts(s, now));
   const tab = useAppStore((s) => s.ui.tab);
   const actions = useActions();
-  // XP (lib/xp.ts): the level in the title, the day streak in the status line.
-  const progress = useAppStore((s) => s.tasks.progress);
-  const level = levelInfo(progress.xp).level;
-  const streak = currentDayStreak(progress, now);
-
-  const meta = [
-    `${counts.active} ACTIVE`,
-    `${counts.doneToday} DONE TODAY`,
-    ...(counts.overdue ? [`${counts.overdue} OVERDUE`] : []),
-    ...(streak >= 2 ? [`${streak}-DAY STREAK`] : []),
-  ].join(' · ');
+  // XP (lib/xp.ts): the level in the title.
+  const level = useAppStore((s) => levelInfo(s.tasks.progress.xp).level);
 
   return (
     <View style={styles.header}>
@@ -67,7 +54,7 @@ export function Header() {
             _quest_log
           </Text>
         </Pressable>
-        {/* Top right: search (this tab), the user guide and settings. */}
+        {/* Top right: search (this tab) and settings (the user guide is in there). */}
         <View style={styles.icons}>
           <Pressable
             onPress={() => actions.setSearch(tab, { open: true })}
@@ -78,17 +65,6 @@ export function Header() {
           >
             <Text style={[type.glyph, styles.icon]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
               {glyphs.search.glyph}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => router.push('/help')}
-            style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-            hitSlop={ICON_SLOP}
-            accessibilityRole="button"
-            accessibilityLabel="User guide"
-          >
-            <Text style={[type.glyph, styles.icon]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-              {glyphs.help.glyph}
             </Text>
           </Pressable>
           <Pressable
@@ -104,14 +80,11 @@ export function Header() {
           </Pressable>
         </View>
       </View>
-      <Text style={[type.meta, styles.meta]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {meta}
-      </Text>
     </View>
   );
 }
 
-/** The drawn size of the / ? ⊛ boxes; hitSlop brings the touch area to 44 pt. */
+/** The drawn size of the / and ⊛ boxes; hitSlop brings the touch area to 44 pt. */
 const ICON_BOX = 34;
 const ICON_SLOP = (size.hitTarget - ICON_BOX) / 2;
 
@@ -137,5 +110,4 @@ const styles = StyleSheet.create({
   // Pressed: the frame lights up (lineLit) with the faint glow (aesthetic pass 2026-10-17).
   pressed: { backgroundColor: colors.surface, borderColor: colors.lineLit, boxShadow: glowShadow.faint },
   icon: { color: colors.accent, ...platformText },
-  meta: { color: colors.textDim, marginTop: space.xs, ...platformText },
 });

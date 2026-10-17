@@ -21,7 +21,7 @@ import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withSeque
 import { CATEGORIES, type CategoryTab } from '@/lib/quests';
 import { useActions, useAppStore, useSelectors } from '@/store/react';
 import type { Tab } from '@/store/uiState';
-import { colors, duration, easing, glowShadow, glowTextSoft, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
+import { colors, duration, easing, fonts, glowShadow, glowTextSoft, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 /** The quest tabs in order: ALL, then each category. */
 const QUEST_TABS: readonly { key: CategoryTab; label: string; a11y: string }[] = [
@@ -48,21 +48,24 @@ export function Tabs() {
               // Tapping the selected tab again goes to the top of it (out of a zoom, or scroll up).
               onPress={() => (selected ? actions.toTabTop() : actions.setCategoryTab(q.key))}
               style={[styles.quest, selected && styles.questOn]}
+              // Half as tall as before, still 44 pt to tap.
+              hitSlop={{ top: QUEST_SLOP, bottom: QUEST_SLOP }}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               // The web build reads only aria-selected (react-native-web 0.21 ignores accessibilityState).
               aria-selected={selected}
               accessibilityLabel={`${q.a11y}, ${counts[q.key].active} open`}
             >
+              {/* One line: the label, then its open count (half-height tabs, user request 2026-10-17). */}
               <Text
-                style={[type.tab, selected ? styles.bright : styles.dim]}
+                style={[type.tab, styles.questLabel, selected ? styles.bright : styles.dim]}
                 numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
                 maxFontSizeMultiplier={maxFontSizeMultiplier}
               >
                 {q.label}
-              </Text>
-              <Text style={[type.meta, selected ? styles.accent : styles.dim]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                {counts[q.key].active}
+                <Text style={[styles.questCount, selected ? styles.accent : styles.dim]}>{` ${counts[q.key].active}`}</Text>
               </Text>
             </Pressable>
           );
@@ -125,6 +128,11 @@ function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
   );
 }
 
+/** A quest tab's drawn height: half the old 52 pt (user request 2026-10-17). */
+const QUEST_HEIGHT = 26;
+/** Extra touch area above and below, so a quest tab is still 44 pt to tap. */
+const QUEST_SLOP = Math.ceil((size.hitTarget - QUEST_HEIGHT) / 2);
+
 /** The ACTIVE / COMPLETED switch, drawn height: 28 → 25 pt (2026-10-09), then 10% smaller again: 22.5 pt (user request 2026-10-11). */
 const SWITCH_HEIGHT = 22.5;
 /** Extra touch area above and below, so it's still 44 pt to tap. */
@@ -134,9 +142,11 @@ const styles = StyleSheet.create({
   wrap: { marginHorizontal: space.lg, marginBottom: space.md, gap: space.sm },
   row: { flexDirection: 'row', gap: space.xs + 2 },
   // Quest tabs: equal widths; label over its open-quest count.
+  // Half the old height (52 → 26 pt, user request 2026-10-17: a shorter top panel).
   quest: {
     flex: 1,
-    minHeight: size.hitTarget + space.sm,
+    minHeight: QUEST_HEIGHT,
+    paddingHorizontal: space.xs,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: shape.hairline,
@@ -145,6 +155,10 @@ const styles = StyleSheet.create({
   },
   // Selected: accent frame on surface, with the faint glow (user request 2026-10-11: subtle accents).
   questOn: { borderColor: colors.accent, backgroundColor: colors.surface, boxShadow: glowShadow.faint },
+  // The label a step smaller to sit on one line with its count (the tab role was 14/20).
+  questLabel: { fontSize: 12, lineHeight: 16 },
+  // The count in the regular weight, after the bold label, so the two read apart.
+  questCount: { fontFamily: fonts.medium, letterSpacing: 0 },
   // The switch: slimmer and unfilled, so it reads as secondary to the quest tabs.
   switch: { flex: 1, minHeight: SWITCH_HEIGHT, alignItems: 'center', justifyContent: 'center' },
   // A 2 pt bar along its bottom: `line`, or accent with the glow when selected.
