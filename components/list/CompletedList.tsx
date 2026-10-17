@@ -168,17 +168,17 @@ const CompletedRow = memo(
     const task = useAppStore((s) => findTask(s.tasks, row.id));
     const editing = useAppStore((s) => s.editingId === row.id);
     const field = useAppStore((s) => (s.editingId === row.id ? s.editingField : null));
-    const expanded = useAppStore((s) => s.ui.completedExpanded.includes(row.id));
+    // Whether this quest shows open: from the tap on (a fold under way counts), so the caret turns at once.
+    const expanded = useAppStore((s) =>
+      s.folding.includes(row.id) ? false : s.unfolding.includes(row.id) ? true : s.ui.completedExpanded.includes(row.id),
+    );
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
     const [menu, setMenu] = useState(false);
-    // Folds (2026-10-17, as on ACTIVE): a quest above this row is closing (it goes, under the
-    // rows gliding up) or opening (it fades in). Search results never fold.
+    // Folds (2026-10-17, as on ACTIVE): a quest above this row is closing (it fades out, then
+    // leaves as the rows below glide up) or opening (it fades in). Search results never fold.
     const foldingAway = useAppStore(
-      (s) =>
-        s.folding.length > 0 &&
-        !searchingCompleted(s) &&
-        s.folding.some((f) => f !== row.id && !s.ui.completedExpanded.includes(f) && isInSubtree(s.tasks, row.id, f)),
+      (s) => s.folding.length > 0 && !searchingCompleted(s) && s.folding.some((f) => f !== row.id && isInSubtree(s.tasks, row.id, f)),
     );
     const unfolding = useAppStore(
       (s) => s.unfolding.length > 0 && !searchingCompleted(s) && s.unfolding.some((u) => u !== row.id && isInSubtree(s.tasks, row.id, u)),

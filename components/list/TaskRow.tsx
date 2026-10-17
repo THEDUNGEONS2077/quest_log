@@ -108,13 +108,16 @@ export const TaskRow = memo(
     const lingering = useAppStore((s) => s.lingering.some((l) => isInSubtree(s.tasks, row.id, l)));
     // The completed quest itself (not one of its subtask rows): it says when the fade is done.
     const leavingRoot = useAppStore((s) => s.lingering.includes(row.id));
-    // Folds (2026-10-17): a task above this row is closing (it goes, under the rows gliding up)
-    // or opening (it fades in). Searching, nothing folds: the results show every match's path.
+    // Folds (2026-10-17): a task above this row is closing (it fades out, then leaves as the rows
+    // below glide up) or opening (it fades in as they glide down). Searching, nothing folds: the
+    // results show every match's path.
     const foldingAway = useAppStore(
-      (s) =>
-        s.folding.length > 0 &&
-        !searchingActive(s) &&
-        s.folding.some((f) => f !== row.id && !!findTask(s.tasks, f)?.collapsed && isInSubtree(s.tasks, row.id, f)),
+      (s) => s.folding.length > 0 && !searchingActive(s) && s.folding.some((f) => f !== row.id && isInSubtree(s.tasks, row.id, f)),
+    );
+    // Whether this task shows open: from the tap on (a fold under way counts), so the caret
+    // turns at once rather than when the fold lands.
+    const open = useAppStore((s) =>
+      s.folding.includes(row.id) ? false : s.unfolding.includes(row.id) ? true : !findTask(s.tasks, row.id)?.collapsed,
     );
     const unfolding = useAppStore(
       (s) => s.unfolding.length > 0 && !searchingActive(s) && s.unfolding.some((u) => u !== row.id && isInSubtree(s.tasks, row.id, u)),
@@ -251,12 +254,12 @@ export const TaskRow = memo(
                 hitSlop={HIT_SLOP}
                 disabled={!row.hasChildren}
                 onPress={() => actions.toggleCollapsed(task.id)}
-                onLongPress={() => actions.setSiblingsCollapsed(task.id, !task.collapsed)}
+                onLongPress={() => actions.setSiblingsCollapsed(task.id, open)}
                 accessibilityRole="button"
-                accessibilityLabel={`${task.collapsed ? 'Expand' : 'Collapse'} ${task.title || 'task'}`}
+                accessibilityLabel={`${open ? 'Collapse' : 'Expand'} ${task.title || 'task'}`}
                 accessibilityElementsHidden={!row.hasChildren}
               >
-                {row.hasChildren && <Caret id={task.id} open={!task.collapsed} childCount={row.progress.total} style={styles.glyph} />}
+                {row.hasChildren && <Caret id={task.id} open={open} childCount={row.progress.total} style={styles.glyph} />}
               </Pressable>
 
               {/* Checkbox: a full 44 pt target. */}

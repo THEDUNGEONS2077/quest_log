@@ -345,6 +345,77 @@ try {
     if (await page.getByLabel('Done editing').count()) throw new Error('the edit toolbar is still open after switching tab');
     await tap(/^all quests/i);
   });
+
+  await path('folding quests open and shut leaves every row below visible, in order, uncovered', async () => {
+    // Bug 2026-10-17 (1.9.0): after closing a quest, the quest below it vanished or landed out
+    // of place. (That was Android-only, from stacking cells with zIndex; this checks the fold's
+    // sequence: fade, change, glide, and that a second tap before it lands turns it around.)
+    await tap(/^all quests/i);
+    // Its own quests, at the top of ALL (newest first): two groups with a plain quest between
+    // and after them, as on the MISC tab where it was seen.
+    for (const text of [
+      'Fold bottom',
+      'Fold second\n  - [ ] Second one\n  - [ ] Second two',
+      'Fold below',
+      'Fold top\n  - [ ] Fold one\n  - [ ] Fold two\n  - [ ] Fold three',
+    ]) {
+      await page.getByLabel('New quest').fill(text);
+      await page.getByLabel('New quest').press('Enter');
+      await page.waitForTimeout(250);
+    }
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.waitForTimeout(600); // the list settles
+    const caret = async (label, ms = 900) => {
+      await page.evaluate((l) => document.querySelector(`[aria-label="${l}"]`).click(), label);
+      await page.waitForTimeout(ms);
+    };
+    /** Every row in the list's visible band: fully visible, nothing on top of it, none overlapping. */
+    const rowsOk = async (step) => {
+      const problems = await page.evaluate(() => {
+        const seen = (el) => {
+          let o = 1;
+          for (let n = el; n && n !== document.body; n = n.parentElement) o *= Number(getComputedStyle(n).opacity);
+          return o;
+        };
+        // Above the quick-add bar (and its fade) and any toast: they float over the list by design.
+        const tops = ['[aria-label="New quest"]', '[data-testid="toast"]'].map((q) => document.querySelector(q)?.getBoundingClientRect().top ?? 760);
+        const floor = Math.min(...tops) - 24;
+        const rows = [...document.querySelectorAll('[aria-label^="Complete "],[aria-label^="Uncheck "]')]
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            const over = hit && !(hit === el || el.contains(hit)) ? (hit.closest('[aria-label]')?.getAttribute('aria-label') ?? hit.textContent?.slice(0, 30)) : null;
+            return { name: el.getAttribute('aria-label'), top: r.top, bottom: r.bottom, o: seen(el), onTop: !over, over };
+          })
+          .filter((r) => r.bottom > 260 && r.bottom < floor)
+          .sort((a, b) => a.top - b.top);
+        const out = [];
+        rows.forEach((r, i) => {
+          if (r.o < 0.99) out.push(`${r.name} faded (${r.o.toFixed(2)})`);
+          if (!r.onTop) out.push(`${r.name} covered by "${r.over}"`);
+          if (i > 0 && r.top < rows[i - 1].bottom - 0.5) out.push(`${r.name} overlaps ${rows[i - 1].name}`);
+        });
+        return out;
+      });
+      if (problems.length) throw new Error(`${step}: ${problems.join('; ')}`);
+    };
+    await rowsOk('before');
+    await caret('Collapse Fold top');
+    await rowsOk('the top quest closed');
+    await caret('Expand Fold top');
+    await rowsOk('the top quest opened');
+    await caret('Collapse Fold second');
+    await caret('Collapse Fold top');
+    await rowsOk('both closed');
+    // Open, close, open again before the folds land: it ends open, everything in place.
+    await caret('Expand Fold top', 60);
+    await caret('Collapse Fold top', 60);
+    await caret('Expand Fold top');
+    await see(/^fold two$/i);
+    await rowsOk('turned around twice');
+    await caret('Expand Fold second');
+    await rowsOk('both open again');
+  });
 } finally {
   await browser.close();
   server.kill();

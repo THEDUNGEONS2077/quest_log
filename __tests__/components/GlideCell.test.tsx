@@ -15,7 +15,6 @@ import type { Row } from '@/lib/flatten';
 import { createAppStore } from '@/store/createStore';
 import { createMemoryKV } from '@/store/kv';
 import { bundleStore, StoreProvider } from '@/store/react';
-import { colors } from '@/theme';
 
 /** Stands in for the row FlashList renders inside a cell (GlideCell reads its `row` prop). */
 function FakeRow({ row }: { row: Row }) {
@@ -63,9 +62,8 @@ it('carries the glide while a fold plays, open or shut (2026-10-17)', async () =
   expect(glides()).toBe(false);
 });
 
-it('is opaque and stacked by its index, so the rows below pass over a fold like a curtain', async () => {
+it('is never stacked with zIndex (on Android that re-orders native views and lost rows below a fold, 2026-10-17)', async () => {
   const { ui } = await setup();
-  const style = StyleSheet.flatten(ui.getByTestId('cell').props.style);
-  expect(style.zIndex).toBe(3);
-  expect(style.backgroundColor).toBe(colors.bg);
+  const style = StyleSheet.flatten(ui.getByTestId('cell').props.style) ?? {};
+  expect(style.zIndex).toBeUndefined();
 });

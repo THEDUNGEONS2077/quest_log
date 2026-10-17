@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.9.1",
+    "build": 39,
+    "lines": [
+      "- **Fixed: closing a quest no longer hides the quests below it** or leaves them out of place, on every tab. Closing now works the way a completed quest leaves: its subtasks fade out, then the quests below glide up into their space. Opening is the same in reverse: the quests below glide down to make room, then the subtasks fade in.",
+      "- **The caret turns the moment you tap,** and tapping again before the fold has finished turns it around."
+    ]
+  },
+  {
     "version": "1.9.0",
     "build": 38,
     "lines": [
@@ -52,20 +60,6 @@
       "  - due dates, priorities, repeats and completion dates use the Obsidian Tasks plugin's format (📅 ⏫ 🔁 ✅), so that plugin can list what's due, sort and filter, and the due time is shown as 🕐;",
       "  - the note starts with properties (when it was synced, counts, level, XP) that Obsidian and Dataview can read.",
       "- The note is a copy: change tasks in the app, and the next SYNC replaces the file. Trash isn't included. The JSON backup works exactly as before."
-    ]
-  },
-  {
-    "version": "1.6.0",
-    "build": 33,
-    "lines": [
-      "Polish: the keyboard, shorthand, a smoother finish, and a subtle glow.",
-      "- **Fixed: the keyboard opens when you add a subtask.** The same goes for every field that opens by itself: a new subtask (from `+`, `+ SUB` or the hold menu), notes, and the quick-add bar when it's asked to take focus. Before, the field could open without a keyboard until you tapped it.",
-      "- **Shorthand chips show just above the text you're typing,** small and quiet, in the same style when adding and when editing. Typing `@tomorrow 10am` shows `◔ TOMORROW 10:00` right over the line, not hidden under the keyboard.",
-      "- **Fixed: the `> new quest` bar hanging in the middle of the screen.** The bar now rides the keyboard only while you're typing in it. Both keyboard trackers can end typing, and the bar checks itself regularly while it's up. If it ever happens again, long-press the title for the developer screen, which has a KEYBOARD LOG to send me.",
-      "- **Completing a quest is smooth to the end.** It slides away, and then the list closes the gap: the quests below glide up instead of jumping. The same happens when you swipe a task away, or restore or delete one on COMPLETED.",
-      "- **Nothing jumps away while you work.** Ticking off an objective no longer sends its quest to the top mid-tap. The list sorts itself again when you switch tabs. New quests still appear at the top.",
-      "- **A subtle glow:** the title, the selected tab and the ACTIVE / COMPLETED bar, the quick-add field while you type, the toolbar and menu icons, and UNDO.",
-      "- **The ACTIVE · COMPLETED switch is 10% smaller.**"
     ]
   }
 ]

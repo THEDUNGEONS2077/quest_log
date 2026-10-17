@@ -20,10 +20,11 @@
  * goes, so the rows gliding over it never show what's underneath.
  * With Reduce Motion it's immediate (the store change runs at once).
  *
- * Folds (2026-10-17, see GlideCell.tsx): a subtask whose task closes gives
- * up its room at once (the same negative margin: its cell is now 0 tall, so
- * the rows below glide up) but keeps drawing where it is, fading, under the
- * rows passing over it; one whose task opens fades in where it appears.
+ * Folds (2026-10-17, see GlideCell.tsx) only fade: a subtask whose task is
+ * closing fades out where it is, before the task closes and the list drops
+ * it; one whose task opens fades in as the rows below glide down to make
+ * room for it. (The space itself opens and closes by the rows' native glide,
+ * never by a size changing here.)
  */
 import { useCallback, useLayoutEffect, useRef } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
@@ -53,13 +54,12 @@ interface Leave {
  * its first frame shows before it fades in.
  */
 export function useRowLeave(id: string, { hidden = false }: { hidden?: boolean } = {}) {
-  // The row's full height, measured while it isn't leaving or folded away.
+  // The row's full height, measured while it isn't leaving.
   const natural = useRef(0);
   // How much of it has been taken away (pt), and how faded it is (0–1).
   const shrink = useSharedValue(0);
   const gone = useSharedValue(0);
-  // Folds: the room given up at once (pt), and the fade (0 shown – 1 gone).
-  const foldRoom = useSharedValue(0);
+  // Folds: how faded it is (0 shown – 1 gone).
   const foldFade = useSharedValue(hidden ? 1 : 0);
 
   // Reused by the list for another task: whole again. Before the frame is drawn (a layout
@@ -69,15 +69,14 @@ export function useRowLeave(id: string, { hidden = false }: { hidden?: boolean }
     if (sameItem()) return;
     shrink.set(0);
     gone.set(0);
-    foldRoom.set(0);
     foldFade.set(0);
-  }, [sameItem, shrink, gone, foldRoom, foldFade]);
+  }, [sameItem, shrink, gone, foldFade]);
 
   const onLayout = useCallback(
     (e: LayoutChangeEvent) => {
-      if (shrink.get() === 0 && foldRoom.get() === 0) natural.current = e.nativeEvent.layout.height;
+      if (shrink.get() === 0) natural.current = e.nativeEvent.layout.height;
     },
-    [shrink, foldRoom],
+    [shrink],
   );
 
   const leave = useCallback(
@@ -99,30 +98,26 @@ export function useRowLeave(id: string, { hidden = false }: { hidden?: boolean }
     gone.set(withTiming(0, { duration: duration.base, easing }));
   }, [shrink, gone]);
 
-  // Its task closed: no room at once (its cell is 0 tall; the rows below glide up over it),
-  // still drawn where it is, fading a little ahead of them.
+  // Its task is closing: fades out where it is (`fast`); the task closes once it has
+  // (store FOLD_FADE_MS) and the rows below glide up into its space.
   const foldAway = useCallback(() => {
-    foldRoom.set(natural.current);
-    foldFade.set(withTiming(1, { duration: duration.base, easing }));
-  }, [foldRoom, foldFade]);
-
-  // Open again (or turned around mid-fold): its room back, fading back in from where it is.
-  const foldBack = useCallback(() => {
-    if (foldRoom.get() === 0 && foldFade.get() === 0) return;
-    foldRoom.set(0);
-    foldFade.set(withTiming(0, { duration: duration.slow, easing: easingFold }));
-  }, [foldRoom, foldFade]);
-
-  // Its task opened: fades in where it appears, as the rows below glide down off it.
-  const appear = useCallback(() => {
-    foldFade.set(1);
-    foldFade.set(withTiming(0, { duration: duration.slow, easing: easingFold }));
+    foldFade.set(withTiming(1, { duration: duration.fast, easing }));
   }, [foldFade]);
 
-  const style = useAnimatedStyle(() => ({
-    marginBottom: -(shrink.get() + foldRoom.get()),
-    opacity: (1 - gone.get()) * (1 - foldFade.get()),
-  }));
+  // Open again (a fold turned around before it landed): fades back in from where it is.
+  const foldBack = useCallback(() => {
+    if (foldFade.get() === 0) return;
+    foldFade.set(withTiming(0, { duration: duration.base, easing: easingFold }));
+  }, [foldFade]);
+
+  // Its task opened: invisible while the rows below glide down to make room (most of their
+  // way: `base` of their `slow`), then fades in, so it never shows through them.
+  const appear = useCallback(() => {
+    foldFade.set(1);
+    foldFade.set(withDelay(duration.base, withTiming(0, { duration: duration.base, easing: easingFold })));
+  }, [foldFade]);
+
+  const style = useAnimatedStyle(() => ({ marginBottom: -shrink.get(), opacity: (1 - gone.get()) * (1 - foldFade.get()) }));
 
   return { onLayout, leave, stay, foldAway, foldBack, appear, style };
 }
@@ -130,7 +125,7 @@ export function useRowLeave(id: string, { hidden = false }: { hidden?: boolean }
 /**
  * Plays row `id`'s part in a fold (see GlideCell.tsx), with the fold
  * controls of its useRowLeave: `away` while a task above it is closing (it
- * gives up its room and fades where it is), `opening` while one is opening.
+ * fades out where it is), `opening` while one is opening.
  * A row that first shows while its task opens fades in; one that's already
  * on screen when a fold turns around goes back from where it is.
  */

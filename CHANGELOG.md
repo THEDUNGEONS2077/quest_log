@@ -2,6 +2,11 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.9.1 (build 39)
+
+- **Fixed: closing a quest no longer hides the quests below it** or leaves them out of place, on every tab. Closing now works the way a completed quest leaves: its subtasks fade out, then the quests below glide up into their space. Opening is the same in reverse: the quests below glide down to make room, then the subtasks fade in.
+- **The caret turns the moment you tap,** and tapping again before the fold has finished turns it around.
+
 ## 1.9.0 (build 38)
 
 - **Opening and closing a quest is smooth,** as on the desktop. Tap the caret and the quests below glide down, uncovering its subtasks as they fade in. Close it and the subtasks fade where they are while the quests below glide up over them, like a curtain. Nothing jumps at the start or the end, and if you tap again halfway, it turns around. The same on COMPLETED, and with a long-press (all quests at once).

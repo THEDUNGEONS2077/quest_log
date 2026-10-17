@@ -31,11 +31,6 @@ describe('flattenActive', () => {
     expect(rows[0]!.hasChildren).toBe(true);
   });
 
-  it('lists a collapsed task open while it folds shut (unfold), so its subtasks can close smoothly', () => {
-    const s = build([['a', { collapsed: true }, [['a1', [['deep']]], ['a2']]], ['b', { collapsed: true }, [['b1']]]]);
-    expect(outline(flattenActive(s, { unfold: new Set(['a']) }))).toEqual(['a', '  a1', '    deep', '  a2', 'b']);
-  });
-
   it('skips soft-deleted tasks with their subtrees, and leaves them out of progress', () => {
     const s = build([['a', [['gone', { deletedAt: 1 }, [['inside']]], ['kept']]]]);
     const rows = flattenActive(s);

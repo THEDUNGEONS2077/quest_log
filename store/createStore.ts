@@ -111,21 +111,31 @@ export const GLIDE_TAIL_MS = 600;
 
 /**
  * Folding a task's subtasks open or shut (2026-10-17, as on desktop). The
- * rows below glide natively (TaskList's GlideCell) and that needs the
- * cells' layout transitions in place before anything moves: a transition
- * switched on in the same update as the move can lose the race to the UI
- * thread, and the rows would jump. So a fold first marks itself (the cells
- * switch their glide on), and the task opens or closes FOLD_DEFER_MS later,
- * about two frames.
+ * rows below glide natively (TaskList's GlideCell), the way they do when a
+ * completed quest leaves, and that needs the cells' layout transitions in
+ * place before anything moves: a transition switched on in the same update
+ * as the move can lose the race to the UI thread, and the rows would jump.
+ * So a fold first marks itself (the cells switch their glide on), and the
+ * task opens FOLD_DEFER_MS later, about two frames.
  */
 export const FOLD_DEFER_MS = 32;
 
 /**
- * How long a fold stays marked after the task opens or closes: the rows'
- * glide (duration.slow, 320 ms) once the list has measured the change (a
- * frame or two; more on a busy phone), with a margin. A task folding shut
- * keeps its subtasks listed (and drawn, fading) this long, so they're
- * removed only once nothing can move.
+ * Closing: the subtasks first fade where they are (duration.fast, 120 ms),
+ * then the task closes, the list drops them in one update, and the rows
+ * below glide up into the space, as when a completed quest leaves. This is
+ * that fade plus a frame or two. (1.9.0 slid the rows below over subtasks
+ * that took no room any more, stacking the cells with zIndex; on Android
+ * that reorders the native views every time the rows shift, and the rows
+ * below could vanish or land out of place: fixed 2026-10-17.)
+ */
+export const FOLD_FADE_MS = 150;
+
+/**
+ * How long a fold stays marked once the task has opened or closed: the
+ * rows' glide (duration.slow, 320 ms) once the list has measured the change
+ * (a frame or two; more on a busy phone), with a margin. The cells keep
+ * their glide on this long.
  */
 export const FOLD_MS = 500;
 
@@ -208,11 +218,12 @@ export interface AppStore {
   glide: boolean;
   /**
    * Tasks whose subtasks are folding shut (caret, long-press, COMPLETED's
-   * caret): still listed until the fold has played (FOLD_MS), so their rows
-   * can close smoothly under the rows gliding up. Not persisted.
+   * caret): their rows fade, then the task closes and the rows below glide
+   * up. Marked from the tap until FOLD_MS after the task has closed; the
+   * caret shows them closed from the tap. Not persisted.
    */
   folding: ID[];
-  /** Tasks whose subtasks are folding open: their rows fade in (for FOLD_MS). Not persisted. */
+  /** Tasks whose subtasks are folding open: their rows fade in as the space opens (marked as `folding`). Not persisted. */
   unfolding: ID[];
   /**
    * Repeating tasks just checked: their strike plays and holds, then
@@ -613,7 +624,7 @@ export function createAppStore(deps: StoreDeps) {
   // again before its fold is over restarts it (the rows turn back from where they are).
   const foldTimers = new Map<ID, ReturnType<typeof setTimeout>>();
   /** Marks `ids` as folding open or shut for FOLD_MS (the list animates them), then forgets them. */
-  const markFold = (ids: readonly ID[], opening: boolean) => {
+  const markFold = (ids: readonly ID[], opening: boolean): void => {
     if (!ids.length) return;
     const s = store.getState();
     const without = (list: readonly ID[]) => list.filter((x) => !ids.includes(x));
@@ -636,30 +647,52 @@ export function createAppStore(deps: StoreDeps) {
     }
   };
   /** Whether `id`'s subtasks fold smoothly: up to FOLD_MAX_CHILDREN of them (more appear at once). */
-  const folds = (id: ID) => childIds(store.getState().tasks, id).length <= FOLD_MAX_CHILDREN;
+  const folds = (id: ID): boolean => childIds(store.getState().tasks, id).length <= FOLD_MAX_CHILDREN;
   /**
-   * Folds: marks `ids` now (the list's cells switch their glide on), then,
-   * FOLD_DEFER_MS later, marks them with the direction as it is then (a
-   * second tap may have come first) and runs `apply`, the open or close.
-   * `opening(id)` reads the direction from the current state.
+   * Whether `id` is open, or about to be: a task folding shut counts as
+   * closed from the tap, one folding open as open (so a second tap before
+   * the first has landed turns the fold around). `isOpenNow` reads the
+   * stored state (ACTIVE's `collapsed`, COMPLETED's expanded list).
    */
-  const fold = (ids: readonly ID[], opening: (id: ID) => boolean, apply: () => void) => {
-    const open = ids.filter(opening);
-    markFold(open, true);
-    markFold(
-      ids.filter((id) => !open.includes(id)),
-      false,
+  const intendedOpen = (id: ID, isOpenNow: (id: ID) => boolean): boolean => {
+    const s = store.getState();
+    if (s.folding.includes(id)) return false;
+    if (s.unfolding.includes(id)) return true;
+    return isOpenNow(id);
+  };
+  // The latest fold of each task: a newer one (a tap before the last has landed) takes over.
+  const foldGeneration = new Map<ID, number>();
+  /**
+   * Folds `ids` open or shut: marks them now (the list's cells switch their
+   * glide on, the caret turns, a closing task's subtasks start to fade), and
+   * `apply`s the change itself FOLD_DEFER_MS later when opening, or once the
+   * subtasks have faded (FOLD_FADE_MS) when closing. A newer fold of the same
+   * task before then takes over (this one's change is dropped).
+   */
+  const fold = (ids: readonly ID[], open: boolean, apply: (live: ID[]) => void): void => {
+    if (!ids.length) return;
+    markFold(ids, open);
+    const generations = ids.map((id) => {
+      const g = (foldGeneration.get(id) ?? 0) + 1;
+      foldGeneration.set(id, g);
+      return g;
+    });
+    setTimeout(
+      () => {
+        const live = ids.filter((id, i) => foldGeneration.get(id) === generations[i] && findTask(store.getState().tasks, id));
+        if (!live.length) return;
+        // Marked again: the marks (and the glide) last FOLD_MS from the change itself.
+        markFold(live, open);
+        apply(live);
+      },
+      open ? FOLD_DEFER_MS : FOLD_FADE_MS,
     );
-    setTimeout(() => {
-      const live = ids.filter((id) => findTask(store.getState().tasks, id));
-      const nowOpen = live.filter(opening);
-      markFold(nowOpen, true);
-      markFold(
-        live.filter((id) => !nowOpen.includes(id)),
-        false,
-      );
-      apply();
-    }, FOLD_DEFER_MS);
+  };
+  /** Sets `collapsed` on the tasks in `ids` that differ, as one view change (no updatedAt bump). */
+  const setCollapsed = (ids: readonly ID[], collapsed: boolean): void => {
+    const tasks = store.getState().tasks;
+    const changes = ids.filter((id) => findTask(tasks, id) && getTask(tasks, id).collapsed !== collapsed).map((id) => ({ id, fields: { collapsed } }));
+    if (changes.length) store.getState().dispatch({ type: 'update', changes });
   };
 
   const store = createStore<AppStore>()(
@@ -846,28 +879,21 @@ export function createAppStore(deps: StoreDeps) {
       toggleCollapsed(id) {
         // A view change, not an edit: no updatedAt bump, so the quest doesn't
         // sort to the top just for being opened or closed.
-        const toggle = () => {
-          const task = findTask(get().tasks, id);
-          if (task) get().dispatch({ type: 'update', changes: [{ id, fields: { collapsed: !task.collapsed } }] });
-        };
+        const open = !intendedOpen(id, (x) => !findTask(get().tasks, x)?.collapsed);
         // Its subtasks fold open or shut smoothly; a huge group changes at once.
-        if (!folds(id)) return toggle();
-        fold([id], (x) => !!findTask(get().tasks, x)?.collapsed, toggle);
+        if (!folds(id)) return setCollapsed([id], !open);
+        fold([id], open, (live) => setCollapsed(live, !open));
       },
 
       setSiblingsCollapsed(id, collapsed) {
         const tasks = get().tasks;
         const siblings = childIds(tasks, getTask(tasks, id).parentId);
-        // Only siblings that have children can collapse.
+        // Only siblings that have children can collapse; the ones that change (counting folds
+        // under way) fold together, or all at once if any is a huge group.
         const ids = siblings.filter((s) => (tasks.children[s]?.length ?? 0) > 0);
-        const apply = () => {
-          const live = ids.filter((s) => findTask(get().tasks, s));
-          if (live.length) get().dispatch({ type: 'update', changes: live.map((s) => ({ id: s, fields: { collapsed } })) });
-        };
-        // The ones that change fold together (all at once if any is a huge group).
-        const changing = ids.filter((s) => getTask(tasks, s).collapsed !== collapsed);
-        if (!changing.length || !changing.every(folds)) return apply();
-        fold(changing, () => !collapsed, apply);
+        const changing = ids.filter((s) => intendedOpen(s, (x) => !getTask(get().tasks, x).collapsed) === collapsed);
+        if (!changing.every(folds)) return setCollapsed(ids, collapsed);
+        fold(changing, !collapsed, (live) => setCollapsed(live, collapsed));
       },
 
       toggleDone(id) {
@@ -1351,14 +1377,14 @@ export function createAppStore(deps: StoreDeps) {
         if (op) get().dispatch(op);
       },
       toggleCompletedExpanded(id) {
-        const toggle = () => {
-          const list = get().ui.completedExpanded;
-          const completedExpanded = list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
-          set({ ui: { ...get().ui, completedExpanded } });
+        const open = !intendedOpen(id, (x) => get().ui.completedExpanded.includes(x));
+        const apply = () => {
+          const list = get().ui.completedExpanded.filter((x) => x !== id);
+          set({ ui: { ...get().ui, completedExpanded: open ? [...list, id] : list } });
         };
         // Its subtasks fold open or shut, as on ACTIVE.
-        if (!folds(id)) return toggle();
-        fold([id], (x) => !get().ui.completedExpanded.includes(x), toggle);
+        if (!folds(id)) return apply();
+        fold([id], open, apply);
       },
 
       updateSettings: (patch) => set({ settings: { ...get().settings, ...patch } }),

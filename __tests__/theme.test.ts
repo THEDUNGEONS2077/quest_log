@@ -12,7 +12,7 @@
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
 
-import { ADVANCE_MS, GLIDE_TAIL_MS, LINGER_MS } from '@/store/createStore';
+import { ADVANCE_MS, FOLD_DEFER_MS, FOLD_FADE_MS, FOLD_MS, GLIDE_TAIL_MS, LINGER_MS } from '@/store/createStore';
 import processBackgroundImage from 'react-native/Libraries/StyleSheet/processBackgroundImage';
 import processBackgroundRepeat from 'react-native/Libraries/StyleSheet/processBackgroundRepeat';
 import processBackgroundSize from 'react-native/Libraries/StyleSheet/processBackgroundSize';
@@ -71,6 +71,11 @@ describe('motion', () => {
     expect(GLIDE_TAIL_MS).toBeGreaterThan(duration.slow);
     // A repeating task: strike, hold, then un-strike with its next date.
     expect(ADVANCE_MS).toBe(duration.base + timing.repeatHold);
+    // Folds: a closing task's subtasks have faded (fast) before it closes; the glide is on a frame
+    // or two before anything moves; and the marks outlast the rows' glide (slow).
+    expect(FOLD_FADE_MS).toBeGreaterThanOrEqual(duration.fast + 16);
+    expect(FOLD_DEFER_MS).toBeGreaterThanOrEqual(16);
+    expect(FOLD_MS).toBeGreaterThan(duration.slow + 100);
   });
 
   it('distances sit on the 4 pt grid', () => {
