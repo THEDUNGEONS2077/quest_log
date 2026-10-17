@@ -416,6 +416,49 @@ try {
     await caret('Expand Fold second');
     await rowsOk('both open again');
   });
+
+  await path('an opened quest that does not fit comes to the top; a closed one never moves', async () => {
+    // User request 2026-10-17: "I want a quest to be in focus when it's expanded … when the
+    // quest is collapsed it should stay in the position it is in".
+    await tap(/^all quests/i);
+    const scroller = () =>
+      page.evaluateHandle(() =>
+        [...document.querySelectorAll('div')]
+          .filter((d) => d.offsetParent !== null && /(auto|scroll)/.test(getComputedStyle(d).overflowY))
+          .sort((a, c) => c.clientHeight - a.clientHeight)[0],
+      );
+    const titleTop = (t) => page.evaluate((x) => document.querySelector(`[aria-label="Complete ${x}"]`)?.getBoundingClientRect().top ?? null, t);
+    const listTop = async () => (await scroller()).evaluate((b) => b.getBoundingClientRect().top);
+    const caret = async (label) => {
+      await page.evaluate((l) => document.querySelector(`[aria-label="${l}"]`).click(), label);
+      await page.waitForTimeout(1100);
+    };
+    // Its own quests at the top of ALL: a long group under a filler, closed to start with.
+    const steps = Array.from({ length: 12 }, (_, i) => `  - [ ] Long step ${i + 1}`).join('\n');
+    for (const text of [`Long group\n${steps}`, 'Focus filler']) {
+      await page.getByLabel('New quest').fill(text);
+      await page.getByLabel('New quest').press('Enter');
+      await page.waitForTimeout(250);
+    }
+    await page.waitForTimeout(600);
+    await caret('Collapse Long group');
+    // Low on the screen: scroll it there.
+    const box = await scroller();
+    for (let i = 0; i < 20; i++) {
+      const at = await titleTop('Long group');
+      const bottom = (await box.evaluate((b) => b.getBoundingClientRect().bottom)) - 140;
+      if (at !== null && Math.abs(at - bottom) < 8) break;
+      await box.evaluate((b, dy) => (b.scrollTop += dy), at === null ? -200 : at - bottom);
+      await page.waitForTimeout(200);
+    }
+    await caret('Expand Long group');
+    const opened = await titleTop('Long group');
+    const top = await listTop();
+    if (opened === null || Math.abs(opened - top) > 30) throw new Error(`opened at y=${opened}, not at the top of the list (y=${Math.round(top)})`);
+    await caret('Collapse Long group');
+    const closed = await titleTop('Long group');
+    if (closed !== opened) throw new Error(`closing moved it from y=${opened} to y=${closed}`);
+  });
 } finally {
   await browser.close();
   server.kill();

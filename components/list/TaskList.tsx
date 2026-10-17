@@ -15,6 +15,10 @@
  * scrolled to first, so its editor can mount and take focus. Dragging the
  * list a meaningful distance ends editing (PLAN §9.3).
  *
+ * Folds (useFoldFocus.ts): a quest opened comes into focus (its title
+ * scrolls to the top when its subtasks don't fit below it); one closed
+ * stays exactly where it is.
+ *
  * Views: every tab switch opens at the top (a fresh list); within a tab,
  * each zoom level keeps its own scroll position. Views slide in from their side
  * (useViewPlace.ts): zooming deeper comes in from the right, zooming out
@@ -40,6 +44,7 @@ import { DragOverlay, DragProvider, useDragController } from './drag';
 import { GlideCell } from './GlideCell';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { TaskRow } from './TaskRow';
+import { useFoldFocus } from './useFoldFocus';
 import { useKeyboardHeight } from './useKeyboardHeight';
 import { useViewPlace } from './useViewPlace';
 
@@ -78,6 +83,11 @@ export function TaskList({ bottomInset }: Props) {
 
   const container = useRef<View>(null);
   const keyboardHeight = useKeyboardHeight();
+  // The content's bottom room: the quick-add bar's, and while typing the keyboard's and the
+  // toolbar's (so even the last row can scroll above them). They float over the list.
+  const padBottom = bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0);
+  // A quest opened comes into focus; one closed stays where it is (useFoldFocus.ts).
+  const fold = useFoldFocus(list, rows, { padBottom, topTuck: DIVIDER_TUCK, coveredBottom: padBottom, shown, viewKey: place.listKey });
 
   // The quest order is locked while editing (store questOrderLock) and re-sorts when
   // editing ends. If the task just edited moved, follow it so it stays in view.
@@ -178,12 +188,19 @@ export function TaskList({ bottomInset }: Props) {
               // The list stays still while a task is dragged (auto-scroll moves it instead).
               scrollEnabled={!dragging}
               onScrollBeginDrag={onScrollBeginDrag}
-              onScrollEndDrag={() => (dragStartY.current = null)}
+              onScrollEndDrag={() => {
+                dragStartY.current = null;
+                fold.settle();
+              }}
+              onMomentumScrollEnd={fold.settle}
+              onLayout={fold.onLayout}
+              onContentSizeChange={fold.onContentSizeChange}
               onScroll={onScroll}
               scrollEventThrottle={32}
               // While the keyboard is open, pad by its height (plus the toolbar on it)
               // so even the last row can be scrolled up to just above the toolbar.
-              contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
+              // Plus the fold's slack: the room that keeps a closed quest where it was.
+              contentContainerStyle={{ paddingBottom: padBottom + fold.slack }}
               ListEmptyComponent={EmptyState}
             />
           </Animated.View>

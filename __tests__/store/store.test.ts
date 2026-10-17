@@ -892,6 +892,24 @@ describe("folding a task's subtasks open and shut (2026-10-17)", () => {
     expect(store.getState()).toMatchObject({ folding: [], unfolding: [q] });
   });
 
+  it('an opened task asks the list to bring it into focus, as it opens (a closed one never does)', () => {
+    const { store, s, q } = quest();
+    expect(store.getState().foldFocus).toBeNull();
+    s.toggleCollapsed(q); // closing
+    jest.advanceTimersByTime(FOLD_FADE_MS + FOLD_MS);
+    expect(store.getState().foldFocus).toBeNull();
+    s.toggleCollapsed(q); // opening
+    expect(store.getState().foldFocus).toBeNull(); // not before its subtasks are listed
+    jest.advanceTimersByTime(FOLD_DEFER_MS);
+    expect(store.getState().foldFocus).toEqual({ id: q, key: 1 });
+    // Each opening is a new request.
+    s.toggleCollapsed(q);
+    jest.advanceTimersByTime(FOLD_FADE_MS + FOLD_MS);
+    s.toggleCollapsed(q);
+    jest.advanceTimersByTime(FOLD_DEFER_MS);
+    expect(store.getState().foldFocus).toEqual({ id: q, key: 2 });
+  });
+
   it(`a group of more than ${FOLD_MAX_CHILDREN} subtasks opens and closes at once, unmarked`, () => {
     const { store } = makeStore();
     const s = store.getState();
@@ -900,6 +918,9 @@ describe("folding a task's subtasks open and shut (2026-10-17)", () => {
     s.toggleCollapsed(q);
     expect(tk(store.getState().tasks, q)!.collapsed).toBe(true);
     expect(store.getState().folding).toEqual([]);
+    s.toggleCollapsed(q);
+    expect(tk(store.getState().tasks, q)!.collapsed).toBe(false);
+    expect(store.getState().foldFocus?.id).toBe(q); // opened at once, and brought into focus
   });
 
   it('long-press folds the siblings that change, together', () => {

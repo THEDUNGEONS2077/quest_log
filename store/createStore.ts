@@ -226,6 +226,12 @@ export interface AppStore {
   /** Tasks whose subtasks are folding open: their rows fade in as the space opens (marked as `folding`). Not persisted. */
   unfolding: ID[];
   /**
+   * The task the user has just opened (caret, COMPLETED's caret), as it
+   * opens: the list brings it into focus if its subtasks don't fit on
+   * screen below it (useFoldFocus). A new `key` for each opening. Not persisted.
+   */
+  foldFocus: { id: ID; key: number } | null;
+  /**
    * Repeating tasks just checked: their strike plays and holds, then
    * un-strikes with the new date (PLAN §10.5). Not persisted.
    */
@@ -688,6 +694,10 @@ export function createAppStore(deps: StoreDeps) {
       open ? FOLD_DEFER_MS : FOLD_FADE_MS,
     );
   };
+  /** The list brings task `id` into focus as it opens (AppStore.foldFocus). */
+  const focusFold = (id: ID): void => {
+    store.setState({ foldFocus: { id, key: (store.getState().foldFocus?.key ?? 0) + 1 } });
+  };
   /** Sets `collapsed` on the tasks in `ids` that differ, as one view change (no updatedAt bump). */
   const setCollapsed = (ids: readonly ID[], collapsed: boolean): void => {
     const tasks = store.getState().tasks;
@@ -720,6 +730,7 @@ export function createAppStore(deps: StoreDeps) {
       glide: false,
       folding: [],
       unfolding: [],
+      foldFocus: null,
       advancing: [],
       lastGain: null,
       toast: null,
@@ -880,9 +891,14 @@ export function createAppStore(deps: StoreDeps) {
         // A view change, not an edit: no updatedAt bump, so the quest doesn't
         // sort to the top just for being opened or closed.
         const open = !intendedOpen(id, (x) => !findTask(get().tasks, x)?.collapsed);
+        // Opened, it comes into focus (the list scrolls it up if its subtasks don't fit below).
+        const apply = (ids: readonly ID[]) => {
+          setCollapsed(ids, !open);
+          if (open) focusFold(id);
+        };
         // Its subtasks fold open or shut smoothly; a huge group changes at once.
-        if (!folds(id)) return setCollapsed([id], !open);
-        fold([id], open, (live) => setCollapsed(live, !open));
+        if (!folds(id)) return apply([id]);
+        fold([id], open, apply);
       },
 
       setSiblingsCollapsed(id, collapsed) {
@@ -1381,6 +1397,7 @@ export function createAppStore(deps: StoreDeps) {
         const apply = () => {
           const list = get().ui.completedExpanded.filter((x) => x !== id);
           set({ ui: { ...get().ui, completedExpanded: open ? [...list, id] : list } });
+          if (open) focusFold(id);
         };
         // Its subtasks fold open or shut, as on ACTIVE.
         if (!folds(id)) return apply();

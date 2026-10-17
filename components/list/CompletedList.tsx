@@ -53,6 +53,7 @@ import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { NestingGuides } from './NestingGuides';
 import { GlideCell } from './GlideCell';
 import { useRowFold, useRowLeave } from './rowCollapse';
+import { useFoldFocus } from './useFoldFocus';
 import { useKeyboardHeight } from './useKeyboardHeight';
 import { useViewPlace } from './useViewPlace';
 import { SwipeableRow } from './SwipeableRow';
@@ -78,6 +79,9 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
   const shown = useAppStore((s) => s.ui.tab === 'completed');
   const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category), { tab: category, visible: shown });
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => place.onScroll(e.nativeEvent.contentOffset.y);
+  // A quest opened comes into focus; one closed stays where it is (useFoldFocus.ts), as on ACTIVE.
+  const padBottom = bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0);
+  const fold = useFoldFocus(list, rows, { padBottom, topTuck: 0, coveredBottom: padBottom, shown, viewKey: place.listKey });
 
   // The COMPLETED switch tapped again (store revealTop): back to the top, if it's on screen.
   const { store } = useStoreBundle();
@@ -111,7 +115,12 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
             keyboardShouldPersistTaps="handled"
             ListHeaderComponent={<ListHeader hasRows={rows.length > 0} />}
             ListEmptyComponent={Empty}
-            contentContainerStyle={{ paddingBottom: bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0) }}
+            // Plus the fold's slack: the room that keeps a closed quest where it was.
+            contentContainerStyle={{ paddingBottom: padBottom + fold.slack }}
+            onScrollEndDrag={fold.settle}
+            onMomentumScrollEnd={fold.settle}
+            onLayout={fold.onLayout}
+            onContentSizeChange={fold.onContentSizeChange}
             onScroll={onScroll}
             scrollEventThrottle={32}
           />

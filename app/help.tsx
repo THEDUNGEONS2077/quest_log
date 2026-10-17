@@ -128,7 +128,7 @@ const SECTIONS: Section[] = [
       },
       {
         key: `${g.expanded.glyph} / ${g.collapsed.glyph}`,
-        what: 'Tap to hide or show a group’s subtasks. Hold to do it for every group at that level.',
+        what: 'Tap to show or hide a group’s subtasks. Opened, a group whose subtasks don’t fit below it moves up to the top; closed, it stays where it is. Hold to do it for every group at that level.',
       },
       {
         key: `${g.zoom.glyph} Zoom into`,

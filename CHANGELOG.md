@@ -2,6 +2,11 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.10.0 (build 40)
+
+- **An opened quest comes into focus.** Open a quest whose subtasks don't fit on the screen below it, say one near the bottom with a long list, and the list glides it up so its title is at the top, with its subtasks filling the screen below. A quest whose subtasks fit opens where it is.
+- **A closed quest stays exactly where it is,** wherever you close it, even the last quest at the very end of the list. You scroll on from there; nothing jumps.
+
 ## 1.9.1 (build 39)
 
 - **Fixed: closing a quest no longer hides the quests below it** or leaves them out of place, on every tab. Closing now works the way a completed quest leaves: its subtasks fade out, then the quests below glide up into their space. Opening is the same in reverse: the quests below glide down to make room, then the subtasks fade in.
