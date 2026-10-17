@@ -66,8 +66,14 @@ import { StrikeText } from './StrikeText';
 import { titleStyles, titleVariant } from './titleStyle';
 import { useRowDragGesture } from './drag';
 import { HighlightFlash } from './HighlightFlash';
-import { useRowLeave } from './rowCollapse';
+import { useRowFold, useRowLeave } from './rowCollapse';
 import { SwipeableRow } from './SwipeableRow';
+
+/** Whether ACTIVE shows search or filter results (rows then never fold). */
+function searchingActive(s: { search: { active: { open: boolean; query: string; filter: string } } }): boolean {
+  const q = s.search.active;
+  return q.open && (q.query.trim() !== '' || q.filter !== 'all');
+}
 
 /** The haptic for each checkbox outcome (PLAN §9.18). */
 export function hapticFor(outcome: ToggleOutcome): void {
@@ -102,6 +108,17 @@ export const TaskRow = memo(
     const lingering = useAppStore((s) => s.lingering.some((l) => isInSubtree(s.tasks, row.id, l)));
     // The completed quest itself (not one of its subtask rows): it says when the fade is done.
     const leavingRoot = useAppStore((s) => s.lingering.includes(row.id));
+    // Folds (2026-10-17): a task above this row is closing (it goes, under the rows gliding up)
+    // or opening (it fades in). Searching, nothing folds: the results show every match's path.
+    const foldingAway = useAppStore(
+      (s) =>
+        s.folding.length > 0 &&
+        !searchingActive(s) &&
+        s.folding.some((f) => f !== row.id && !!findTask(s.tasks, f)?.collapsed && isInSubtree(s.tasks, row.id, f)),
+    );
+    const unfolding = useAppStore(
+      (s) => s.unfolding.length > 0 && !searchingActive(s) && s.unfolding.some((u) => u !== row.id && isInSubtree(s.tasks, row.id, u)),
+    );
     // A repeating task just checked: struck for a moment, then back with its next date (PLAN §10.5).
     const advancing = useAppStore((s) => s.advancing.includes(row.id));
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
@@ -124,7 +141,8 @@ export const TaskRow = memo(
     // row frame by frame, which FlashList followed from the JS thread, late and unevenly.
     const opacity = useSharedValue(1);
     const slide = useSharedValue(0);
-    const exit = useRowLeave(row.id);
+    // A row mounting as its task opens starts invisible (it fades in: useRowFold).
+    const exit = useRowLeave(row.id, { hidden: unfolding });
     const { leave, stay } = exit;
     const release = actions.releaseLingering;
     useEffect(() => {
@@ -148,6 +166,7 @@ export const TaskRow = memo(
       slide.set(withDelay(timing.completeHold, withTiming(distance.exit, out)));
     }, [lingering, leavingRoot, opacity, slide, stay, release, row.id]);
     const fadeStyle = useAnimatedStyle(() => ({ opacity: opacity.get(), transform: [{ translateX: slide.get() }] }));
+    useRowFold(row.id, foldingAway, unfolding, exit);
 
     if (!task) return null; // removed between flatten and render
 
@@ -190,7 +209,7 @@ export const TaskRow = memo(
     const titleStyle = titleStyles[variant];
 
     return (
-      // Outer: the space the row takes, closing when it leaves (rowCollapse.ts).
+      // Outer: the space the row takes, closing when it leaves or folds away (rowCollapse.ts).
       // Inner: the completed quest's slide and fade.
       <Animated.View style={exit.style} onLayout={exit.onLayout}>
         <Animated.View style={[fadeStyle, (dimmed || context) && styles.dimmed]}>

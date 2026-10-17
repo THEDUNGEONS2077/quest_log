@@ -357,6 +357,7 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 | easing | `Easing.out(Easing.cubic)` | Everything that arrives, changes or settles |
 | easingExit | `Easing.in(Easing.cubic)` | Things leaving (a completed quest's slide, the toast going): slow to start, then away |
 | easingScan | `Easing.linear` | The scan effects only (the boot screen's refresh band): a CRT's beam doesn't ease |
+| easingFold | `Easing.bezier(0.25, 0.1, 0.25, 1)` (CSS's `ease`) | Folds (a task's subtasks opening and closing) and the caret turning with them: a soft start and a long settle. A fold moves the rows below the furthest: `easing` would jump 15% of the way in its first frame (27 pt for five subtasks); this moves at most ~20 pt a frame |
 | boot sweep | 900 ms | The boot screen's refresh band, one pass down the screen |
 | cursor blink | 530 ms on / 530 ms off | All `█` cursors share one animated value (they blink in step, at the cost of one animation) |
 | float | in `fast`, hold 450 ms, out `slow`, rising throughout | Every floating `+N XP` (the row and the XP bar move in step) |
@@ -376,7 +377,7 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 | An item leaves (swiped away, restored, deleted) | It stays slid out (or fades, `fast`), and its space closes over `slow` while the items below glide up; then the change is made |
 | Change view (tab, zoom, ACTIVE ↔ COMPLETED) | The new view slides in `distance.nudge` from the side it's on (tabs left to right; deeper levels on the right) while fading in from 30%, `base`. A quest tab opens at the top; zoom levels keep their scroll position |
 | Repeating item | Strike (200), hold (300), un-strike with the new date |
-| Collapse / expand | ▸ rotates 90° over 120 ms. It's instant for groups of more than 50 children, and when a recycled list cell starts showing a different item |
+| Collapse / expand (2026-10-17, as on desktop) | The subtasks fold open or shut like a curtain, `slow` on `easingFold`. **Opening:** the rows below glide down off the subtasks, which fade in where they appear. **Closing:** the subtasks give up their room at once but keep drawing where they are, fading (`base`), while the rows below glide up over them; they leave the list once nothing can move (`FOLD_MS` 500 ms). The caret turns over `base` on `easingFold`. Turned around mid-way, a fold goes back from where it is. Instant for groups of more than 50 children, and the caret jumps when a recycled list cell starts showing a different item. How it's built: see *Folds* below |
 | Focus | The glow fades in over 120 ms |
 | Drag | Lift: grows to `scale.lift` over `fast`, `surfaceRaised`, outer glow, haptic. Hovering a collapsed parent for 600 ms expands it |
 | Sheets | Backdrop fade plus a 72 pt rise and fade, 200 ms |
@@ -390,6 +391,15 @@ OUT  IN  SUB  PRI NOTE DUE UNDO DONE
 - **List rows animate only real changes.** A recycling list reuses rows for other items while scrolling; a row that now shows another item jumps to its state instead of animating a change nobody made.
 - **Reduce Motion is global:** with the OS setting or the app setting on, every animation jumps to its end state (Reanimated's `ReducedMotionConfig`). Multi-step effects check it themselves: the boot screen is skipped, and the cursor stays solid.
 - **Inside modals, prefer plain value animations** (opacity and translate on a shared value) over layout or "entering" animations, which are less reliable there.
+
+### Folds (how a task's subtasks open and close smoothly)
+The list (FlashList) places each row in its own cell from the JS thread, so nothing may be animated by changing sizes frame by frame (each frame would relay the list out, late). Instead (2026-10-17):
+- **The rows below move by a native layout transition** (`GlideCell`): FlashList places them once at their new places, and the UI thread glides them there. The glide is on only while a fold (or a completed quest's exit) plays.
+- **The glide is switched on first.** A layout transition switched on in the same update as the move can lose the race to the UI thread, so a fold marks itself in the store (`folding` / `unfolding`), and the task opens or closes `FOLD_DEFER_MS` (32 ms, about two frames) later.
+- **A curtain, not a squeeze.** Every cell is opaque and stacked by its index, so a row is drawn over the rows above it. Opening, the rows below glide down off the subtasks (which fade in, starting invisible). Closing, the subtasks give up their room with a negative margin (their cells are 0 tall, the content still drawn where it was), fade, and the rows below glide up over them; a cell without height holds its place through the fold instead of sliding up into its task.
+- **Nothing jumps at the end.** A closing task's subtasks stay listed (the selectors' `unfold`) until the fold has played (`FOLD_MS`), already 0 tall and faded, so removing them moves nothing.
+- **Smaller first guesses.** Subtasks, quests and groups are separate item types, so FlashList's size estimate for a subtask it hasn't measured yet is close to its real size.
+- Search results never fold. Groups of more than `FOLD_MAX_CHILDREN` (50) open and close at once.
 
 ---
 
@@ -519,7 +529,7 @@ export const duration = { fast: 120, base: 200, slow: 320 } as const;
 export const timing = { cursorBlink: 530, completeHold: 600, repeatHold: 300, bootFade: 160, bootSweep: 900, toastHold: 5000, highlight: 800, longPress: 300, hoverExpand: 600, floatHold: 450 } as const;
 export const distance = { nudge: 16, float: 24, exit: 48, sheet: 72 } as const;
 export const scale = { lift: 1.02, pop: 1.3 } as const;
-// easing: Easing.out(Easing.cubic)   easingExit: Easing.in(Easing.cubic)   easingScan: Easing.linear
+// easing: Easing.out(Easing.cubic)   easingExit: Easing.in(Easing.cubic)   easingScan: Easing.linear   easingFold: Easing.bezier(0.25, 0.1, 0.25, 1)
 
 export const glowShadow = {
   inset: 'inset 0 0 6px 0 rgba(57, 255, 20, 0.35)',

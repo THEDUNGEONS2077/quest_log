@@ -8,13 +8,14 @@
  */
 import { act, render } from '@testing-library/react-native';
 import type { ReactNode } from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { GlideCell } from '@/components/list/GlideCell';
 import type { Row } from '@/lib/flatten';
 import { createAppStore } from '@/store/createStore';
 import { createMemoryKV } from '@/store/kv';
 import { bundleStore, StoreProvider } from '@/store/react';
+import { colors } from '@/theme';
 
 /** Stands in for the row FlashList renders inside a cell (GlideCell reads its `row` prop). */
 function FakeRow({ row }: { row: Row }) {
@@ -25,7 +26,7 @@ const rowFor = (id: string): Row => ({ id, depth: 0, hasChildren: false, progres
 async function setup() {
   const store = createAppStore({ kv: createMemoryKV(), now: () => 1_000, newId: () => 'x' });
   const wrap = (children: ReactNode) => <StoreProvider value={bundleStore(store)}>{children}</StoreProvider>;
-  const cell = (id: string) => wrap(<GlideCell testID="cell">{[<FakeRow key="r" row={rowFor(id)} />, null]}</GlideCell>);
+  const cell = (id: string) => wrap(<GlideCell testID="cell" index={3}>{[<FakeRow key="r" row={rowFor(id)} />, null]}</GlideCell>);
   const ui = await render(cell('a'));
   /** Whether the cell currently carries the glide transition. */
   const glides = () => typeof ui.getByTestId('cell').props.layout === 'function';
@@ -50,4 +51,21 @@ it('a cell recycled for another row during the glide jumps instead (until the gl
   await act(() => store.setState({ glide: false }));
   await act(() => store.setState({ glide: true }));
   expect(glides()).toBe(true); // a new glide: it may glide again
+});
+
+it('carries the glide while a fold plays, open or shut (2026-10-17)', async () => {
+  const { store, glides } = await setup();
+  await act(() => store.setState({ unfolding: ['q'] }));
+  expect(glides()).toBe(true);
+  await act(() => store.setState({ unfolding: [], folding: ['q'] }));
+  expect(glides()).toBe(true);
+  await act(() => store.setState({ folding: [] }));
+  expect(glides()).toBe(false);
+});
+
+it('is opaque and stacked by its index, so the rows below pass over a fold like a curtain', async () => {
+  const { ui } = await setup();
+  const style = StyleSheet.flatten(ui.getByTestId('cell').props.style);
+  expect(style.zIndex).toBe(3);
+  expect(style.backgroundColor).toBe(colors.bg);
 });

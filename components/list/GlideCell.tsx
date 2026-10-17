@@ -12,18 +12,31 @@
  * change between the old and new frames, with no work for JS on the way.
  *
  * The glide is on only around an exit (store `glide`: from the completion
- * until shortly after the quest has left). FlashList also moves cells when
- * it recycles them for other rows; those must not fly across the list, so
- * a cell skips the glide when the row it shows has just changed, and the
- * transition itself only animates moves of up to a screen's height.
+ * until shortly after the quest has left) or a fold (store `folding` /
+ * `unfolding`). FlashList also moves cells when it recycles them for other
+ * rows; those must not fly across the list, so a cell skips the glide when
+ * the row it shows has just changed, and the transition itself only
+ * animates moves of up to a screen's height.
+ *
+ * Folds (2026-10-17: a task's subtasks opening and closing smoothly, as on
+ * desktop) work like a curtain. Every cell is opaque and stacked by its
+ * index, so a row is drawn over the rows above it:
+ *   - opening, the rows below glide down from where they were, over the
+ *     subtasks that appeared under them (fading in), uncovering them;
+ *   - closing, the subtasks' rows take no room any more but keep drawing
+ *     where they are (rowCollapse.ts) as they fade, and the rows below glide
+ *     up over them. Their own cells, now 0 tall, hold their place for the
+ *     fold (the transition sees a cell without height) instead of sliding
+ *     up into the task.
+ * Folds use the folds' soft curve (easingFold); exits keep the arriving one.
  */
 import { Children, forwardRef, isValidElement, type ReactNode, useState } from 'react';
-import type { View, ViewProps } from 'react-native';
-import Animated, { type LayoutAnimation, type LayoutAnimationsValues, withTiming } from 'react-native-reanimated';
+import { StyleSheet, type View, type ViewProps } from 'react-native';
+import Animated, { type LayoutAnimation, type LayoutAnimationsValues, withDelay, withTiming } from 'react-native-reanimated';
 
 import type { Row } from '@/lib/flatten';
 import { useAppStore } from '@/store/react';
-import { duration, easing } from '@/theme';
+import { colors, duration, easing, easingFold } from '@/theme';
 
 /**
  * The layout transition: the cell's top moves from where it was to where it
@@ -48,6 +61,37 @@ function glideTransition(values: LayoutAnimationsValues): LayoutAnimation {
   };
 }
 
+/**
+ * The fold's transition: the glide on the folds' curve, except for a cell
+ * with no height, before or after the change: a subtask folding away (its
+ * row takes no room now but still draws, fading). Losing its height and
+ * being moved up to its task are two separate changes (FlashList re-places
+ * the cell once it has measured it), and a fold turned around gives the
+ * height back before the cell is re-placed again: through all of them the
+ * cell holds the place it's shown at, so its row fades where it is under
+ * the rows gliding up. Only if nothing re-places it within the fold does
+ * it go to its new place, unseen.
+ */
+function foldTransition(values: LayoutAnimationsValues): LayoutAnimation {
+  'worklet';
+  const distance = Math.abs(values.targetOriginY - values.currentOriginY);
+  const foldingAway = values.currentHeight < 1 || values.targetHeight < 1;
+  const glides = !foldingAway && distance > 0 && distance <= values.windowHeight;
+  return {
+    initialValues: {
+      originX: values.targetOriginX,
+      originY: glides || foldingAway ? values.currentOriginY : values.targetOriginY,
+      width: values.targetWidth,
+      height: values.targetHeight,
+    },
+    animations: {
+      originY: foldingAway
+        ? withDelay(duration.slow, withTiming(values.targetOriginY, { duration: 0 }))
+        : withTiming(values.targetOriginY, { duration: glides ? duration.slow : 0, easing: easingFold }),
+    },
+  };
+}
+
 /** The id of the row a cell renders (FlashList passes renderItem's element, then a separator). */
 function rowIdOf(children: ReactNode): string | undefined {
   const first = Children.toArray(children)[0];
@@ -59,10 +103,13 @@ type Props = ViewProps & { index?: number; children?: ReactNode };
 /**
  * The cell: FlashList's own props (its absolute placement in `style`, its
  * `onLayout`, its ref for measuring) on an Animated.View that carries the
- * glide while the list's `glide` is on.
+ * glide while the list's `glide` is on or a fold plays. Opaque and stacked
+ * by index, so the rows below can pass over a fold like a curtain.
  */
-export const GlideCell = forwardRef<View, Props>(function GlideCell({ children, index: _index, ...rest }, ref) {
-  const glide = useAppStore((s) => s.glide);
+export const GlideCell = forwardRef<View, Props>(function GlideCell({ children, index = 0, style, ...rest }, ref) {
+  const exitGlide = useAppStore((s) => s.glide);
+  const folding = useAppStore((s) => s.folding.length > 0 || s.unfolding.length > 0);
+  const glide = exitGlide || folding;
   const id = rowIdOf(children);
   // The row this cell showed last, and whether it changed during this glide (it was recycled):
   // then its move is a jump to another place, never a glide. (The previous-props pattern.)
@@ -75,8 +122,19 @@ export const GlideCell = forwardRef<View, Props>(function GlideCell({ children, 
   if (!glide && recycled) setRecycled(false);
 
   return (
-    <Animated.View ref={ref} {...rest} layout={glide && !recycled ? glideTransition : undefined}>
+    <Animated.View
+      ref={ref}
+      {...rest}
+      style={[style, styles.cell, { zIndex: index }]}
+      // A fold's curve unless a completed quest is leaving too (its glide keeps its own).
+      layout={glide && !recycled ? (exitGlide ? glideTransition : foldTransition) : undefined}
+    >
       {children}
     </Animated.View>
   );
+});
+
+const styles = StyleSheet.create({
+  // Opaque (the list's own background, so nothing changes at rest): a row covers what's under it.
+  cell: { backgroundColor: colors.bg },
 });

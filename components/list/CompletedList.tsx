@@ -35,6 +35,7 @@ import { CATEGORY_TABS } from '@/lib/quests';
 import type { FoundRow } from '@/lib/search';
 import { findTask } from '@/lib/taskMap';
 import { shownTitle } from '@/lib/title';
+import { isInSubtree } from '@/lib/tree';
 import { haptics } from '@/services/haptics';
 import { useActions, useAppStore, useSelectors, useStoreBundle } from '@/store/react';
 import { colors, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
@@ -50,7 +51,8 @@ import { FocusGlow } from './FocusGlow';
 import { HighlightFlash } from './HighlightFlash';
 import { KeepInViewProvider, useKeepInViewController } from './keepInView';
 import { NestingGuides } from './NestingGuides';
-import { useRowLeave } from './rowCollapse';
+import { GlideCell } from './GlideCell';
+import { useRowFold, useRowLeave } from './rowCollapse';
 import { useKeyboardHeight } from './useKeyboardHeight';
 import { useViewPlace } from './useViewPlace';
 import { SwipeableRow } from './SwipeableRow';
@@ -97,6 +99,8 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
       <KeepInViewProvider value={keepInView}>
         <Animated.View style={[styles.container, place.style]}>
           <FlashList
+            // Cells glide to their new places while a quest's subtasks fold open or shut (GlideCell).
+            CellRendererComponent={GlideCell}
             // A fresh list for every tab switch: it always opens at the top (useViewPlace).
             key={place.listKey}
             ref={list}
@@ -115,6 +119,11 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
       </KeepInViewProvider>
     </View>
   );
+}
+
+/** Whether COMPLETED shows search results (rows then never fold). */
+function searchingCompleted(s: { search: { completed: { open: boolean; query: string } } }): boolean {
+  return s.search.completed.open && s.search.completed.query.trim() !== '';
 }
 
 /** "CLEAR…" at the top right: choose how much to move to Trash. */
@@ -163,9 +172,22 @@ const CompletedRow = memo(
     const swipeOn = useAppStore((s) => s.settings.swipeActions);
     const actions = useActions();
     const [menu, setMenu] = useState(false);
+    // Folds (2026-10-17, as on ACTIVE): a quest above this row is closing (it goes, under the
+    // rows gliding up) or opening (it fades in). Search results never fold.
+    const foldingAway = useAppStore(
+      (s) =>
+        s.folding.length > 0 &&
+        !searchingCompleted(s) &&
+        s.folding.some((f) => f !== row.id && !s.ui.completedExpanded.includes(f) && isInSubtree(s.tasks, row.id, f)),
+    );
+    const unfolding = useAppStore(
+      (s) => s.unfolding.length > 0 && !searchingCompleted(s) && s.unfolding.some((u) => u !== row.id && isInSubtree(s.tasks, row.id, u)),
+    );
     // Restored or deleted, the row leaves COMPLETED: its space closes and the rows below
-    // glide up, then the store change runs (rowCollapse.ts).
-    const exit = useRowLeave(row.id);
+    // glide up, then the store change runs (rowCollapse.ts). A row mounting as its quest
+    // opens starts invisible (it fades in: useRowFold).
+    const exit = useRowLeave(row.id, { hidden: unfolding });
+    useRowFold(row.id, foldingAway, unfolding, exit);
     if (!task) return null;
 
     const restore = () => {

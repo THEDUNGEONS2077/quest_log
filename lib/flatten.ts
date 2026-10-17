@@ -38,6 +38,12 @@ export interface ActiveOptions {
    * moves under the editor. Quests not in it (added since) come first.
    */
   order?: readonly ID[] | null;
+  /**
+   * Collapsed tasks to list open for now: a task folding shut keeps its
+   * subtasks listed until the fold has played (store `folding`), so they
+   * close smoothly instead of vanishing (2026-10-17).
+   */
+  unfold?: ReadonlySet<ID>;
 }
 
 /**
@@ -46,7 +52,8 @@ export interface ActiveOptions {
  * Skips:
  *   - soft-deleted tasks (and so their whole subtree),
  *   - done **top-level** tasks, which live on the COMPLETED tab (PLAN §9.5),
- *   - children of collapsed tasks (the collapsed row itself is shown).
+ *   - children of collapsed tasks (the collapsed row itself is shown),
+ *     unless the task is still folding shut (`unfold`).
  * Done subtasks are always included, struck through in place (PLAN §2).
  * When zoomed in, the zoom root's direct children count as "top of the
  * list", but done ones stay visible, since they aren't top-level tasks.
@@ -80,7 +87,7 @@ export function flattenActive(state: TasksState, options: ActiveOptions = {}): R
     const progress = countProgress(state, kids);
     rows.push({ id, depth, hasChildren: progress.total > 0, progress });
 
-    if (!task.collapsed) {
+    if (!task.collapsed || options.unfold?.has(id)) {
       for (let i = kids.length - 1; i >= 0; i--) stack.push([kids[i]!, depth + 1]);
     }
   }

@@ -83,6 +83,16 @@ export const easing = Easing.out(Easing.cubic);
 export const easingExit = Easing.in(Easing.cubic);
 
 /**
+ * Folds (a task's subtasks opening and closing, as on desktop) and the
+ * caret turning with them: a soft start and a long settle (CSS's `ease`).
+ * A fold moves the rows below the furthest of anything in the list: the
+ * arriving curve would jump 15% of the way in its first frame (27 pt for
+ * five subtasks); this starts gently and moves at most ~20 pt a frame
+ * (2026-10-17: "as smooth as possible").
+ */
+export const easingFold = Easing.bezier(0.25, 0.1, 0.25, 1);
+
+/**
  * Constant speed, for the scan effects only (the boot screen's refresh
  * band): a CRT's beam doesn't ease, and the desktop's scanlines run linear too.
  */

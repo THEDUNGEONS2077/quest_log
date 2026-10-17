@@ -45,9 +45,12 @@ interface SelectorInput {
   lingering?: readonly string[];
   /** The quest order locked while editing (see AppStore.questOrderLock). */
   questOrderLock?: readonly string[] | null;
+  /** Tasks folding shut: listed open until their fold has played (see AppStore.folding). */
+  folding?: readonly string[];
 }
 
 const NO_LINGERING: readonly string[] = [];
+const NO_FOLDING: readonly string[] = [];
 
 /** Remembers the last result for one set of keys (enough here: one list per screen). */
 function memoLast<K extends unknown[], R>(compute: (...keys: K) => R): (...keys: K) => R {
@@ -68,13 +71,27 @@ export function makeSelectors() {
   // Keyed on structureVersion; `tasks` is passed along but deliberately not a key.
   let activeTasks: TasksState;
   const active = memoLast(
-    (_version: number, zoomRootId: string | null, lingering: readonly string[], category: CategoryTab, order: readonly string[] | null) =>
-      flattenActive(activeTasks, { zoomRootId, keep: lingering.length ? new Set(lingering) : undefined, category, order }),
+    (
+      _version: number,
+      zoomRootId: string | null,
+      lingering: readonly string[],
+      category: CategoryTab,
+      order: readonly string[] | null,
+      folding: readonly string[],
+    ) =>
+      flattenActive(activeTasks, {
+        zoomRootId,
+        keep: lingering.length ? new Set(lingering) : undefined,
+        category,
+        order,
+        unfold: folding.length ? new Set(folding) : undefined,
+      }),
   );
 
   let completedTasks: TasksState;
-  const completed = memoLast((_version: number, expanded: readonly string[], category: CategoryTab) =>
-    flattenCompleted(completedTasks, new Set(expanded), category),
+  // A quest folding shut is listed open until its fold has played.
+  const completed = memoLast((_version: number, expanded: readonly string[], category: CategoryTab, folding: readonly string[]) =>
+    flattenCompleted(completedTasks, new Set([...expanded, ...folding]), category),
   );
 
   // Open and done quests per tab, for the tab badges (one pass per structure change).
@@ -142,6 +159,7 @@ export function makeSelectors() {
         s.lingering ?? NO_LINGERING,
         s.ui.category ?? 'all',
         s.questOrderLock ?? null,
+        s.folding ?? NO_FOLDING,
       );
     },
     /** Rows for the COMPLETED tab (search results when searching). */
@@ -149,7 +167,7 @@ export function makeSelectors() {
       completedTasks = s.tasks;
       const q = s.search?.completed;
       if (q && q.query.trim()) return foundCompleted(s.tasks.structureVersion, q.query, s.ui.category ?? 'all');
-      return completed(s.tasks.structureVersion, s.ui.completedExpanded, s.ui.category ?? 'all');
+      return completed(s.tasks.structureVersion, s.ui.completedExpanded, s.ui.category ?? 'all', s.folding ?? NO_FOLDING);
     },
     /** Open and done quests on each quest tab (lib/quests.ts). */
     tabCounts(s: SelectorInput): TabCounts {

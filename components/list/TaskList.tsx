@@ -164,8 +164,11 @@ export function TaskList({ bottomInset }: Props) {
               data={rows}
               renderItem={renderItem}
               keyExtractor={(r) => r.id}
-              // Separate recycling pools: group headers and plain rows differ in layout.
-              getItemType={(r) => (r.depth === 0 && r.hasChildren ? 'group' : 'task')}
+              // Separate recycling pools: groups, other quests and subtasks differ in layout. The
+              // pools also give FlashList its size estimates for rows it hasn't measured yet:
+              // subtasks appearing as their quest opens are first placed by their own kind's
+              // average, so the glide has (almost) nothing to correct (2026-10-17).
+              getItemType={(r) => (r.depth > 0 ? 'sub' : r.hasChildren ? 'group' : 'quest')}
               onViewableItemsChanged={({ viewableItems }) => {
                 const indices = viewableItems.map((v) => v.index ?? 0);
                 visible.current = indices.length ? { first: Math.min(...indices), last: Math.max(...indices) } : { first: 0, last: -1 };

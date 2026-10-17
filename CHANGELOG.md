@@ -2,6 +2,11 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.9.0 (build 38)
+
+- **Opening and closing a quest is smooth,** as on the desktop. Tap the caret and the quests below glide down, uncovering its subtasks as they fade in. Close it and the subtasks fade where they are while the quests below glide up over them, like a curtain. Nothing jumps at the start or the end, and if you tap again halfway, it turns around. The same on COMPLETED, and with a long-press (all quests at once).
+- **The caret turns a little slower,** in step with the motion below it.
+
 ## 1.8.0 (build 37)
 
 A visual pass: quest_log now looks like a lit terminal screen.

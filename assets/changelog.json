@@ -1,5 +1,13 @@
 [
   {
+    "version": "1.9.0",
+    "build": 38,
+    "lines": [
+      "- **Opening and closing a quest is smooth,** as on the desktop. Tap the caret and the quests below glide down, uncovering its subtasks as they fade in. Close it and the subtasks fade where they are while the quests below glide up over them, like a curtain. Nothing jumps at the start or the end, and if you tap again halfway, it turns around. The same on COMPLETED, and with a long-press (all quests at once).",
+      "- **The caret turns a little slower,** in step with the motion below it."
+    ]
+  },
+  {
     "version": "1.8.0",
     "build": 37,
     "lines": [
@@ -58,15 +66,6 @@
       "- **Nothing jumps away while you work.** Ticking off an objective no longer sends its quest to the top mid-tap. The list sorts itself again when you switch tabs. New quests still appear at the top.",
       "- **A subtle glow:** the title, the selected tab and the ACTIVE / COMPLETED bar, the quick-add field while you type, the toolbar and menu icons, and UNDO.",
       "- **The ACTIVE · COMPLETED switch is 10% smaller.**"
-    ]
-  },
-  {
-    "version": "1.5.3",
-    "build": 32,
-    "lines": [
-      "- **Fixed for good: the `> new quest` bar hanging in the middle of the screen.** The earlier fix covered one cause; others remained, such as switching to another app while typing, or closing **Move to…** with its search keyboard up. The bar now checks itself against the real keyboard: whenever it comes to rest, whenever you return to the app, and whenever the keyboard closes. If it's up with no keyboard under it, it slides back down.",
-      "- **Back never closes the app from the middle of something.** While typing a new quest, back (or closing the keyboard) ends typing and leaves the bar as `> new quest`; what you typed stays. Back also ends editing a task, and clears an `IN: GROUP` target, before anything else. The app only closes when nothing is selected or open.",
-      "- **Every tab switch shows the list from the top,** including ACTIVE ↔ COMPLETED, which used to keep the old position. Zooming out of a quest still takes you back to where you were. All 32 one-tap moves between the tabs are now checked automatically."
     ]
   }
 ]

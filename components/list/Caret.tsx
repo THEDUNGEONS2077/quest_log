@@ -3,9 +3,10 @@
  * (PLAN §10.7).
  *
  * Layer: UI. One ▸ glyph turned 90° when open (pointing down, like ▾),
- * animated over 120 ms. Groups with more than 50 children switch instantly,
- * since their rows appear all at once anyway. With Reduce Motion, every
- * turn is instant (components/common/motion.tsx).
+ * animated over 200 ms on the folds' curve, as the subtasks fold open or
+ * shut under it (2026-10-17; it was 120 ms). Groups with more than 50
+ * children switch instantly, since their rows appear all at once anyway.
+ * With Reduce Motion, every turn is instant (components/common/motion.tsx).
  *
  * List rows are recycled: when this caret starts showing a different task,
  * it jumps straight to that task's state instead of animating.
@@ -16,10 +17,11 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 
 import { useSameItem } from '@/components/common/motion';
 import type { ID } from '@/lib/types';
-import { duration, easing, glyphs, maxFontSizeMultiplier, type } from '@/theme';
+import { FOLD_MAX_CHILDREN } from '@/store/createStore';
+import { duration, easingFold, glyphs, maxFontSizeMultiplier, type } from '@/theme';
 
-/** Above this many children the caret turns without animating (PLAN §10.7). */
-const ANIMATE_MAX_CHILDREN = 50;
+/** Above this many children the caret turns without animating (PLAN §10.7), as the fold does. */
+const ANIMATE_MAX_CHILDREN = FOLD_MAX_CHILDREN;
 
 interface Props {
   /** The task the caret belongs to (detects row recycling). */
@@ -38,7 +40,7 @@ export function Caret({ id, open, childCount, style }: Props) {
     const target = open ? 1 : 0;
     // Same task: animate the change. A recycled row (new task): jump.
     const animate = sameItem() && childCount <= ANIMATE_MAX_CHILDREN;
-    turn.set(animate ? withTiming(target, { duration: duration.fast, easing }) : target);
+    turn.set(animate ? withTiming(target, { duration: duration.base, easing: easingFold }) : target);
   }, [open, childCount, turn, sameItem]);
 
   const rotate = useAnimatedStyle(() => ({ transform: [{ rotate: `${turn.get() * 90}deg` }] }));
