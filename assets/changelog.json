@@ -1,5 +1,12 @@
 [
   {
+    "version": "1.15.1",
+    "build": 46,
+    "lines": [
+      "- **Switching tabs just shows the list.** The ALL, DAILY, MAIN and MISC tabs, and ACTIVE / COMPLETED, no longer slide or fade the list in: your quests are simply there. Opening and closing a quest's subtasks (zooming in and out) still slides, so you keep your bearings."
+    ]
+  },
+  {
     "version": "1.15.0",
     "build": 45,
     "lines": [
@@ -46,14 +53,6 @@
     "lines": [
       "- **The top panel's scanlines move, gently,** as on the desktop: they drift slowly down, and every 7 seconds a soft band of light passes down the panel. They move only while the main screen is showing, and they stay still with Reduce Motion on. The drift moves a pixel at a time, a few times a second, so it costs very little battery.",
       "- **Fixed: closing a quest near the end of the list sometimes nudged it** by a few points. It now stays exactly where it is."
-    ]
-  },
-  {
-    "version": "1.10.0",
-    "build": 40,
-    "lines": [
-      "- **An opened quest comes into focus.** Open a quest whose subtasks don't fit on the screen below it, say one near the bottom with a long list, and the list glides it up so its title is at the top, with its subtasks filling the screen below. A quest whose subtasks fit opens where it is.",
-      "- **A closed quest stays exactly where it is,** wherever you close it, even the last quest at the very end of the list. You scroll on from there; nothing jumps."
     ]
   }
 ]

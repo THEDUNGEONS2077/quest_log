@@ -30,7 +30,6 @@
  */
 import { useEffect, useState } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
-import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useBooting } from '@/components/common/BootSequence';
@@ -47,7 +46,6 @@ import { QuickAddBar } from '@/components/edit/QuickAddBar';
 import { SelectionBar } from '@/components/edit/SelectionBar';
 import { CompletedList } from '@/components/list/CompletedList';
 import { TaskList } from '@/components/list/TaskList';
-import { useViewEntrance } from '@/components/list/useViewPlace';
 import { DueSheet } from '@/components/overlays/DueSheet';
 import { MovePicker } from '@/components/overlays/MovePicker';
 import { RepeatSheet } from '@/components/overlays/RepeatSheet';
@@ -68,9 +66,8 @@ export default function ListScreen() {
   const booting = useBooting();
   const { store } = useStoreBundle();
 
-  // Mount COMPLETED lazily, then keep it (its scroll position survives tab switches).
-  // ACTIVE ↔ COMPLETED: the list slides in from its side (COMPLETED is on the right).
-  const entrance = useViewEntrance(tab, tab === 'active' ? 0 : 1);
+  // Mount COMPLETED lazily, then keep it. ACTIVE ↔ COMPLETED has no animation: the list is
+  // simply there (user request 2026-10-18).
 
   const [completedMounted, setCompletedMounted] = useState(tab === 'completed');
   if (tab === 'completed' && !completedMounted) setCompletedMounted(true);
@@ -107,7 +104,7 @@ export default function ListScreen() {
           {tab === 'active' && zoomed && <Breadcrumb />}
           <LitEdge at="bottom" />
         </View>
-        <Animated.View style={[styles.list, entrance]}>
+        <View style={styles.list}>
           <View style={[styles.list, tab !== 'active' && styles.hidden]} {...hiddenProps(tab !== 'active')}>
             <TaskList bottomInset={listInset} />
           </View>
@@ -116,7 +113,7 @@ export default function ListScreen() {
               <CompletedList bottomInset={listInset} />
             </View>
           )}
-        </Animated.View>
+        </View>
       </View>
       <Toast bottom={bottomBar + space.sm} />
       {/* Overlays render themselves when open. */}

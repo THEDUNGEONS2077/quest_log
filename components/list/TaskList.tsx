@@ -20,9 +20,9 @@
  * stays exactly where it is.
  *
  * Views: every tab switch opens at the top (a fresh list); within a tab,
- * each zoom level keeps its own scroll position. Views slide in from their side
- * (useViewPlace.ts): zooming deeper comes in from the right, zooming out
- * from the left.
+ * each zoom level keeps its own scroll position. A tab's list appears with no
+ * animation; zoom levels slide in from their side (useViewPlace.ts): zooming
+ * deeper comes in from the right, zooming out from the left.
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';

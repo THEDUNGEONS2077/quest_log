@@ -15,10 +15,11 @@
  *   - Within a tab, leaving a zoom level remembers where it was scrolled to,
  *     and coming back restores it (zoom out of a quest and you're back where
  *     it was); a level never seen starts at the top.
- *   - The new view slides in a short way from the side it's on (`rank`:
- *     tabs left to right, deeper zoom further right) while fading in, so
- *     moving between views has a direction. Under Reduce Motion it simply
- *     appears.
+ *   - A new zoom level slides in a short way from the side it's on (`rank`:
+ *     deeper zoom further right) while fading in, so moving in and out has
+ *     a direction. A tab switch has no animation: the new tab's list is
+ *     simply there (user request 2026-10-18: "just show the list of quests").
+ *     Under Reduce Motion nothing slides.
  * Places are kept while the app runs, not saved.
  */
 import { type RefObject, useCallback, useLayoutEffect, useRef, useState } from 'react';
@@ -35,21 +36,27 @@ interface Scrollable {
 const ENTER_OPACITY = 0.3;
 
 /**
- * The arrival of a new `view`: it slides in from the side it's on (`rank`
- * above the previous view's: from the right) while fading in. Returns the
- * style for the view's container.
+ * The arrival of a new `view` within the same `tab` (a zoom level): it slides
+ * in from the side it's on (`rank` above the previous view's: from the right)
+ * while fading in. A new `tab` just appears, in place. Returns the style for
+ * the view's container.
  */
-export function useViewEntrance(view: string, rank: number) {
-  const shown = useRef({ view, rank });
+export function useViewEntrance(view: string, rank: number, tab: string) {
+  const shown = useRef({ view, rank, tab });
   // -1 = arriving from the left, 1 = from the right, 0 = in place.
   const enter = useSharedValue(0);
   useLayoutEffect(() => {
     const before = shown.current;
     if (before.view === view) return;
-    shown.current = { view, rank };
+    shown.current = { view, rank, tab };
+    // A tab switch: no animation (user request 2026-10-18); a zoom slides in.
+    if (before.tab !== tab) {
+      enter.set(0);
+      return;
+    }
     enter.set(rank >= before.rank ? 1 : -1);
     enter.set(withTiming(0, { duration: duration.base, easing }));
-  }, [view, rank, enter]);
+  }, [view, rank, tab, enter]);
   return useAnimatedStyle(() => ({
     opacity: 1 - (1 - ENTER_OPACITY) * Math.abs(enter.get()),
     transform: [{ translateX: distance.nudge * enter.get() }],
@@ -110,5 +117,5 @@ export function useViewPlace(list: RefObject<Scrollable | null>, view: string, r
     offset.current = y;
   }, []);
 
-  return { listKey, onScroll, style: useViewEntrance(view, rank) };
+  return { listKey, onScroll, style: useViewEntrance(view, rank, tab) };
 }

@@ -86,7 +86,7 @@ export const CompletedList = memo(function CompletedList({ bottomInset }: { bott
     if (keyboardHeight > 0 && editing) keepInView.ensure();
   }, [keyboardHeight, editing, keepInView]);
 
-  // Each quest tab opens at the top and slides in from its side (useViewPlace.ts).
+  // Each quest tab opens at the top, with no animation (useViewPlace.ts).
   const category = useAppStore((s) => s.ui.category);
   const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category), { tab: category, visible: shown });
   // A quest opened comes into focus; one closed stays where it is (useFoldFocus.ts), as on ACTIVE.

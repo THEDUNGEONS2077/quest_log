@@ -2,6 +2,10 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.15.1 (build 46)
+
+- **Switching tabs just shows the list.** The ALL, DAILY, MAIN and MISC tabs, and ACTIVE / COMPLETED, no longer slide or fade the list in: your quests are simply there. Opening and closing a quest's subtasks (zooming in and out) still slides, so you keep your bearings.
+
 ## 1.15.0 (build 45)
 
 - **Everything you press answers the moment your finger lands,** before you let go:
