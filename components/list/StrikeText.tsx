@@ -12,13 +12,14 @@
  * Rows that mount already done (scrolling, relaunch) show the final state
  * with no animation, and so does a row the list reuses for another task
  * (FlashList recycles rows while scrolling): only a change of the same
- * task's state animates.
+ * task's state animates. At rest it's plain text (struck: with plain
+ * segments); the animated version is built only for a change, so opening a
+ * list builds none of it (responsiveness pass 2026-10-18).
  */
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { type NativeSyntheticEvent, StyleSheet, Text, type TextLayoutEventData, type TextStyle, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
-import { useSameItem } from '@/components/common/motion';
 import { colors, duration, easing, maxFontSizeMultiplier, platformText, shape } from '@/theme';
 
 interface Props {
@@ -44,25 +45,88 @@ interface Line {
 }
 
 export function StrikeText({ id, text, struck, color, style, onPress, onLongPress, highlight }: Props) {
-  // 0 = plain, 1 = fully struck. Starts at the final state: mounting isn't a change.
-  const progress = useSharedValue(struck ? 1 : 0);
-  const sameItem = useSameItem(id);
+  // The first change of `struck` on the same task builds the animated version (`live`), which
+  // then follows every later change from wherever it is: a quick second tap turns the line
+  // around mid-draw. A row the list reuses for another task goes back to plain and jumps to its
+  // state, and so does mounting (the previous-props pattern).
+  const [seen, setSeen] = useState({ id, struck, live: false });
+  let live = seen.live;
+  if (seen.id !== id) {
+    live = false;
+    setSeen({ id, struck, live });
+  } else if (seen.struck !== struck) {
+    live = true;
+    setSeen({ id, struck, live });
+  }
+  // The text's lines, measured only when there's a strike to draw: struck, or one playing
+  // (responsiveness pass 2026-10-18: every title measured itself and drew a segment per line,
+  // and re-rendered with them, though most are never struck while on screen).
   const [lines, setLines] = useState<Line[]>([]);
+  const onTextLayout =
+    struck || live
+      ?(e: NativeSyntheticEvent<TextLayoutEventData>) => setLines(e.nativeEvent.lines.map((l) => ({ x: l.x, y: l.y, width: l.width, height: l.height })))
+      : undefined;
 
+  const content = highlight ? (
+    <>
+      {[...text].slice(0, highlight.start).join('')}
+      <Text style={styles.match}>{[...text].slice(highlight.start, highlight.end).join('')}</Text>
+      {[...text].slice(highlight.end).join('')}
+    </>
+  ) : (
+    text
+  );
+
+  if (live) {
+    return (
+      <StrikePlay struck={struck} color={color} style={style} lines={lines} onTextLayout={onTextLayout} onPress={onPress} onLongPress={onLongPress}>
+        {content}
+      </StrikePlay>
+    );
+  }
+  // At rest: plain text in its final color, and (struck) the segments drawn full width.
+  return (
+    <View>
+      <Text
+        style={[style, styles.text, { color: struck ? colors.textDim : color }]}
+        onTextLayout={onTextLayout}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        suppressHighlighting
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
+      >
+        {content}
+      </Text>
+      {struck && lines.map((line, i) => <View key={i} pointerEvents="none" style={[styles.segment, segmentPlace(line), { width: line.width }]} />)}
+    </View>
+  );
+}
+
+interface PlayProps {
+  struck: boolean;
+  color: string;
+  style: TextStyle | TextStyle[];
+  lines: Line[];
+  onTextLayout?: (e: NativeSyntheticEvent<TextLayoutEventData>) => void;
+  onPress?: () => void;
+  onLongPress?: () => void;
+  children: ReactNode;
+}
+
+/**
+ * The animated strike: it mounts on a change, drawing in (or out) from the other state to
+ * `struck`, then follows each later change from where the line is.
+ */
+function StrikePlay({ struck, color, style, lines, onTextLayout, onPress, onLongPress, children }: PlayProps) {
+  // 0 = plain, 1 = fully struck. It starts from the state before the change that built it.
+  const progress = useSharedValue(struck ? 0 : 1);
   useEffect(() => {
-    // The same task: animate. Reused for another task: jump. (On mount there's
-    // nothing to change: progress already starts at the final state.)
-    const target = struck ? 1 : 0;
-    progress.set(sameItem() ? withTiming(target, { duration: duration.base, easing }) : target);
-  }, [struck, progress, sameItem]);
+    progress.set(withTiming(struck ? 1 : 0, { duration: duration.base, easing }));
+  }, [struck, progress]);
 
   const textStyle = useAnimatedStyle(() => ({
     color: interpolateColor(progress.get(), [0, 1], [color, colors.textDim]),
   }));
-
-  const onTextLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
-    setLines(e.nativeEvent.lines.map((l) => ({ x: l.x, y: l.y, width: l.width, height: l.height })));
-  };
 
   return (
     <View>
@@ -74,15 +138,7 @@ export function StrikeText({ id, text, struck, color, style, onPress, onLongPres
         suppressHighlighting
         maxFontSizeMultiplier={maxFontSizeMultiplier}
       >
-        {highlight ? (
-          <>
-            {[...text].slice(0, highlight.start).join('')}
-            <Text style={styles.match}>{[...text].slice(highlight.start, highlight.end).join('')}</Text>
-            {[...text].slice(highlight.end).join('')}
-          </>
-        ) : (
-          text
-        )}
+        {children}
       </Animated.Text>
       {/* One segment per wrapped line, drawn through the middle of the line. */}
       {lines.map((line, i) => (
@@ -92,14 +148,14 @@ export function StrikeText({ id, text, struck, color, style, onPress, onLongPres
   );
 }
 
+/** Where a line's segment sits: through the middle of the line. */
+function segmentPlace(line: Line) {
+  return { left: line.x, top: line.y + line.height / 2 - shape.strike / 2 };
+}
+
 function StrikeSegment({ line, progress }: { line: Line; progress: ReturnType<typeof useSharedValue<number>> }) {
   const style = useAnimatedStyle(() => ({ width: line.width * progress.get() }));
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.segment, { left: line.x, top: line.y + line.height / 2 - shape.strike / 2 }, style]}
-    />
-  );
+  return <Animated.View pointerEvents="none" style={[styles.segment, segmentPlace(line), style]} />;
 }
 
 const styles = StyleSheet.create({

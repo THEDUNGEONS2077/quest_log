@@ -11,6 +11,7 @@
  * (second navigation pass, 2026-10-09). Long-pressing it opens the developer screen
  * (theme check and test data), a deliberately hidden gesture.
  */
+import { memo } from 'react';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -19,7 +20,9 @@ import { useActions, useAppStore } from '@/store/react';
 import { colors, glowShadow, glowTextSoft, glyphs, maxFontSizeMultiplier, platformText, shape, size, space, type } from '@/theme';
 
 
-export function Header() {
+// Memoized: it reads the store itself, so the main screen re-rendering (editing, selecting,
+// searching starting or ending) needn't re-render it (responsiveness pass 2026-10-18).
+export const Header = memo(function Header() {
   const tab = useAppStore((s) => s.ui.tab);
   const actions = useActions();
   // XP (lib/xp.ts): the level in the title.
@@ -82,7 +85,7 @@ export function Header() {
       </View>
     </View>
   );
-}
+});
 
 /** The drawn size of the / and ⊛ boxes; hitSlop brings the touch area to 44 pt. */
 const ICON_BOX = 34;

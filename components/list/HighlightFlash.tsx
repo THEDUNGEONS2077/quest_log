@@ -20,22 +20,24 @@ import { colors, easing, timing } from '@/theme';
 /** The flash overlay for one row (renders nothing visible unless highlighted). */
 export function HighlightFlash({ rowId }: { rowId: string }) {
   const active = useAppStore((s) => s.highlightId === rowId);
+  // Only the highlighted row builds the flash (responsiveness pass 2026-10-18: every row built
+  // an overlay and its animated value). Not (or no longer) this row's highlight, e.g. the
+  // list reused the row for another task mid-flash: nothing.
+  return active ? <FlashPlay /> : null;
+}
+
+/** The two pulses, from the moment it mounts; then the store forgets the highlight. */
+function FlashPlay() {
   const actions = useActions();
   const flash = useSharedValue(0);
 
   useEffect(() => {
-    // Not (or no longer) this row's highlight, e.g. the list reused the row for
-    // another task mid-flash: no flash.
-    if (!active) {
-      flash.set(0);
-      return;
-    }
     // Two pulses: each up then down in a quarter of the total time.
     const quarter = timing.highlight / 4;
     flash.set(withRepeat(withSequence(withTiming(1, { duration: quarter, easing }), withTiming(0, { duration: quarter, easing })), 2));
     const t = setTimeout(actions.clearHighlight, timing.highlight);
     return () => clearTimeout(t);
-  }, [active, flash, actions]);
+  }, [flash, actions]);
 
   const style = useAnimatedStyle(() => ({ opacity: flash.get() }));
   return <Animated.View pointerEvents="none" style={[styles.overlay, style]} />;

@@ -56,7 +56,15 @@ async function path(name, fn) {
   }
 }
 const shot = (name) => page.screenshot({ path: join(shots, `nav-${name}.png`) });
-const tap = (label) => page.getByLabel(label).first().click();
+/**
+ * Taps the element labelled `label`, then lets the tap land: a tab switch is applied a frame
+ * after its tab lights up (Tabs.tsx, responsiveness pass 2026-10-18), so the next step acts on
+ * the new view, as a person would.
+ */
+const tap = async (label) => {
+  await page.getByLabel(label).first().click();
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(done, 0)))));
+};
 /** Asserts that `text` is visible (a regex or exact string). */
 const see = (text) => page.getByText(text).first().waitFor({ state: 'visible', timeout: 4000 });
 /** Asserts we're on the main screen (the quest tabs are there). */

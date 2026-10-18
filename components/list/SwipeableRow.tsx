@@ -11,10 +11,10 @@
  * 12 pt vertically (that's a scroll). All motion runs on the UI thread;
  * only the commit callback crosses to JS.
  */
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { type SharedValue, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { useSameItem } from '@/components/common/motion';
@@ -52,6 +52,15 @@ interface Props {
   drag?: ReturnType<typeof Gesture.Pan> | null;
 }
 
+/** Each mounted row's current swipe actions, by its own key (useId), read when a swipe commits. */
+const current = new Map<string, { right?: SwipeAction; left?: SwipeAction }>();
+
+/** Runs the action of the side swiped past (1: the right swipe's, -1: the left's) of row `key`. */
+function commitSwipe(key: string, side: number): void {
+  const actions = current.get(key);
+  (side > 0 ? actions?.right : actions?.left)?.onCommit();
+}
+
 export function SwipeableRow({ id, children, right, left, enabled, drag }: Props) {
   const x = useSharedValue(0);
   // A row left slid out (it was leaving) and reused by the list for another task: centred.
@@ -62,47 +71,98 @@ export function SwipeableRow({ id, children, right, left, enabled, drag }: Props
   const width = useSharedValue(1);
   // Which side is past the threshold right now (-1, 0, 1), so the haptic ticks once per crossing.
   const armed = useSharedValue(0);
+  // The tracks under the row exist only while it's swiped: mounted as a swipe starts, gone once
+  // the row is back at rest; a row reused for another task starts without them (the
+  // previous-props pattern). Responsiveness pass 2026-10-18: every row built both tracks and
+  // their animated styles whenever a list opened.
+  const [swiping, setSwiping] = useState(false);
+  const [trackFor, setTrackFor] = useState(id);
+  if (trackFor !== id) {
+    setTrackFor(id);
+    setSwiping(false);
+  }
 
-  const pan = Gesture.Pan()
-    .enabled(enabled && Boolean(right || left))
-    .activeOffsetX([-16, 16])
-    .failOffsetY([-12, 12])
-    .onUpdate((e) => {
-      // Only allow directions that have an action.
-      const dx = e.translationX;
-      x.set((dx > 0 && !right) || (dx < 0 && !left) ? 0 : dx);
-      const side = Math.abs(x.get()) > width.get() * COMMIT_FRACTION ? Math.sign(x.get()) : 0;
-      if (side !== armed.get()) {
-        armed.set(side);
-        if (side !== 0) scheduleOnRN(haptics.tick);
-      }
-    })
-    .onEnd(() => {
-      const side = armed.get();
-      armed.set(0);
-      if (side === 0) {
-        x.set(withTiming(0, { duration: duration.fast, easing }));
-        return;
-      }
-      // Slide fully out in the swipe direction and run the action. Rows that stay
-      // (a checked subtask) come back; rows that leave stay out while their gap closes.
-      const action = side > 0 ? right! : left!;
-      const leaves = action.leaves === true;
-      x.set(
-        withTiming(side * width.get(), { duration: duration.fast, easing }, () => {
-          scheduleOnRN(action.onCommit);
-          if (!leaves) x.set(withTiming(0, { duration: duration.base, easing }));
+  // The latest actions, read when a swipe commits (the `current` table, by this row's own
+  // key): the gesture itself is built once per row shape (enabled, which sides), not on every
+  // render, so a re-render (typing in the title, say) doesn't rebuild it and send its worklets
+  // to the UI thread again.
+  const key = useId();
+  useEffect(() => {
+    current.set(key, { right, left });
+  });
+  useEffect(() => () => void current.delete(key), [key]);
+  const hasRight = right !== undefined;
+  const hasLeft = left !== undefined;
+  const leavesRight = right?.leaves === true;
+  const leavesLeft = left?.leaves === true;
+
+  const pan = useMemo(
+    () =>
+      Gesture.Pan()
+        .enabled(enabled && (hasRight || hasLeft))
+        .activeOffsetX([-16, 16])
+        .failOffsetY([-12, 12])
+        .onStart(() => {
+          scheduleOnRN(setSwiping, true);
+        })
+        .onUpdate((e) => {
+          // Only allow directions that have an action.
+          const dx = e.translationX;
+          x.set((dx > 0 && !hasRight) || (dx < 0 && !hasLeft) ? 0 : dx);
+          const side = Math.abs(x.get()) > width.get() * COMMIT_FRACTION ? Math.sign(x.get()) : 0;
+          if (side !== armed.get()) {
+            armed.set(side);
+            if (side !== 0) scheduleOnRN(haptics.tick);
+          }
+        })
+        .onEnd(() => {
+          const side = armed.get();
+          armed.set(0);
+          if (side === 0) {
+            x.set(
+              withTiming(0, { duration: duration.fast, easing }, (finished) => {
+                if (finished) scheduleOnRN(setSwiping, false);
+              }),
+            );
+            return;
+          }
+          // Slide fully out in the swipe direction and run the action. Rows that stay
+          // (a checked subtask) come back; rows that leave stay out while their gap closes.
+          const leaves = side > 0 ? leavesRight : leavesLeft;
+          x.set(
+            withTiming(side * width.get(), { duration: duration.fast, easing }, () => {
+              scheduleOnRN(commitSwipe, key, side);
+              if (!leaves)
+                x.set(
+                  withTiming(0, { duration: duration.base, easing }, (finished) => {
+                    if (finished) scheduleOnRN(setSwiping, false);
+                  }),
+                );
+            }),
+          );
         }),
-      );
-    });
-
+    [enabled, hasRight, hasLeft, leavesRight, leavesLeft, key, x, width, armed],
+  );
+  const gesture = useMemo(() => (drag ? Gesture.Race(drag, pan) : pan), [drag, pan]);
   const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
-  const rightTrack = useAnimatedStyle(() => ({ opacity: x.get() > 0 ? 1 : 0 }));
-  const leftTrack = useAnimatedStyle(() => ({ opacity: x.get() < 0 ? 1 : 0 }));
 
   return (
     <View onLayout={(e) => width.set(Math.max(1, e.nativeEvent.layout.width))}>
-      {/* Tracks sit underneath and show through as the row slides. */}
+      {/* Tracks sit underneath and show through as the row slides (only while it does). */}
+      {swiping && <SwipeTracks x={x} right={right} left={left} />}
+      <GestureDetector gesture={gesture}>
+        <Animated.View style={rowStyle}>{children}</Animated.View>
+      </GestureDetector>
+    </View>
+  );
+}
+
+/** The tracks under a row being swiped: the right action's on the left, the left's on the right. */
+function SwipeTracks({ x, right, left }: { x: SharedValue<number>; right?: SwipeAction; left?: SwipeAction }) {
+  const rightTrack = useAnimatedStyle(() => ({ opacity: x.get() > 0 ? 1 : 0 }));
+  const leftTrack = useAnimatedStyle(() => ({ opacity: x.get() < 0 ? 1 : 0 }));
+  return (
+    <>
       {right && (
         <Animated.View style={[styles.track, styles.trackRight, rightTrack]} pointerEvents="none">
           <Text style={[type.meta, styles.label]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
@@ -117,10 +177,7 @@ export function SwipeableRow({ id, children, right, left, enabled, drag }: Props
           </Text>
         </Animated.View>
       )}
-      <GestureDetector gesture={drag ? Gesture.Race(drag, pan) : pan}>
-        <Animated.View style={rowStyle}>{children}</Animated.View>
-      </GestureDetector>
-    </View>
+    </>
   );
 }
 

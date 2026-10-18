@@ -40,7 +40,7 @@ import type { Task } from '@/lib/types';
 import { haptics } from '@/services/haptics';
 import { remindersAvailable } from '@/services/reminderSupport';
 import { repeatMultiplier } from '@/lib/xp';
-import { ADVANCE_MS, type ToggleOutcome } from '@/store/createStore';
+import { ADVANCE_MS, type AppStore, type ToggleOutcome } from '@/store/createStore';
 import { useActions, useAppStore } from '@/store/react';
 import {
   colors,
@@ -75,6 +75,58 @@ function searchingActive(s: { search: { active: { open: boolean; query: string; 
   return q.open && (q.query.trim() !== '' || q.filter !== 'all');
 }
 
+/** A row's on/off states, as bits of one number (see rowFlags). */
+const EDITING = 1 << 0;
+const NOTES_OPEN = 1 << 1;
+const MENU = 1 << 2;
+const DIMMED = 1 << 3;
+const SELECTING = 1 << 4;
+const SELECTED = 1 << 5;
+const LINGERING = 1 << 6;
+const LEAVING_ROOT = 1 << 7;
+const FOLDING_AWAY = 1 << 8;
+const OPEN = 1 << 9;
+const UNFOLDING = 1 << 10;
+const ADVANCING = 1 << 11;
+const SWIPE_ON = 1 << 12;
+
+/**
+ * Every on/off state of row `id`, packed into one number, so a row reads the store
+ * through one subscription (a number compares at once; a changed bit re-renders it):
+ *   - editing, its notes shown, its menu open;
+ *   - dimmed while it (or an ancestor) is dragged: the subtree travels with the lifted row;
+ *   - multi-select on, and whether it's selected (selecting a parent includes its subtree);
+ *   - lingering: a just-completed quest, or a row inside one (they leave ACTIVE together),
+ *     and leavingRoot: the completed quest itself (it says when the fade is done);
+ *   - folds (2026-10-17): a task above it closing (it fades out, then leaves as the rows below
+ *     glide up) or opening (it fades in as they glide down); searching, nothing folds;
+ *   - open: whether it shows open, from the tap on (a fold under way counts), so the caret
+ *     turns at once rather than when the fold lands;
+ *   - advancing: a repeating task just checked (struck for a moment, then back with its next
+ *     date, PLAN §10.5);
+ *   - swipe actions on (Settings).
+ */
+function rowFlags(s: AppStore, id: string): number {
+  const searching = searchingActive(s);
+  let f = 0;
+  if (s.editingId === id) f |= EDITING;
+  if (s.expandedNotes.includes(id)) f |= NOTES_OPEN;
+  if (s.menuFor === id) f |= MENU;
+  if (s.draggingId !== null && isInSubtree(s.tasks, id, s.draggingId)) f |= DIMMED;
+  if (s.selection !== null) {
+    f |= SELECTING;
+    if (s.selection.some((sel) => isInSubtree(s.tasks, id, sel))) f |= SELECTED;
+  }
+  if (s.lingering.length > 0 && s.lingering.some((l) => isInSubtree(s.tasks, id, l))) f |= LINGERING;
+  if (s.lingering.includes(id)) f |= LEAVING_ROOT;
+  if (s.folding.length > 0 && !searching && s.folding.some((x) => x !== id && isInSubtree(s.tasks, id, x))) f |= FOLDING_AWAY;
+  if (s.folding.includes(id) ? false : s.unfolding.includes(id) ? true : !findTask(s.tasks, id)?.collapsed) f |= OPEN;
+  if (s.unfolding.length > 0 && !searching && s.unfolding.some((u) => u !== id && isInSubtree(s.tasks, id, u))) f |= UNFOLDING;
+  if (s.advancing.includes(id)) f |= ADVANCING;
+  if (s.settings.swipeActions) f |= SWIPE_ON;
+  return f;
+}
+
 /** The haptic for each checkbox outcome (PLAN §9.18). */
 export function hapticFor(outcome: ToggleOutcome): void {
   if (outcome === 'moved-to-completed' || outcome === 'parent-completed' || outcome === 'repeated' || outcome === 'level-up')
@@ -88,45 +140,32 @@ const PRIORITY_COLOR = [colors.textDim, colors.textDim, colors.text, colors.acce
 export const TaskRow = memo(
   function TaskRow({ row }: { row: Row }) {
     const task = useAppStore((s) => findTask(s.tasks, row.id));
-    const editing = useAppStore((s) => s.editingId === row.id);
     // Which field is being edited, only meaningful (and only subscribed) for the editing row.
     const field = useAppStore((s) => (s.editingId === row.id ? s.editingField : null));
-    const notesOpen = useAppStore((s) => s.expandedNotes.includes(row.id));
-    const menu = useAppStore((s) => s.menuFor === row.id);
-    // Dimmed while it (or an ancestor) is being dragged: the subtree travels with the lifted row.
-    const dimmed = useAppStore((s) => s.draggingId !== null && isInSubtree(s.tasks, row.id, s.draggingId));
     const dragGesture = useRowDragGesture(row.id);
-    // Multi-select (PLAN §9.14): selecting a parent includes its subtree.
-    const selecting = useAppStore((s) => s.selection !== null);
-    const selected = useAppStore((s) => !!s.selection?.some((sel) => isInSubtree(s.tasks, row.id, sel)));
     // Search: the query to highlight, and whether this row is only shown as context for a match.
     const query = useAppStore((s) => (s.search.active.open ? s.search.active.query : ''));
     const context = 'context' in row && (row as FoundRow).context;
     // Only rows with a due date subscribe to the clock (for the spoken "due …, overdue").
     const now = useMinuteIf(task?.dueAt != null);
-    // A just-completed quest, or a row inside one: they leave ACTIVE together.
-    const lingering = useAppStore((s) => s.lingering.some((l) => isInSubtree(s.tasks, row.id, l)));
-    // The completed quest itself (not one of its subtask rows): it says when the fade is done.
-    const leavingRoot = useAppStore((s) => s.lingering.includes(row.id));
-    // Folds (2026-10-17): a task above this row is closing (it fades out, then leaves as the rows
-    // below glide up) or opening (it fades in as they glide down). Searching, nothing folds: the
-    // results show every match's path.
-    const foldingAway = useAppStore(
-      (s) => s.folding.length > 0 && !searchingActive(s) && s.folding.some((f) => f !== row.id && isInSubtree(s.tasks, row.id, f)),
-    );
-    // Whether this task shows open: from the tap on (a fold under way counts), so the caret
-    // turns at once rather than when the fold lands.
-    const open = useAppStore((s) =>
-      s.folding.includes(row.id) ? false : s.unfolding.includes(row.id) ? true : !findTask(s.tasks, row.id)?.collapsed,
-    );
-    const unfolding = useAppStore(
-      (s) => s.unfolding.length > 0 && !searchingActive(s) && s.unfolding.some((u) => u !== row.id && isInSubtree(s.tasks, row.id, u)),
-    );
-    // A repeating task just checked: struck for a moment, then back with its next date (PLAN §10.5).
-    const advancing = useAppStore((s) => s.advancing.includes(row.id));
-    const swipeOn = useAppStore((s) => s.settings.swipeActions);
     // The XP this row's check just earned (only this row re-renders for it).
     const gain = useAppStore((s) => (s.lastGain?.id === row.id ? s.lastGain.xp : 0));
+    // Every on/off state of the row, in one subscription (rowFlags): each store change runs a
+    // row's subscriptions, and there were 18 (responsiveness pass 2026-10-18).
+    const flags = useAppStore((s) => rowFlags(s, row.id));
+    const editing = (flags & EDITING) !== 0;
+    const notesOpen = (flags & NOTES_OPEN) !== 0;
+    const menu = (flags & MENU) !== 0;
+    const dimmed = (flags & DIMMED) !== 0;
+    const selecting = (flags & SELECTING) !== 0;
+    const selected = (flags & SELECTED) !== 0;
+    const lingering = (flags & LINGERING) !== 0;
+    const leavingRoot = (flags & LEAVING_ROOT) !== 0;
+    const foldingAway = (flags & FOLDING_AWAY) !== 0;
+    const open = (flags & OPEN) !== 0;
+    const unfolding = (flags & UNFOLDING) !== 0;
+    const advancing = (flags & ADVANCING) !== 0;
+    const swipeOn = (flags & SWIPE_ON) !== 0;
     // Goes up each time this task is checked here: plays the completion burst.
     const fire = useJustChecked(row.id, !!task?.done || advancing);
     const actions = useActions();
@@ -224,7 +263,10 @@ export const TaskRow = memo(
             left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove, leaves: true }}
             id={task.id}
           >
-            <Pressable
+            {/* The row: a plain view (it has no press of its own; the checkbox, caret, title and +
+                do), carrying its screen-reader label and actions. It was a Pressable: one more
+                press handler per row (responsiveness pass 2026-10-18). */}
+            <View
               style={[
                 styles.row,
                 { paddingLeft: space.lg + visualDepth * size.indent },
@@ -248,19 +290,22 @@ export const TaskRow = memo(
               <CompleteScan fire={fire} />
               <NestingGuides levels={visualDepth} />
 
-              {/* Caret: tap collapses/expands; long-press does it for all siblings. */}
-              <Pressable
-                style={styles.caret}
-                hitSlop={HIT_SLOP}
-                disabled={!row.hasChildren}
-                onPress={() => actions.toggleCollapsed(task.id)}
-                onLongPress={() => actions.setSiblingsCollapsed(task.id, open)}
-                accessibilityRole="button"
-                accessibilityLabel={`${open ? 'Collapse' : 'Expand'} ${task.title || 'task'}`}
-                accessibilityElementsHidden={!row.hasChildren}
-              >
-                {row.hasChildren && <Caret id={task.id} open={open} childCount={row.progress.total} style={styles.glyph} />}
-              </Pressable>
+              {/* Caret: tap collapses/expands; long-press does it for all siblings. A row without
+                  subtasks (most rows) has only the empty column, keeping titles aligned. */}
+              {row.hasChildren ? (
+                <Pressable
+                  style={styles.caret}
+                  hitSlop={HIT_SLOP}
+                  onPress={() => actions.toggleCollapsed(task.id)}
+                  onLongPress={() => actions.setSiblingsCollapsed(task.id, open)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${open ? 'Collapse' : 'Expand'} ${task.title || 'task'}`}
+                >
+                  <Caret id={task.id} open={open} childCount={row.progress.total} style={styles.glyph} />
+                </Pressable>
+              ) : (
+                <View style={styles.caret} />
+              )}
 
               {/* Checkbox: a full 44 pt target. */}
               <Pressable
@@ -342,7 +387,7 @@ export const TaskRow = memo(
               ) : null}
               {/* "+N XP" from this check, over everything (left of a quest's "+"). */}
               <XpFloat fire={fire} xp={gain} inset={isQuest ? QUEST_PLUS_WIDTH : 0} />
-            </Pressable>
+            </View>
           </SwipeableRow>
           {menu && <ContextMenu id={task.id} onClose={actions.closeMenu} />}
         </Animated.View>

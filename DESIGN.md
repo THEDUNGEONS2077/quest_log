@@ -216,6 +216,7 @@ All measurements are in pt (dp on Android, px on the web).
 - **The panel never changes height** between tabs: every tab has the switch.
 - **New item:** when the COMPLETED count goes up, its number pulses to `textBright` (120 ms in, 320 ms out), so you see where the item went.
 - **Tapping the selected tab again** goes to the top of that view: out of a zoomed-in group first, otherwise the list scrolls up.
+- **A tap answers at once** (responsiveness pass 2026-10-18): the tapped tab, or half of the switch, lights up on the next frame, and its list follows once that is on screen (the list is rebuilt for each tab, so every tab opens at the top). Quick taps in a row land on the last one. See §7 *Responsiveness*.
 
 ### XP bar (under the tabs)
 ```
@@ -262,6 +263,7 @@ A terminal gauge, as on the desktop (aesthetic pass 2026-10-17).
 ### Swipe actions (on a row)
 - **Swipe right:** `[x] DONE` is revealed on the left. **Swipe left:** `✕ DEL` is revealed on the right. Each passes a threshold with a selection haptic.
 - Both are fully reversible through UNDO, and both can be turned off in Settings.
+- The tracks exist only while the row is being swiped: they're built as the swipe starts and removed once the row is back at rest.
 
 ### Quick-add bar (bottom)
 ```
@@ -409,6 +411,26 @@ The list (FlashList) places each row in its own cell from the JS thread, so noth
 - **Focus and stillness** (`useFoldFocus`, 2026-10-17: "a quest in focus when it's expanded … collapsed, it should stay in the position it is in"). Opening: once the subtasks are laid out, if the block (the task's row to its last subtask) doesn't fit in the visible part of the list, the list scrolls the task's row to the top (`scrollToOffset`, animated). Closing: a scroll view can't stay scrolled past its end, so near the end of the list the shorter list would pull everything down; as the fold starts, the list gets extra room at its end (*slack*): what the view will reach past the shorter list, plus the rows going away (as rows go, FlashList first lays the rows moving up out at the heights of the rows that were in their places, so for one layout the list is shorter still, and the scroll view clamps right then). Once the fold has played the slack shrinks to what the view reaches into, and then only shrinks further as you scroll back up. These trims leave `SLACK_MARGIN` (24 pt) past where the list last reported its position: scroll events are throttled, so a glide's last one can go unreported, and a trim to a slightly stale position clamped the view by those few points (a closed quest sometimes twitched, 2026-10-17). For `FOCUS_GLIDE_MS` (1.5 s) after a focus glide starts, the glide's target counts as where the view is, so a quest closed while the list still glides gets room for where the glide will leave it. The glide then finishes, because a smooth scroll can't be stopped from JS: stopping it at a position the list knows a frame late would jolt it back. A quest closed before its glide has begun doesn't glide at all. The view's height and the content's end come from the scroll view itself (its layout and content-size events), not FlashList's estimates.
 - Search results never fold. Groups of more than `FOLD_MAX_CHILDREN` (50) open and close at once.
 
+### Responsiveness (how a tap stays instant)
+Responsiveness pass, 2026-10-18 (user request: "when switching tabs there is a delay … do a full responsiveness pass"). The rule: **whatever shows that a tap landed is drawn on the next frame; heavy work comes after.**
+- **Show the choice first, then rebuild.** A tab tap sets a local *pending* choice, which the tabs draw at once. The store switches after the next paint (`requestAnimationFrame`, then a timer), so the rebuilt list follows the highlight instead of holding it back. There's one pending choice per kind (quest tab, view), and the newest tap of each kind wins.
+- **Animations exist only while they play.** At rest a row draws plain text and views. Opening a list used to build all of these for every row.
+  - The checkbox pop, the completion scan, the `+N XP` float, the jump highlight and the swipe tracks are each mounted when they start. Each one-shot play is keyed, so a new play starts fresh.
+  - The strikethrough's animated version is built by the first change of a row's state. It then follows later changes from where its line is, so a quick second tap turns it around instead of jumping.
+  - A struck title at rest is static segments, measured once.
+- **One subscription for a row's flags.** A row's yes/no states (editing, notes open, selected, dimmed, folding, leaving, …) come from one store selector packed into a bit field (`rowFlags`), not one subscription each. Each store change runs five selectors per row instead of seventeen.
+- **Gestures are built once per row shape** (`useMemo`: enabled, which sides), and read the row's latest actions when a swipe commits (a table keyed by the row's `useId`). A re-render, such as each keystroke in a title, no longer rebuilds the gesture and sends its worklets to the UI thread again. (Reanimated's performance guide: memoize gestures, most of all in list items.)
+- **Drag turns on and off a frame late.** Starting to edit, select or search doesn't wait for every row's drag gesture to be rebuilt. The drag start refuses on its own while any of those is on.
+- **The top panel's parts are memoized** (header, tabs, XP bar, scanlines). They read the store themselves, so the main screen re-rendering doesn't redraw them.
+- **Rows carry no press handler of their own.** The checkbox, caret, title and `+` handle presses. A caret is a pressable only on rows that have subtasks.
+- **Measured** in the web build under 4× CPU slowdown (Playwright, Chrome profiles), as a stand-in for a phone:
+  - tab lit: 115 ms → 11 ms after the tap; switching to COMPLETED: 196 ms → 9 ms; starting to edit a title: 92 ms → 37 ms;
+  - keystrokes are drawn within one frame (16 ms; the worst was 48 ms).
+- **Not done, on purpose:**
+  - keeping each tab's list alive (a tab must open at the top, and hidden lists would re-render on every change);
+  - preloading Settings (a background cost on every launch);
+  - Reanimated's `ANDROID_SYNCHRONOUSLY_UPDATE_UI_PROPS` fast path (its updates aren't seen by touch hit-testing, and swiped rows move by transforms).
+
 ---
 
 ## 8. Interaction and UX patterns
@@ -451,6 +473,7 @@ These are the rules that make the app feel good. Most were refined through devic
     - success: completing a top-level item
     - medium: delete
     All of them can be turned off.
+14. **Every tap shows it landed on the next frame:** the tab lights up, the box ticks, the caret turns. Heavy work follows (§7 *Responsiveness*).
 
 ---
 

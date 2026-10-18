@@ -25,7 +25,7 @@
  * from the left.
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Animated from 'react-native-reanimated';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -117,7 +117,24 @@ export function TaskList({ bottomInset }: Props) {
   // Drag is off while editing, selecting, or searching/filtering (results aren't the real order).
   const searching = useAppStore((s) => s.search.active.query.trim() !== '' || s.search.active.filter !== 'all');
   const selecting = useAppStore((s) => s.selection !== null);
-  const drag = useDragController({ store, list, container, rows: rowsRef, enabled: editingId === null && !selecting && !searching });
+  // Drag goes off and on a frame after editing, selecting or searching starts or ends: every
+  // row's drag gesture is rebuilt when it does, and that mustn't hold up the editor (or the
+  // selection bar) appearing (responsiveness pass 2026-10-18). A drag can't start in that frame:
+  // its start checks those modes itself (drag.tsx).
+  const dragAllowed = editingId === null && !selecting && !searching;
+  const [dragOn, setDragOn] = useState(dragAllowed);
+  useEffect(() => {
+    if (dragOn === dragAllowed) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => setDragOn(dragAllowed), 0);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [dragOn, dragAllowed]);
+  const drag = useDragController({ store, list, container, rows: rowsRef, enabled: dragOn });
   // The keyboard finished opening: re-check the edited row against its final position.
   useEffect(() => {
     if (keyboardHeight > 0 && editingId) keepInView.ensure();

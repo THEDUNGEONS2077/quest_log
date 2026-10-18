@@ -2,6 +2,14 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.13.0 (build 43)
+
+- **Tabs switch at once.** The tab you tap lights up the moment you tap it, and its list follows right after. Tap several tabs quickly and you land on the last one. The same goes for ACTIVE and COMPLETED.
+- **Snappier all round:**
+  - lists open faster: rows no longer prepare their animations in advance (the strikethrough, the checkbox pop, the +XP, the swipe tracks); each one is built when it plays;
+  - starting to edit a title is quicker;
+  - typing in a title, ticking boxes and swiping do less work behind the scenes.
+
 ## 1.12.0 (build 42)
 
 - **A shorter top panel,** so more of your list fits on the screen:

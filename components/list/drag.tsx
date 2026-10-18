@@ -225,7 +225,10 @@ export function useDragController({ store, list, container, rows, enabled }: Con
       start(id, absY) {
         const state = store.getState();
         const task = findTask(state.tasks, id);
-        if (!task || state.editingId) return;
+        // Not while editing, selecting or searching (also checked here: the gestures switch off a
+        // frame late, TaskList).
+        const searching = state.search.active.query.trim() !== '' || state.search.active.filter !== 'all';
+        if (!task || state.editingId || state.selection !== null || searching) return;
         const row = rows.current.find((r) => r.id === id);
         if (!row) return;
         session.current = {

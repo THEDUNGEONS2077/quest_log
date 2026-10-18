@@ -65,19 +65,35 @@ export function useJustChecked(id: string, done: boolean): number {
   return seen.count;
 }
 
-/** The checkbox glyph: pops and flashes accent on each check (`fire` going up). */
+/**
+ * The checkbox glyph: pops and flashes accent on each check (`fire` going up).
+ * Until the first check it's plain text: every row has one, and the pop's
+ * animated values are made only when it plays (responsiveness pass 2026-10-18:
+ * a list built a dozen of them per row whenever it opened).
+ */
 export function CheckGlyph({ fire, done, glyph, style }: { fire: number; done: boolean; glyph: string; style: TextStyle[] }) {
-  const flash = useSharedValue(0);
+  const rest = done ? colors.textDim : colors.text;
+  if (fire === 0) {
+    return (
+      <Text style={[...style, { color: rest }]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+        {glyph}
+      </Text>
+    );
+  }
+  // A fresh pop for each check.
+  return <CheckPop key={fire} rest={rest} glyph={glyph} style={style} />;
+}
+
+/** The pop itself: accent at once, swelling and settling back, from the moment it mounts. */
+function CheckPop({ rest, glyph, style }: { rest: string; glyph: string; style: TextStyle[] }) {
+  const flash = useSharedValue(1);
   const swell = useSharedValue(1);
   useEffect(() => {
-    if (fire === 0) return;
     // Accent at once, easing back to the resting color while the glyph swells (fast)
     // and settles (base): both end together, at fast + base = slow.
-    flash.set(1);
     flash.set(withTiming(0, { duration: duration.slow, easing }));
     swell.set(withSequence(withTiming(scale.pop, { duration: duration.fast, easing }), withTiming(1, { duration: duration.base, easing })));
-  }, [fire, flash, swell]);
-  const rest = done ? colors.textDim : colors.text;
+  }, [flash, swell]);
   const animated = useAnimatedStyle(() => ({
     color: interpolateColor(flash.get(), [0, 1], [rest, colors.accent]),
     transform: [{ scale: swell.get() }],
@@ -89,21 +105,26 @@ export function CheckGlyph({ fire, done, glyph, style }: { fire: number; done: b
   );
 }
 
-/** The scan line across the row; render it before the row's content so it stays behind. */
+/**
+ * The scan line across the row; render it before the row's content so it
+ * stays behind. Nothing (not even its animated values) until a check fires it.
+ */
 export function CompleteScan({ fire }: { fire: number }) {
+  if (fire === 0) return null;
+  return <ScanPlay key={fire} />;
+}
+
+/** One pass of the scan, from the moment it mounts. */
+function ScanPlay() {
   const sweep = useSharedValue(0);
-  const shown = useSharedValue(0);
+  const shown = useSharedValue(1);
   useEffect(() => {
-    if (fire === 0) return;
     // Crosses the row, then fades: slow each.
-    sweep.set(0);
     sweep.set(withTiming(1, { duration: duration.slow, easing }));
-    shown.set(1);
     shown.set(withDelay(duration.slow, withTiming(0, { duration: duration.slow, easing })));
-  }, [fire, sweep, shown]);
+  }, [sweep, shown]);
   const wash = useAnimatedStyle(() => ({ width: `${sweep.get() * 100}%`, opacity: shown.get() * SCAN_WASH }));
   const head = useAnimatedStyle(() => ({ left: `${sweep.get() * 100}%`, opacity: shown.get() }));
-  if (fire === 0) return null;
   return (
     <>
       <Animated.View pointerEvents="none" style={[styles.wash, wash]} />
@@ -118,10 +139,15 @@ export function CompleteScan({ fire }: { fire: number }) {
  * (a quest's "+" button).
  */
 export function XpFloat({ fire, xp, inset = 0 }: { fire: number; xp: number; inset?: number }) {
-  // The same rhythm as the XP bar's "+N" (useFloatUp); replays for each check, and
-  // again if the amount arrives a render after the check.
-  const style = useFloatUp(fire > 0 && xp > 0 ? `${fire}:${xp}` : '', distance.float);
+  // Nothing (not even its animated values) until a check earns XP. Replays for each check,
+  // and again if the amount arrives a render after the check (a new key each time).
   if (fire === 0 || xp <= 0) return null;
+  return <XpFloatPlay key={`${fire}:${xp}`} play={`${fire}:${xp}`} xp={xp} inset={inset} />;
+}
+
+/** One "+N XP", floating up from the moment it mounts (the XP bar's "+N" rhythm: useFloatUp). */
+function XpFloatPlay({ play, xp, inset }: { play: string; xp: number; inset: number }) {
+  const style = useFloatUp(play, distance.float);
   return (
     <Animated.View
       pointerEvents="none"

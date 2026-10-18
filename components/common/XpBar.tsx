@@ -18,7 +18,7 @@
  * it glides; fixed black gaps over it cut it into cells. With Reduce Motion
  * every change is instant (global config).
  */
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
@@ -56,7 +56,9 @@ export function litShare(into: number, fraction: number): number {
   return Math.min(XP_CELLS, cells) / XP_CELLS;
 }
 
-export function XpBar() {
+// Memoized: it reads the store itself, so the main screen re-rendering (editing, selecting,
+// searching starting or ending) needn't re-render it (responsiveness pass 2026-10-18).
+export const XpBar = memo(function XpBar() {
   const xp = useAppStore((s) => s.tasks.progress.xp);
   const { level, into, needed, fraction } = levelInfo(xp);
   const lit = litShare(into, fraction);
@@ -122,7 +124,7 @@ export function XpBar() {
       </View>
     </View>
   );
-}
+});
 
 /**
  * "+18" that floats up from the XP count and fades (mounted fresh for each

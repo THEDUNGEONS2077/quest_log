@@ -20,7 +20,7 @@
  * Elsewhere (the pages' headers, the boot screen) the lines are still.
  */
 import { useIsFocused } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { AppState, type LayoutChangeEvent, PixelRatio, StyleSheet, View } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
@@ -35,7 +35,9 @@ const BAND_FROM = -1.1;
 const BAND_TO = 2.4;
 
 /** The phosphor wash and scanlines, filling the parent; drifting, with a passing band, when `animated`. */
-export function Phosphor({ animated = false }: { animated?: boolean }) {
+// Memoized: it takes one flag, so the main screen re-rendering (editing, selecting, searching
+// starting or ending) needn't re-render it (responsiveness pass 2026-10-18).
+export const Phosphor = memo(function Phosphor({ animated = false }: { animated?: boolean }) {
   return (
     <View
       pointerEvents="none"
@@ -51,7 +53,7 @@ export function Phosphor({ animated = false }: { animated?: boolean }) {
       )}
     </View>
   );
-}
+});
 
 /** Whether the app is in the foreground. */
 function useAppActive(): boolean {

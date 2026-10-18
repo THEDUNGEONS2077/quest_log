@@ -2,9 +2,8 @@
  * components/common/Tabs.tsx: the quest tabs and the ACTIVE / COMPLETED
  * switch (user request 2026-10-09; was ACTIVE / COMPLETED, PLAN §9.1).
  *
- *   [  ALL  ][ DAILY ][ MAIN  ][ MISC  ]     quest tabs: open quests under each
- *      12       3        7        2
- *   [ ACTIVE · 12      ][ COMPLETED · 34 ]  the switch, for the selected tab
+ *   [ ALL 12 ][ DAILY 3 ][ MAIN 7 ][ MISC 2 ]  quest tabs: open quests under each
+ *   [ ACTIVE · 12      ][ COMPLETED · 34 ]     the switch, for the selected tab
  *
  * Layer: UI. The quest tab picks which quests are listed (lib/quests.ts);
  * the switch below it picks open or completed ones, for every tab (so the
@@ -13,8 +12,14 @@
  * row swipes. Tapping the selected tab again goes to the top of its view
  * (out of a zoom first), the usual mobile convention. When the COMPLETED count goes up, its number pulses brighter
  * (PLAN §10.4), so you see where a finished quest went.
+ *
+ * Instant (responsiveness pass 2026-10-18: "a delay with how long it takes to
+ * switch the tabs"): a tapped tab lights up at once, on its own, light render;
+ * the switch itself (a fresh list for the new tab, the heavy part) follows
+ * once that frame is drawn. A tab tapped while another is still on its way
+ * wins; the one passed over is never built.
  */
-import { useEffect, useRef } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { interpolateColor, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
@@ -29,24 +34,48 @@ const QUEST_TABS: readonly { key: CategoryTab; label: string; a11y: string }[] =
   ...CATEGORIES.map((c) => ({ key: c.key, label: c.label, a11y: `${c.label.toLowerCase()} quests` })),
 ];
 
-export function Tabs() {
+// Memoized: it reads the store itself, so the main screen re-rendering (editing, selecting,
+// searching starting or ending) needn't re-render it (responsiveness pass 2026-10-18).
+export const Tabs = memo(function Tabs() {
   const selectors = useSelectors();
   const counts = useAppStore((s) => selectors.tabCounts(s));
   const category = useAppStore((s) => s.ui.category);
   const tab = useAppStore((s) => s.ui.tab);
   const actions = useActions();
+  // What was just tapped (a quest tab, a switch side), lit before the store and the list catch
+  // up. Each is forgotten once the store shows it (the previous-props pattern).
+  const [pending, setPending] = useState<Pending>({});
+  const caughtUp = (pending.category === undefined || pending.category === category) && (pending.tab === undefined || pending.tab === tab);
+  if ((pending.category !== undefined || pending.tab !== undefined) && caughtUp) setPending({});
+  const shownCategory = pending.category ?? category;
+  const shownTab = pending.tab ?? tab;
+  // The latest tap of each kind: one overtaken by another of its kind isn't applied at all.
+  const latest = useRef({ category: 0, tab: 0 });
+  /** Lights `value` now; runs `apply` once that frame is drawn (unless another tap of its kind came first). */
+  const switchTo = <K extends keyof Pending>(kind: K, value: Pending[K], apply: () => void) => {
+    setPending((p) => ({ ...p, [kind]: value }));
+    const turn = ++latest.current[kind];
+    afterPaint(() => {
+      if (turn === latest.current[kind]) apply();
+    });
+  };
 
   return (
     <View style={styles.wrap}>
       {/* Quest tabs. */}
       <View style={styles.row} accessibilityRole="tablist">
         {QUEST_TABS.map((q) => {
-          const selected = category === q.key;
+          // Lit as soon as it's tapped; "tapped again" means the tab really shown.
+          const selected = shownCategory === q.key;
           return (
             <Pressable
               key={q.key}
               // Tapping the selected tab again goes to the top of it (out of a zoom, or scroll up).
-              onPress={() => (selected ? actions.toTabTop() : actions.setCategoryTab(q.key))}
+              onPress={() =>
+                category === q.key && pending.category === undefined
+                  ? actions.toTabTop()
+                  : switchTo('category', q.key, () => actions.setCategoryTab(q.key))
+              }
               style={[styles.quest, selected && styles.questOn]}
               // Half as tall as before, still 44 pt to tap.
               hitSlop={{ top: QUEST_SLOP, bottom: QUEST_SLOP }}
@@ -74,23 +103,48 @@ export function Tabs() {
 
       {/* ACTIVE / COMPLETED for the selected quest tab. */}
       <View style={styles.row} accessibilityRole="tablist">
-        <ViewSwitch tab="active" label="ACTIVE" count={counts[category].active} selected={tab === 'active'} />
-        <ViewSwitch tab="completed" label="COMPLETED" count={counts[category].completed} selected={tab === 'completed'} />
+        <ViewSwitch
+          label="ACTIVE"
+          count={counts[shownCategory].active}
+          selected={shownTab === 'active'}
+          onPress={() => (tab === 'active' && pending.tab === undefined ? actions.toTabTop() : switchTo('tab', 'active', () => actions.setTab('active')))}
+        />
+        <ViewSwitch
+          label="COMPLETED"
+          count={counts[shownCategory].completed}
+          selected={shownTab === 'completed'}
+          onPress={() =>
+            tab === 'completed' && pending.tab === undefined ? actions.toTabTop() : switchTo('tab', 'completed', () => actions.setTab('completed'))
+          }
+        />
       </View>
     </View>
   );
+});
+
+/** A tap the store hasn't applied yet: a quest tab, an ACTIVE / COMPLETED side. */
+interface Pending {
+  category?: CategoryTab;
+  tab?: Tab;
+}
+
+/**
+ * Runs `fn` after the next frame has been drawn: the light render that lit a tab
+ * reaches the screen before the heavy one (a fresh list) starts.
+ */
+function afterPaint(fn: () => void): void {
+  requestAnimationFrame(() => setTimeout(fn, 0));
 }
 
 interface SwitchProps {
-  tab: Tab;
   label: string;
   count: number;
   selected: boolean;
+  onPress: () => void;
 }
 
 /** One half of the ACTIVE / COMPLETED switch; its count pulses when it goes up. */
-function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
-  const actions = useActions();
+function ViewSwitch({ label, count, selected, onPress }: SwitchProps) {
   const pulse = useSharedValue(0);
   const previous = useRef(count);
   useEffect(() => {
@@ -105,7 +159,7 @@ function ViewSwitch({ tab, label, count, selected }: SwitchProps) {
 
   return (
     <Pressable
-      onPress={() => (selected ? actions.toTabTop() : actions.setTab(tab))}
+      onPress={onPress}
       // A slim switch, but still 44 pt to tap.
       hitSlop={{ top: SWITCH_SLOP, bottom: SWITCH_SLOP }}
       style={styles.switch}

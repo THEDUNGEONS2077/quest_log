@@ -1,5 +1,16 @@
 [
   {
+    "version": "1.13.0",
+    "build": 43,
+    "lines": [
+      "- **Tabs switch at once.** The tab you tap lights up the moment you tap it, and its list follows right after. Tap several tabs quickly and you land on the last one. The same goes for ACTIVE and COMPLETED.",
+      "- **Snappier all round:**",
+      "  - lists open faster: rows no longer prepare their animations in advance (the strikethrough, the checkbox pop, the +XP, the swipe tracks); each one is built when it plays;",
+      "  - starting to edit a title is quicker;",
+      "  - typing in a title, ticking boxes and swiping do less work behind the scenes."
+    ]
+  },
+  {
     "version": "1.12.0",
     "build": 42,
     "lines": [
@@ -39,22 +50,6 @@
     "lines": [
       "- **Opening and closing a quest is smooth,** as on the desktop. Tap the caret and the quests below glide down, uncovering its subtasks as they fade in. Close it and the subtasks fade where they are while the quests below glide up over them, like a curtain. Nothing jumps at the start or the end, and if you tap again halfway, it turns around. The same on COMPLETED, and with a long-press (all quests at once).",
       "- **The caret turns a little slower,** in step with the motion below it."
-    ]
-  },
-  {
-    "version": "1.8.0",
-    "build": 37,
-    "lines": [
-      "A visual pass: quest_log now looks like a lit terminal screen.",
-      "- **The XP bar is a terminal gauge,** as on the desktop: 20 blocks between brackets, each lighting up as you earn it, brightest at the leading edge. The XP you've earned in this level reads first, in bright.",
-      "- **A lit screen behind the title.** A faint green phosphor glow and fine scanlines sit behind the top panel and every page's header (Settings, Help, What's new, Trash), and the dividers under them are lit in the middle.",
-      "- **The boot screen warms up like an old monitor:** the text glows, and a soft band passes down the screen once.",
-      "- **Lit feedback when you press.** The header and close buttons light their frames, and rows in menus, Settings and Move to… light up from the left edge. A selected option (priority, repeat, search filter) glows like the selected tab.",
-      "- **Menus and sheets** have a lit top edge, and their `>` prompt glows.",
-      "- **Messages** (the UNDO toast and tips) have a lit left edge.",
-      "- **Settings and What's new read more clearly:** each section title is followed by a rule that fades out, and settings that are ON glow.",
-      "- **The list fades out** just above the `> new quest` bar, instead of being cut off.",
-      "- **On an empty list,** the prompt glows and LOAD EXAMPLE TASKS stands out as the thing to do."
     ]
   }
 ]
