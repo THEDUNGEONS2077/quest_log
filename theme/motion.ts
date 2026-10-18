@@ -53,6 +53,11 @@ export const timing = {
   highlight: 800,
   /** Long-press before a drag lifts. */
   longPress: 300,
+  /**
+   * A finger resting on a list row this long lights the row (Android's tap
+   * timeout): quicker, and every scroll would flash the row it starts on.
+   */
+  pressDelay: 100,
   /** Hover over a collapsed parent before it auto-expands while dragging. */
   hoverExpand: 600,
   /** How long a floating "+N XP" stays fully visible (between a fast fade-in and a slow fade-out). */

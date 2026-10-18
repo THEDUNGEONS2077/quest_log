@@ -76,7 +76,9 @@ export const Tabs = memo(function Tabs() {
                   ? actions.toTabTop()
                   : switchTo('category', q.key, () => actions.setCategoryTab(q.key))
               }
-              style={[styles.quest, selected && styles.questOn]}
+              // Lit the moment a finger lands (touch-down feedback, as the header's buttons);
+              // it lights up as selected a frame after the finger lifts.
+              style={({ pressed }) => [styles.quest, selected ? styles.questOn : pressed && styles.questPressed]}
               // Half as tall as before, still 44 pt to tap.
               hitSlop={{ top: QUEST_SLOP, bottom: QUEST_SLOP }}
               accessibilityRole="tab"
@@ -168,16 +170,21 @@ function ViewSwitch({ label, count, selected, onPress }: SwitchProps) {
       aria-selected={selected}
       accessibilityLabel={`${label.toLowerCase()}, ${count}`}
     >
-      <Animated.Text
-        style={[type.meta, styles.switchText, { color: base }]}
-        numberOfLines={1}
-        maxFontSizeMultiplier={maxFontSizeMultiplier}
-      >
-        {`${label} · `}
-        <Animated.Text style={countStyle}>{count}</Animated.Text>
-      </Animated.Text>
-      {/* The bar under it: its own view, so the selected one can glow without lighting the whole half. */}
-      <View style={[styles.bar, selected && styles.barOn]} />
+      {({ pressed }) => (
+        <>
+          <Animated.Text
+            style={[type.meta, styles.switchText, { color: base }]}
+            numberOfLines={1}
+            maxFontSizeMultiplier={maxFontSizeMultiplier}
+          >
+            {`${label} · `}
+            <Animated.Text style={countStyle}>{count}</Animated.Text>
+          </Animated.Text>
+          {/* The bar under it: its own view, so the selected one can glow without lighting the
+              whole half. Pressed, it lights before the finger lifts (touch-down feedback). */}
+          <View style={[styles.bar, selected ? styles.barOn : pressed && styles.barPressed]} />
+        </>
+      )}
     </Pressable>
   );
 }
@@ -209,6 +216,8 @@ const styles = StyleSheet.create({
   },
   // Selected: accent frame on surface, with the faint glow (user request 2026-10-11: subtle accents).
   questOn: { borderColor: colors.accent, backgroundColor: colors.surface, boxShadow: glowShadow.faint },
+  // Pressed (not yet selected): the header buttons' lit frame.
+  questPressed: { borderColor: colors.lineLit, backgroundColor: colors.surface },
   // The label a step smaller to sit on one line with its count (the tab role was 14/20).
   questLabel: { fontSize: 12, lineHeight: 16 },
   // The count in the regular weight, after the bold label, so the two read apart.
@@ -218,6 +227,7 @@ const styles = StyleSheet.create({
   // A 2 pt bar along its bottom: `line`, or accent with the glow when selected.
   bar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: shape.dropIndicator, backgroundColor: colors.line },
   barOn: { backgroundColor: colors.accent, boxShadow: glowShadow.outset },
+  barPressed: { backgroundColor: colors.lineLit },
   // The meta role made smaller twice by 10% (user requests 2026-10-09, 2026-10-11): 13/18 → 12/16 → 10.8/14.4.
   switchText: { fontSize: 10.8, lineHeight: 14.4, ...platformText },
   bright: { color: colors.textBright, ...platformText },

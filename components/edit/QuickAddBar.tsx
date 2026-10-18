@@ -166,9 +166,12 @@ export function QuickAddBar({ onHeight }: Props) {
               accessibilityRole="button"
               accessibilityLabel="Stop adding into this group"
             >
-              <Text style={[type.metaGlyph, styles.targetClear]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-                {glyphs.delete.glyph}
-              </Text>
+              {/* Brighter while pressed (touch-down feedback). */}
+              {({ pressed }) => (
+                <Text style={[type.metaGlyph, styles.targetClear, pressed && styles.targetClearPressed]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+                  {glyphs.delete.glyph}
+                </Text>
+              )}
             </Pressable>
           </View>
         )}
@@ -249,6 +252,7 @@ const styles = StyleSheet.create({
   targetRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
   target: { color: colors.accent, flexShrink: 1, ...platformText },
   targetClear: { color: colors.text, paddingHorizontal: space.sm, ...platformText },
+  targetClearPressed: { color: colors.textBright },
   prompt: { color: colors.accent, marginRight: space.sm, ...glowTextSoft, ...platformText },
   inputWrap: { flex: 1, justifyContent: 'center' },
   input: { color: colors.text, padding: 0, ...platformText },

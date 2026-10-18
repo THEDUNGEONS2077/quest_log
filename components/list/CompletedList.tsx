@@ -149,6 +149,9 @@ function searchingCompleted(s: { search: { completed: { open: boolean; query: st
   return s.search.completed.open && s.search.completed.query.trim() !== '';
 }
 
+/** The TRASH and CLEAR… buttons' frame, lit while pressed. */
+const clearStyle = ({ pressed }: { pressed: boolean }) => [styles.clear, pressed && styles.clearPressed];
+
 /** "CLEAR…" at the top right: choose how much to move to Trash. */
 /** Header row: TRASH (always) and CLEAR… (when there's something to clear). */
 function ListHeader({ hasRows }: { hasRows: boolean }) {
@@ -161,13 +164,14 @@ function ListHeader({ hasRows }: { hasRows: boolean }) {
   ];
   return (
     <View style={styles.clearRow}>
-      <Pressable onPress={() => router.push('/trash')} style={styles.clear} accessibilityRole="button" accessibilityLabel="Open Trash">
+      {/* Both light their frames while pressed (touch-down feedback, as the header's buttons). */}
+      <Pressable onPress={() => router.push('/trash')} style={clearStyle} accessibilityRole="button" accessibilityLabel="Open Trash">
         <Text style={[type.meta, styles.clearText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
           {`${glyphs.delete.glyph} TRASH`}
         </Text>
       </Pressable>
       {hasRows && (
-        <Pressable onPress={() => setOpen(true)} style={styles.clear} accessibilityRole="button" accessibilityLabel="Clear completed tasks">
+        <Pressable onPress={() => setOpen(true)} style={clearStyle} accessibilityRole="button" accessibilityLabel="Clear completed tasks">
           <Text style={[type.meta, styles.clearText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
             CLEAR…
           </Text>
@@ -243,6 +247,7 @@ const CompletedRow = memo(
           <SwipeableRow
             id={task.id}
             enabled={swipeOn && !editing}
+            pressable={!editing}
             right={{ label: `${glyphs.undo.glyph} RESTORE`, onCommit: restore, leaves: true }}
             left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove, leaves: true }}
           >
@@ -401,5 +406,6 @@ const styles = StyleSheet.create({
     borderRadius: shape.radius,
   },
   clearText: { color: colors.text, ...platformText },
+  clearPressed: { borderColor: colors.lineLit, backgroundColor: colors.surface },
   empty: { color: colors.textDim, paddingHorizontal: space.lg, paddingTop: space.xl, ...platformText },
 });

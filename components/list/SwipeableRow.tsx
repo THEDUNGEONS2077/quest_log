@@ -14,15 +14,19 @@
 import { type ReactNode, useEffect, useId, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { type SharedValue, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { interpolateColor, type SharedValue, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 import { useSameItem } from '@/components/common/motion';
 import { haptics } from '@/services/haptics';
-import { colors, duration, easing, maxFontSizeMultiplier, platformText, space, type } from '@/theme';
+import { colors, duration, easing, maxFontSizeMultiplier, platformText, space, timing, type } from '@/theme';
 
 /** Fraction of the row width a swipe must pass to commit (PLAN §9.5). */
 const COMMIT_FRACTION = 0.4;
+/** A pan threshold no finger reaches: the pan that's on only for the pressed light never swipes. */
+const NEVER = 100000;
+/** The pressed light's resting color: the row's own background shows through. */
+const PRESS_REST = 'transparent';
 
 export interface SwipeAction {
   /** Track label, for example "[x] DONE" or "✕ DEL". */
@@ -46,6 +50,11 @@ interface Props {
   /** Off while editing, or when swipe actions are turned off in Settings. */
   enabled: boolean;
   /**
+   * The row lights while a finger rests on it (touch-down feedback, also during a hold before
+   * a drag or the menu), even with swipes off. Off while the row is being edited.
+   */
+  pressable?: boolean;
+  /**
    * A long-press drag gesture (drag.tsx) to race against the swipe: a quick
    * sideways move swipes, holding still for 300 ms starts a drag.
    */
@@ -61,8 +70,10 @@ function commitSwipe(key: string, side: number): void {
   (side > 0 ? actions?.right : actions?.left)?.onCommit();
 }
 
-export function SwipeableRow({ id, children, right, left, enabled, drag }: Props) {
+export function SwipeableRow({ id, children, right, left, enabled, drag, pressable = false }: Props) {
   const x = useSharedValue(0);
+  // 0 → 1: the row's pressed light (see `pressable`).
+  const press = useSharedValue(0);
   // A row left slid out (it was leaving) and reused by the list for another task: centred.
   const sameItem = useSameItem(id);
   useEffect(() => {
@@ -96,13 +107,26 @@ export function SwipeableRow({ id, children, right, left, enabled, drag }: Props
   const leavesRight = right?.leaves === true;
   const leavesLeft = left?.leaves === true;
 
+  const swipes = enabled && (hasRight || hasLeft);
   const pan = useMemo(
     () =>
       Gesture.Pan()
-        .enabled(enabled && (hasRight || hasLeft))
-        .activeOffsetX([-16, 16])
+        // On for swipes, or (swipes off) only to light the row while it's pressed: then it can
+        // never activate, so it never swipes and never holds up the drag or a scroll.
+        .enabled(swipes || pressable)
+        .activeOffsetX(swipes ? [-16, 16] : [-NEVER, NEVER])
         .failOffsetY([-12, 12])
+        // Touch-down feedback (refinement pass 2026-10-18): a finger that stays on the row for
+        // the tap timeout lights it, so a tap, a hold (drag, menu) all show they've landed; a
+        // scroll moves on before that. Out again when the finger lifts, scrolls or swipes.
+        .onBegin(() => {
+          if (pressable) press.set(withDelay(timing.pressDelay, withTiming(1, { duration: duration.fast, easing })));
+        })
+        .onFinalize(() => {
+          press.set(withTiming(0, { duration: duration.fast, easing }));
+        })
         .onStart(() => {
+          press.set(withTiming(0, { duration: duration.fast, easing }));
           scheduleOnRN(setSwiping, true);
         })
         .onUpdate((e) => {
@@ -141,10 +165,13 @@ export function SwipeableRow({ id, children, right, left, enabled, drag }: Props
             }),
           );
         }),
-    [enabled, hasRight, hasLeft, leavesRight, leavesLeft, key, x, width, armed],
+    [swipes, pressable, hasRight, hasLeft, leavesRight, leavesLeft, key, x, width, armed, press],
   );
   const gesture = useMemo(() => (drag ? Gesture.Race(drag, pan) : pan), [drag, pan]);
-  const rowStyle = useAnimatedStyle(() => ({ transform: [{ translateX: x.get() }] }));
+  const rowStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.get() }],
+    backgroundColor: interpolateColor(press.get(), [0, 1], [PRESS_REST, colors.surfaceRaised]),
+  }));
 
   return (
     <View onLayout={(e) => width.set(Math.max(1, e.nativeEvent.layout.width))}>

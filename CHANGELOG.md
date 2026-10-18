@@ -2,6 +2,14 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.15.0 (build 45)
+
+- **Everything you press answers the moment your finger lands,** before you let go:
+  - tabs, filter chips and the TRASH / CLEAR… buttons light their frames;
+  - UNDO, ✕ and the breadcrumb's links brighten;
+  - the ACTIVE / COMPLETED switch lights its bar.
+- **A quest you hold lights up,** so you can see the hold registering before it lifts for dragging or opens its menu. A quick scroll never flashes the rows it passes.
+
 ## 1.14.0 (build 44)
 
 - **Fixed: the app slowed down after opening COMPLETED,** the more so the more you've completed. Coming back to your quests no longer prepares your whole completed history out of sight, so ticking, typing and switching stay quick, however long your history.

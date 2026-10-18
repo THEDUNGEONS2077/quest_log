@@ -67,9 +67,16 @@ function tabLabel(category: CategoryTab): string {
 function Crumb({ label, onPress, current, a11y }: { label: string; onPress: () => void; current?: boolean; a11y: string }) {
   return (
     <Pressable onPress={onPress} disabled={current} style={styles.crumb} accessibilityRole="button" accessibilityLabel={a11y}>
-      <Text style={[type.tab, current ? styles.current : styles.link]} numberOfLines={1} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-        {label}
-      </Text>
+      {/* A link brightens the moment a finger lands (touch-down feedback). */}
+      {({ pressed }) => (
+        <Text
+          style={[type.tab, current ? styles.current : styles.link, pressed && !current && styles.pressed]}
+          numberOfLines={1}
+          maxFontSizeMultiplier={maxFontSizeMultiplier}
+        >
+          {label}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -82,5 +89,6 @@ const styles = StyleSheet.create({
   sep: { color: colors.textDim, ...platformText },
   link: { color: colors.accent, ...platformText },
   current: { color: colors.textBright, ...platformText },
+  pressed: { color: colors.textBright },
   counts: { color: colors.textDim, ...platformText },
 });

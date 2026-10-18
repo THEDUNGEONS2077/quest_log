@@ -86,9 +86,12 @@ export function Toast({ bottom }: { bottom: number }) {
           accessibilityRole="button"
           accessibilityLabel="Undo"
         >
-          <Text style={[type.meta, styles.undoText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            UNDO
-          </Text>
+          {/* Brightens the moment a finger lands (touch-down feedback, refinement pass 2026-10-18). */}
+          {({ pressed }) => (
+            <Text style={[type.meta, styles.undoText, pressed && styles.undoPressed]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              UNDO
+            </Text>
+          )}
         </Pressable>
       )}
     </Animated.View>
@@ -115,4 +118,5 @@ const styles = StyleSheet.create({
   message: { flex: 1, color: colors.textBright, ...platformText },
   undo: { minHeight: size.hitTarget, minWidth: size.hitTarget, paddingHorizontal: space.lg, justifyContent: 'center' },
   undoText: { color: colors.accent, ...glowTextSoft, ...platformText },
+  undoPressed: { color: colors.textBright },
 });

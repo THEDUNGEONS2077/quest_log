@@ -254,6 +254,7 @@ A terminal gauge, as on the desktop (aesthetic pass 2026-10-17).
 - **Nesting guides:** 1 pt vertical `line` hairlines, one per level, centred under each ancestor's caret column.
 - **Quest `+` button:** every top-level task (a quest) has a bordered `+` on the right that adds an objective (subtask), from the moment it's created. While a quest is being edited, the `+` takes the place of `+ NOTE`. Every quest is meant to become a group.
 - **States:**
+  - *pressed*: `surfaceRaised`, fading in (120 ms) once a finger has rested `timing.pressDelay` (100 ms, Android's tap timeout) on the row, and out when it lifts, scrolls or swipes. Quicker, every scroll would flash the row it starts on. It shows a hold (drag, menu) building before the row lifts at 300 ms. It runs on the UI thread, in the swipe gesture (on even with swipes off)
   - *editing*: `surface` background plus the inset glow (fades in over 120 ms)
   - *selected*: `surfaceRaised` with a 2 pt `accent` bar on the left
   - *dimmed*: 40% opacity (search context rows, rows being dragged)
@@ -479,6 +480,11 @@ These are the rules that make the app feel good. Most were refined through devic
     - medium: delete
     All of them can be turned off.
 14. **Every tap shows it landed on the next frame:** the tab lights up, the box ticks, the caret turns. Heavy work follows (§7 *Responsiveness*).
+15. **Touch-down feedback** (refinement pass 2026-10-18, after Material's and iOS's pressed states): every control shows a pressed state the moment a finger lands, before the action, which comes on release.
+    - Framed controls (tabs, filter chips, TRASH / CLEAR…, the header's buttons) light their frame like the header's.
+    - Text controls (UNDO, ✕, breadcrumb links) brighten.
+    - The ACTIVE / COMPLETED switch lights its bar.
+    - List rows light after the tap timeout (§6 *List row*), so scrolling never flashes them.
 
 ---
 

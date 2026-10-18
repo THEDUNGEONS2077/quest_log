@@ -73,9 +73,12 @@ export function SearchBar({ tab }: { tab: Tab }) {
           accessibilityRole="button"
           accessibilityLabel="Close search"
         >
-          <Text style={[type.glyph, styles.text]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {glyphs.delete.glyph}
-          </Text>
+          {/* Pressed: brighter at once (touch-down feedback). */}
+          {({ pressed }) => (
+            <Text style={[type.glyph, styles.text, pressed && styles.pressedText]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {glyphs.delete.glyph}
+            </Text>
+          )}
         </Pressable>
       </View>
 
@@ -93,7 +96,8 @@ export function SearchBar({ tab }: { tab: Tab }) {
               <Pressable
                 key={f.key}
                 onPress={() => actions.setSearch(tab, { filter: f.key })}
-                style={[styles.chip, on && styles.chipOn]}
+                // Pressed: the header buttons' lit frame, at once (touch-down feedback).
+                style={({ pressed }) => [styles.chip, on ? styles.chipOn : pressed && styles.chipPressed]}
                 accessibilityRole="radio"
                 accessibilityState={{ selected: on }}
                 accessibilityLabel={f.a11y}
@@ -140,6 +144,8 @@ const styles = StyleSheet.create({
   },
   // The chosen filter: lit like the selected quest tab.
   chipOn: { borderColor: colors.accent, backgroundColor: colors.surface, boxShadow: glowShadow.faint },
+  chipPressed: { borderColor: colors.lineLit, backgroundColor: colors.surface },
+  pressedText: { color: colors.textBright },
   accent: { color: colors.accent, ...glowTextSoft, ...platformText },
   text: { color: colors.text, ...platformText },
 });

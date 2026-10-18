@@ -259,6 +259,7 @@ export const TaskRow = memo(
             // Long-press (and hold still) to drag or open the menu: PLAN §9.10.
             drag={dragGesture}
             enabled={swipeOn && !editing && !selecting}
+            pressable={!editing}
             right={{ label: `${glyphs.checkboxOn.glyph} ${task.done ? 'UNDO' : 'DONE'}`, onCommit: toggle }}
             left={{ label: `${glyphs.delete.glyph} DEL`, onCommit: remove, leaves: true }}
             id={task.id}

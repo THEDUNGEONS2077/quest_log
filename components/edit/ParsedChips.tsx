@@ -50,7 +50,8 @@ export function useShorthand(text: string, literalFrom?: string | null, existing
 function Chip({ label, onClear, onPress, a11y }: { label: string; onClear?: () => void; onPress?: () => void; a11y: string }) {
   return (
     <Pressable
-      style={styles.chip}
+      // A tappable chip lights its frame while pressed (touch-down feedback).
+      style={({ pressed }) => [styles.chip, pressed && onPress && styles.chipPressed]}
       hitSlop={CHIP_SLOP}
       onPress={onPress}
       disabled={!onPress}
@@ -68,9 +69,11 @@ function Chip({ label, onClear, onPress, a11y }: { label: string; onClear?: () =
           accessibilityRole="button"
           accessibilityLabel={`Clear ${a11y}`}
         >
-          <Text style={styles.clearText} maxFontSizeMultiplier={maxFontSizeMultiplier}>
-            {glyphs.delete.glyph}
-          </Text>
+          {({ pressed }) => (
+            <Text style={[styles.clearText, pressed && styles.clearPressed]} maxFontSizeMultiplier={maxFontSizeMultiplier}>
+              {glyphs.delete.glyph}
+            </Text>
+          )}
         </Pressable>
       )}
     </Pressable>
@@ -165,4 +168,6 @@ const styles = StyleSheet.create({
   chipText: { ...type.meta, fontSize: 12, lineHeight: 16, color: colors.accent, ...platformText },
   clear: { marginLeft: space.xs + 2 },
   clearText: { ...type.meta, fontSize: 12, lineHeight: 16, color: colors.textDim, ...platformText },
+  chipPressed: { borderColor: colors.lineLit },
+  clearPressed: { color: colors.textBright },
 });
