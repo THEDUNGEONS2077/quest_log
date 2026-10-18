@@ -41,7 +41,7 @@ import { LitEdge } from '@/components/common/Rule';
 import { SearchBar } from '@/components/common/SearchBar';
 import { Tabs } from '@/components/common/Tabs';
 import { XpBar } from '@/components/common/XpBar';
-import { useOnboarding } from '@/components/common/useOnboarding';
+import { Onboarding } from '@/components/common/useOnboarding';
 import { EditToolbar } from '@/components/edit/EditToolbar';
 import { QuickAddBar } from '@/components/edit/QuickAddBar';
 import { SelectionBar } from '@/components/edit/SelectionBar';
@@ -67,8 +67,6 @@ export default function ListScreen() {
   // While the boot screen covers the app, the panel's scanlines stay still (nothing to see, nothing to draw).
   const booting = useBooting();
   const { store } = useStoreBundle();
-  // First-run tips, What's new after an update, first-launch focus.
-  useOnboarding();
 
   // Mount COMPLETED lazily, then keep it (its scroll position survives tab switches).
   // ACTIVE ↔ COMPLETED: the list slides in from its side (COMPLETED is on the right).
@@ -92,6 +90,8 @@ export default function ListScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {/* First-run tips, What's new after an update, first-launch focus (draws nothing). */}
+      <Onboarding />
       <View style={styles.content}>
         {/* The top panel never scrolls; its bottom divider stays put while the list
             scrolls under it (user request 2026-10-09). It's the terminal's lit screen:
@@ -108,11 +108,11 @@ export default function ListScreen() {
           <LitEdge at="bottom" />
         </View>
         <Animated.View style={[styles.list, entrance]}>
-          <View style={[styles.list, tab !== 'active' && styles.hidden]}>
+          <View style={[styles.list, tab !== 'active' && styles.hidden]} {...hiddenProps(tab !== 'active')}>
             <TaskList bottomInset={listInset} />
           </View>
           {completedMounted && (
-            <View style={[styles.list, tab !== 'completed' && styles.hidden]}>
+            <View style={[styles.list, tab !== 'completed' && styles.hidden]} {...hiddenProps(tab !== 'completed')}>
               <CompletedList bottomInset={listInset} />
             </View>
           )}
@@ -134,11 +134,27 @@ export default function ListScreen() {
   );
 }
 
+/**
+ * Touch and screen-reader props for the list that isn't showing: it takes no touches and
+ * isn't read out (it's drawn invisible over or under the one that is; see styles.hidden).
+ */
+function hiddenProps(hidden: boolean) {
+  return hidden
+    ? // aria-hidden: hidden from screen readers on Android, iOS and the web alike.
+      ({ pointerEvents: 'none', 'aria-hidden': true } as const)
+    : ({ pointerEvents: 'auto' } as const);
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   // Caps the width on large screens and split-screen (PLAN §9.20).
   content: { flex: 1, width: '100%', maxWidth: size.maxContentWidth, alignSelf: 'center' },
   topPanel: { backgroundColor: colors.bg, borderBottomWidth: shape.hairline, borderBottomColor: colors.line },
   list: { flex: 1 },
-  hidden: { display: 'none' },
+  // The list that isn't showing keeps its full size, invisible: hidden with `display: 'none'`,
+  // it was laid out at zero size, so its list (FlashList) measured every row at 0 pt and built
+  // all of them (refinement pass 2026-10-18: 5,000 rows for a long COMPLETED history, kept
+  // mounted and re-rendered by every change; the ACTIVE list's rows too). A fully transparent
+  // view isn't drawn.
+  hidden: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, opacity: 0 },
 });

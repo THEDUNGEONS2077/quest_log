@@ -24,6 +24,22 @@ describe('flattenActive', () => {
     expect(outline(flattenActive(s))).toEqual(['a', '  a1']);
   });
 
+  it('a just-completed quest still on screen (keep) holds its sorted place; other done quests stay out', () => {
+    const s = build([
+      ['old', { updatedAt: 1 }],
+      ['finished', { updatedAt: 3, done: true }],
+      ['earlier', { updatedAt: 2, done: true }],
+      ['fresh', { updatedAt: 4 }],
+    ]);
+    expect(outline(flattenActive(s, { keep: new Set(['finished']) }))).toEqual(['fresh', 'finished', 'old']);
+  });
+
+  it('questOrder leaves out what `include` rejects, before sorting (the ACTIVE list skips done quests)', () => {
+    const s = build([['a', { updatedAt: 1 }], ['b', { updatedAt: 3, done: true }], ['c', { updatedAt: 2 }]]);
+    expect(questOrder(s)).toEqual(['b', 'c', 'a']);
+    expect(questOrder(s, 'all', null, (t) => !t.done)).toEqual(['c', 'a']);
+  });
+
   it('hides collapsed subtrees but shows the collapsed row', () => {
     const s = build([['a', { collapsed: true }, [['a1'], ['a2']]], ['b']]);
     const rows = flattenActive(s);

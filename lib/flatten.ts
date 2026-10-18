@@ -66,7 +66,11 @@ export function flattenActive(state: TasksState, options: ActiveOptions = {}): R
   // Iterative walk: a stack of [id, depth], children pushed in reverse so they
   // come out in display order. Iterative so depth can't overflow the call stack.
   const stack: [ID, number][] = [];
-  const top = rootId === null ? questOrder(state, options.category ?? 'all', options.order) : childIds(state, rootId);
+  // Only quests this list can show go into the sort: open ones, and a just-completed one still
+  // on screen (`keep`). Sorting the done ones too (thousands, with a long COMPLETED history) made
+  // every rebuild of the list slow (refinement pass 2026-10-18).
+  const shown = (t: Task) => !t.done || options.keep?.has(t.id) === true;
+  const top = rootId === null ? questOrder(state, options.category ?? 'all', options.order, shown) : childIds(state, rootId);
   for (let i = top.length - 1; i >= 0; i--) stack.push([top[i]!, 0]);
 
   while (stack.length) {
@@ -116,13 +120,15 @@ export function flattenCompleted(state: TasksState, expanded: ReadonlySet<ID> = 
  * Top-level quest IDs on `tab` in display order: higher priority first, then
  * most recently modified. Ties (e.g. pasted together) keep their manual
  * order: the sort is stable. With a locked `order`, that order is kept
- * instead (quests not in it, i.e. added since, come first).
+ * instead (quests not in it, i.e. added since, come first). `include`, when
+ * given, leaves out the quests it rejects before sorting (the ACTIVE list
+ * passes "not done", so completed quests aren't sorted only to be dropped).
  */
-export function questOrder(state: TasksState, tab: CategoryTab = 'all', order?: readonly ID[] | null): ID[] {
+export function questOrder(state: TasksState, tab: CategoryTab = 'all', order?: readonly ID[] | null, include?: (task: Task) => boolean): ID[] {
   const quests: Task[] = [];
   for (const id of state.children[ROOT] ?? []) {
     const t = findTask(state, id);
-    if (t && onTab(t, tab)) quests.push(t);
+    if (t && onTab(t, tab) && (!include || include(t))) quests.push(t);
   }
   const byRule = (a: Task, b: Task) => b.priority - a.priority || b.updatedAt - a.updatedAt;
   if (order) {

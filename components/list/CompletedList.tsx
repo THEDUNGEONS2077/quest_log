@@ -59,9 +59,21 @@ import { useViewPlace } from './useViewPlace';
 import { SwipeableRow } from './SwipeableRow';
 import { titleStyles, titleVariant } from './titleStyle';
 
-export function CompletedList({ bottomInset }: { bottomInset: number }) {
+/** No rows (before the first time COMPLETED is shown). */
+const NO_ROWS: Row[] = [];
+
+// Memoized: the main screen re-renders when editing, selecting or searching starts or ends;
+// the list reads what it needs from the store itself (refinement pass 2026-10-18).
+export const CompletedList = memo(function CompletedList({ bottomInset }: { bottomInset: number }) {
   const selectors = useSelectors();
-  const rows = useAppStore((s) => selectors.completedRows(s));
+  const shown = useAppStore((s) => s.ui.tab === 'completed');
+  // While COMPLETED isn't showing, its list keeps the rows it last showed instead of following
+  // every change made on ACTIVE: each one re-sorted the whole completed history and the hidden
+  // list re-measured its rows (refinement pass 2026-10-18). It catches up as it's shown again
+  // (the previous-props pattern).
+  const live = useAppStore((s) => (s.ui.tab === 'completed' ? selectors.completedRows(s) : null));
+  const [rows, setRows] = useState<Row[]>(live ?? NO_ROWS);
+  if (live !== null && live !== rows) setRows(live);
   const renderItem = useCallback(({ item }: { item: Row }) => <CompletedRow row={item} />, []);
   const list = useRef<FlashListRef<Row>>(null);
   const container = useRef<View>(null);
@@ -76,7 +88,6 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
 
   // Each quest tab opens at the top and slides in from its side (useViewPlace.ts).
   const category = useAppStore((s) => s.ui.category);
-  const shown = useAppStore((s) => s.ui.tab === 'completed');
   const place = useViewPlace(list, category, CATEGORY_TABS.indexOf(category), { tab: category, visible: shown });
   // A quest opened comes into focus; one closed stays where it is (useFoldFocus.ts), as on ACTIVE.
   const padBottom = bottomInset + (keyboardHeight ? keyboardHeight + size.toolbarHeight : 0);
@@ -131,7 +142,7 @@ export function CompletedList({ bottomInset }: { bottomInset: number }) {
       </KeepInViewProvider>
     </View>
   );
-}
+});
 
 /** Whether COMPLETED shows search results (rows then never fold). */
 function searchingCompleted(s: { search: { completed: { open: boolean; query: string } } }): boolean {

@@ -79,9 +79,10 @@ export function searchActive(
     rows.splice(at, 0, { id, depth, hasChildren: kids.length > 0, progress: { done, total: kids.length }, context: !self });
     return true;
   };
-  // Quests in the list's order (priority, then newest) and only the selected tab's;
+  // Quests in the list's order (priority, then newest) and only the selected tab's open ones
+  // (completed ones are left out before sorting, not after: refinement pass 2026-10-18);
   // a zoomed-in quest's objectives in their manual order.
-  for (const id of rootId === null ? questOrder(state, category) : childIds(state, rootId)) visit(id, 0);
+  for (const id of rootId === null ? questOrder(state, category, null, (t) => !t.done) : childIds(state, rootId)) visit(id, 0);
   return rows;
 }
 

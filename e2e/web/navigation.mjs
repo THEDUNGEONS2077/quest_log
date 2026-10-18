@@ -82,12 +82,16 @@ async function hold(title) {
   });
 }
 /** How far the list on screen is scrolled down (px); 0 at its top. */
+// "On screen": laid out, and not inside the list that isn't showing (it stays laid out, invisible
+// and aria-hidden, so its rows aren't rebuilt: app/index.tsx).
 const listScroll = () =>
-  page.evaluate(() => Math.max(0, ...[...document.querySelectorAll('div')].filter((d) => d.offsetParent !== null).map((d) => d.scrollTop)));
+  page.evaluate(() =>
+    Math.max(0, ...[...document.querySelectorAll('div')].filter((d) => d.offsetParent !== null && !d.closest('[aria-hidden="true"]')).map((d) => d.scrollTop)),
+  );
 /** Scrolls the list on screen down by `px` (the tallest scrollable box on the page). */
 const scrollListBy = (px) =>
   page.evaluate((by) => {
-    const boxes = [...document.querySelectorAll('div')].filter((d) => d.offsetParent !== null && d.scrollHeight > d.clientHeight + 50);
+    const boxes = [...document.querySelectorAll('div')].filter((d) => d.offsetParent !== null && !d.closest('[aria-hidden="true"]') && d.scrollHeight > d.clientHeight + 50);
     const box = boxes.sort((a, b) => b.clientHeight - a.clientHeight)[0];
     if (box) box.scrollTop += by;
   }, px);

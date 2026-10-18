@@ -422,10 +422,15 @@ Responsiveness pass, 2026-10-18 (user request: "when switching tabs there is a d
 - **Gestures are built once per row shape** (`useMemo`: enabled, which sides), and read the row's latest actions when a swipe commits (a table keyed by the row's `useId`). A re-render, such as each keystroke in a title, no longer rebuilds the gesture and sends its worklets to the UI thread again. (Reanimated's performance guide: memoize gestures, most of all in list items.)
 - **Drag turns on and off a frame late.** Starting to edit, select or search doesn't wait for every row's drag gesture to be rebuilt. The drag start refuses on its own while any of those is on.
 - **The top panel's parts are memoized** (header, tabs, XP bar, scanlines). They read the store themselves, so the main screen re-rendering doesn't redraw them.
+- **The list that isn't showing keeps its size** (refinement pass, 2026-10-18). ACTIVE and COMPLETED both stay mounted, and the hidden one is laid out full size, transparent, untouchable and `aria-hidden`, never `display: 'none'`. At zero size, FlashList measured every row at 0 pt and built all of them: after one visit to COMPLETED, a 5,000-task history meant 5,000 hidden rows, re-rendered by every change.
+- **A hidden list doesn't follow changes.** COMPLETED keeps the rows it last showed while ACTIVE is in front, and catches up when it's shown.
+- **Pages over the main screen don't re-render it.** The onboarding check, which needs to know whether the main screen is in front, is its own component that draws nothing. Both lists are memoized.
+- **Sort only what's shown.** The ACTIVE list and its search sort the open quests only, not the whole completed history (`questOrder`'s `include`).
 - **Rows carry no press handler of their own.** The checkbox, caret, title and `+` handle presses. A caret is a pressable only on rows that have subtasks.
 - **Measured** in the web build under 4× CPU slowdown (Playwright, Chrome profiles), as a stand-in for a phone:
   - tab lit: 115 ms → 11 ms after the tap; switching to COMPLETED: 196 ms → 9 ms; starting to edit a title: 92 ms → 37 ms;
-  - keystrokes are drawn within one frame (16 ms; the worst was 48 ms).
+  - keystrokes are drawn within one frame (16 ms; the worst was 48 ms);
+  - refinement pass, with the 7,500-task seed: COMPLETED lit 859 ms → 7 ms on a second visit; a tick after visiting COMPLETED 156–274 ms → 43–71 ms; Settings opening 199 ms → 54 ms (30 quests).
 - **Not done, on purpose:**
   - keeping each tab's list alive (a tab must open at the top, and hidden lists would re-render on every change);
   - preloading Settings (a background cost on every launch);

@@ -50,3 +50,20 @@ PLAN §5 budgets, measured on a release build with `scripts/seed.ts` data (1,000
 - Release APK 20.4 MB (budget 25). JS bundle 3,743,304 bytes = 3.57 MiB (budget 4.0). Checked automatically by `scripts/release-android.sh`.
 - Desktop smoke budgets (`__tests__/perf.test.ts`, 7,500-task seed) all pass.
 - On-device timings in the table above are still empty. The build machine has no KVM for an emulator, and the test phone blocks USB installs (RELEASING.md), so on-device feel comes from the tester's own use of the release builds.
+
+### v1.13.0 (build 43) and v1.14.0 (build 44), 2026-10-18: responsiveness and refinement passes
+Measured in the web build (`npx expo export -p web --no-minify`) with Playwright at a Pixel 7 viewport and Chrome's CPU throttled 4×, as a stand-in for the phone (there's still no on-device timing). Times run from the tap to the frame that shows the response. Web-only layout costs (getRect, measureParentSize) are ignored when reading profiles. Design notes: DESIGN.md §7 *Responsiveness*.
+
+| Interaction | Before | After |
+|---|---|---|
+| Tab tap → tab lit (30 quests) | 115 ms | 11 ms |
+| Tab tap → new rows drawn (30 quests) | 139 ms | ~115 ms |
+| ACTIVE → COMPLETED lit (30 quests) | 196 ms | 9 ms |
+| Tap a title → editor shown | 92 ms | 37 ms |
+| Open Settings, first time (30 quests) | 199 ms | 54 ms |
+| 7,500-task seed: COMPLETED lit, second visit | 859 ms | 7 ms |
+| 7,500-task seed: tick a box | 52–100 ms | 37–96 ms |
+| 7,500-task seed: tick a box after visiting COMPLETED | 156–274 ms | 43–71 ms |
+| Keystroke in a title (Event Timing, seed) | ≤ 24 ms | ≤ 24 ms |
+
+The big one (v1.14.0): the hidden list (ACTIVE or COMPLETED) was hidden with `display: 'none'`, laid out at zero size, so FlashList built every row of it. That meant 5,000 rows with the seed's completed history, kept mounted and re-rendered by every change, and each mount and unmount went through the gesture library's per-detector listeners, which grow with the square of the row count.

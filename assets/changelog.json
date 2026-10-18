@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.14.0",
+    "build": 44,
+    "lines": [
+      "- **Fixed: the app slowed down after opening COMPLETED,** the more so the more you've completed. Coming back to your quests no longer prepares your whole completed history out of sight, so ticking, typing and switching stay quick, however long your history.",
+      "- **Settings, Help, What's new and Trash open faster,** and closing them is quicker too: the main screen behind them no longer redraws.",
+      "- **Ticking boxes and searching are quicker with lots of completed quests.**"
+    ]
+  },
+  {
     "version": "1.13.0",
     "build": 43,
     "lines": [
@@ -42,14 +51,6 @@
     "lines": [
       "- **Fixed: closing a quest no longer hides the quests below it** or leaves them out of place, on every tab. Closing now works the way a completed quest leaves: its subtasks fade out, then the quests below glide up into their space. Opening is the same in reverse: the quests below glide down to make room, then the subtasks fade in.",
       "- **The caret turns the moment you tap,** and tapping again before the fold has finished turns it around."
-    ]
-  },
-  {
-    "version": "1.9.0",
-    "build": 38,
-    "lines": [
-      "- **Opening and closing a quest is smooth,** as on the desktop. Tap the caret and the quests below glide down, uncovering its subtasks as they fade in. Close it and the subtasks fade where they are while the quests below glide up over them, like a curtain. Nothing jumps at the start or the end, and if you tap again halfway, it turns around. The same on COMPLETED, and with a long-press (all quests at once).",
-      "- **The caret turns a little slower,** in step with the motion below it."
     ]
   }
 ]

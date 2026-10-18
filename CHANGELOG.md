@@ -2,6 +2,12 @@
 
 Each version gets one section. It feeds the in-app "What's new" screen and the GitHub Release notes (PLAN §15.4).
 
+## 1.14.0 (build 44)
+
+- **Fixed: the app slowed down after opening COMPLETED,** the more so the more you've completed. Coming back to your quests no longer prepares your whole completed history out of sight, so ticking, typing and switching stay quick, however long your history.
+- **Settings, Help, What's new and Trash open faster,** and closing them is quicker too: the main screen behind them no longer redraws.
+- **Ticking boxes and searching are quicker with lots of completed quests.**
+
 ## 1.13.0 (build 43)
 
 - **Tabs switch at once.** The tab you tap lights up the moment you tap it, and its list follows right after. Tap several tabs quickly and you land on the last one. The same goes for ACTIVE and COMPLETED.

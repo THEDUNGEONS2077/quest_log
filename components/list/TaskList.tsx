@@ -25,7 +25,7 @@
  * from the left.
  */
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import Animated from 'react-native-reanimated';
 import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -56,7 +56,9 @@ interface Props {
   bottomInset: number;
 }
 
-export function TaskList({ bottomInset }: Props) {
+// Memoized: the main screen re-renders when editing, selecting or searching starts or ends;
+// the list reads what it needs from the store itself (refinement pass 2026-10-18).
+export const TaskList = memo(function TaskList({ bottomInset }: Props) {
   const selectors = useSelectors();
   const rows = useAppStore((s) => selectors.activeRows(s));
   const editingId = useAppStore((s) => s.editingId);
@@ -229,7 +231,7 @@ export function TaskList({ bottomInset }: Props) {
       </KeepInViewProvider>
     </View>
   );
-}
+});
 
 /** How deep the zoom is: 0 at a tab's top level, 1 inside a quest, 2 inside one of its subtasks… */
 function zoomLevel(tasks: TasksState, zoomRootId: string | null): number {

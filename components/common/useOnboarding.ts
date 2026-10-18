@@ -30,7 +30,18 @@ let checked = false;
 /** What's new was just opened: tips wait until the main screen is back in front. */
 let whatsNewPending = false;
 
-/** Runs the onboarding checks for the main screen. */
+/**
+ * Runs the onboarding checks for the main screen, as a component that draws nothing:
+ * it follows whether the screen is in front (useIsFocused), and as a hook in the screen
+ * that re-rendered the whole main screen each time a page opened or closed over it
+ * (refinement pass 2026-10-18).
+ */
+export function Onboarding(): null {
+  useOnboarding();
+  return null;
+}
+
+/** Runs the onboarding checks for the main screen (render <Onboarding /> rather than calling it in the screen). */
 export function useOnboarding(): void {
   const booting = useBooting();
   const focused = useIsFocused();
